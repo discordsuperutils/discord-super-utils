@@ -1,6 +1,6 @@
-from DisCock import Leveling
-from DisCock import Database
-from DisCock import Music
+from Leveling import LevelingManager
+from Database import Database
+from Music import Player
 
 __title__ = "DisCock"
 __version__ = "0.0.1"
