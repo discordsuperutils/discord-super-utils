@@ -85,8 +85,8 @@ def check_queue(ctx, queue):
         except IndexError:
             return
 
-    await ctx.send(f"Now playing: {player.title}")
-    ctx.voice_client.play(player, after = None)
+    ctx.send(f"Now playing: {player.title}")  # fix
+    ctx.voice_client.play(player, after=None)
 
 
 class Player(discord.PCMVolumeTransformer):
