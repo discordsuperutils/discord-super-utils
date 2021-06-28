@@ -1,7 +1,7 @@
 import os
 
 
-class Database:
+class DatabaseManager:
     """
     A database class for easier access
     database MUST be of type sqlite3

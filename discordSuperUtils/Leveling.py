@@ -1,14 +1,14 @@
-from Database import Database
+from .Database import DatabaseManager
 import time
 import math
-import Base
+from .Base import EventManager
 
 
 database_keys = ['guild', 'member', 'rank', 'xp', 'level_up']
 
 
-class LevelingManager(Base.EventManager):
-    def __init__(self, database: Database, table, bot, xp_on_message=5, rank_multiplier=1.5):
+class LevelingManager(EventManager):
+    def __init__(self, database: DatabaseManager, table, bot, xp_on_message=5, rank_multiplier=1.5):
         super().__init__()
         self.database = database
         self.table = table
