@@ -27,28 +27,36 @@ ytdl = youtube_dl.YoutubeDL(ytdl_opts)
 class NotPlaying(Exception):
     """Raises error when player is not playing"""
 
+
 class AlreadyPlaying(Exception):
     """Raises error when player is already playing"""
+
 
 class NotConnected(Exception):
     """Raises error when client is not connected to a voice channel"""
 
+
 class NotPaused(Exception):
     """Raises error when player is not paused"""
+
 
 class QueueEmpty(Exception):
     """Raises error when queue is empty"""
 
+
 class AlreadyConnected(Exception):
     """Raises error when client is already connected to voice"""
 
+
 class QueueError(Exception):
     """Raises error when something is wrong with the queue"""
+
 
 def get_data(url):
     """Returns a dict with info extracted from the URL given"""
     info = ytdl.extract_info(str(url), download=False)
     return info
+
 
 def search(query):
     """Returns URL of a video from Youtube"""
@@ -58,6 +66,7 @@ def search(query):
     url = ("https://www.youtube.com/watch?v=" + video_ids[0])
     return url
 
+
 class Player(discord.PCMVolumeTransformer):
     def __init__(self, source, *, data, volume=0.1):
         super().__init__(source, volume)
@@ -66,6 +75,12 @@ class Player(discord.PCMVolumeTransformer):
         self.title = data.get('title')
         self.url = data.get('url')
         self.duration = data.get('duration')
+
+    def __str__(self):
+        return self.title
+
+    def __repr__(self):
+        return f'<Player title={self.title}, url={self.url}, duration={self.duration}>'
 
     @classmethod
     async def make_player(cls, url:str):
@@ -77,31 +92,32 @@ class Player(discord.PCMVolumeTransformer):
         player = cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
         return player
 
+
 class MusicManager:
     def __init__(self, queue=None):
-        self.queue = queue
-
-    async def fetch_data(self, url):
-        """Returns a dict with info extracted from the URL given"""
-        info = ytdl.extract_info(str(url), download=False)
-        return info
+        self.queue = queue if queue is not None else {}
 
     def check_queue(self, ctx):
+        player = None
         if type(self.queue) is list:
             try:
                 self.queue.pop(0)
                 player = self.queue[0]
             except IndexError:
                 return
+
         elif type(self.queue) is dict:
             try:
                 self.queue[ctx.guild.id].pop(0)
                 player = self.queue[ctx.guild.id][0]
             except IndexError:
                 return
-        ctx.voice_client.play(player= player, after = lambda x: self.check_queue(ctx))
 
-    async def search(self, query:str):
+        if player is not None:
+            ctx.voice_client.play(player=player, after=lambda x: self.check_queue(ctx))  # dont add spaces here after='a'
+
+    @classmethod
+    async def search(cls, query: str):
         """Returns URL of a video from Youtube"""
         arg1 = query.replace(" ", "+")
         html = urllib.request.urlopen("https://www.youtube.com/results?search_query=" + arg1)
@@ -109,7 +125,14 @@ class MusicManager:
         url = ("https://www.youtube.com/watch?v=" + video_ids[0])
         return url
 
-    async def create_player(self, url):
+    @classmethod
+    async def fetch_data(cls, url):
+        """Returns a dict with info extracted from the URL given"""
+        info = ytdl.extract_info(str(url), download=False)
+        return info
+
+    @classmethod
+    async def create_player(cls, url):
         return await Player.make_player(url=url)
     
     async def queue_add(self, player, ctx):
@@ -135,25 +158,27 @@ class MusicManager:
                     self.queue[ctx.guild.id].remove(player)
                 except:
                     raise QueueError("Failure to remove player from the queue")
-            
 
     async def play(self, ctx, player=None):
         """Plays the top of the queue or plays specified player"""
         if ctx.voice_client and ctx.voice_client.is_connected():
             if ctx.voice_client.is_playing():
                 raise AlreadyPlaying("Player is already playing audio")
-            elif not player is None:
+
+            elif player is not None:
                 ctx.voice_client.play(player)
+
             elif type(self.queue) is list:
                 try:
-                    ctx.voice_client.play(self.queue[0], after = lambda x: self.check_queue(ctx))
+                    ctx.voice_client.play(self.queue[0], after=lambda x: self.check_queue(ctx))
                     return self.queue[0]
                 except IndexError:
                     raise QueueEmpty("Queue is empty.")
-            elif type(self.queue ) is dict:
+
+            elif type(self.queue) is dict:
                 if ctx.guild.id in self.queue:
                     try:
-                        ctx.voice_client.play(self.queue[ctx.guild.id][0], after = lambda x: self.check_queue(ctx))
+                        ctx.voice_client.play(self.queue[ctx.guild.id][0], after=lambda x: self.check_queue(ctx))
                         return self.queue[ctx.guild.id][0]
                     except IndexError:
                         raise QueueEmpty("Queue is empty.")
@@ -219,6 +244,7 @@ class MusicManager:
                         return self.queue[0]
                     except:
                         raise QueueEmpty("Queue is empty")
+
                 elif type(self.queue) is dict:
                     try:
                         return self.queue[ctx.guild.id][0]
@@ -230,5 +256,4 @@ class MusicManager:
             raise NotConnected("Client is not connected to voice currently")
 
     async def queue(self):
-        return self.queue
-
+        return self.queue  # Sure
