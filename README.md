@@ -16,39 +16,39 @@ Examples
 ### Leveling Example ###
 
 ```py
-    import DisCock
-    import sqlite3
-    from discord.ext import commands
+import DisCock
+import sqlite3
+from discord.ext import commands
 
 
-    database = DisCock.Database(sqlite3.connect("database"))
-    bot = commands.Bot(command_prefix='-')
-    LevelingManager = DisCock.LevelingManager(database, 'xp', bot)
+database = DisCock.Database(sqlite3.connect("database"))
+bot = commands.Bot(command_prefix='-')
+LevelingManager = DisCock.LevelingManager(database, 'xp', bot)
 
 
-    @bot.event
-    async def on_ready():
-        print('Leveling manager is ready.')
+@bot.event
+async def on_ready():
+    print('Leveling manager is ready.')
 
 
-    @LevelingManager.event()
-    async def on_level_up(message, member_data):
-        await message.reply(f"You are now level {member_data['rank']}")
+@LevelingManager.event()
+async def on_level_up(message, member_data):
+    await message.reply(f"You are now level {member_data['rank']}")
 
 
-    @bot.command()
-    async def rank(ctx):
-        member_data = LevelingManager.get_member(ctx.guild, ctx.author)
-        await ctx.send(f'You are currently level **{member_data["rank"]}**, with **{member_data["xp"]} XP.')
+@bot.command()
+async def rank(ctx):
+    member_data = LevelingManager.get_member(ctx.guild, ctx.author)
+    await ctx.send(f'You are currently level **{member_data["rank"]}**, with **{member_data["xp"]} XP.')
 
-    bot.run("token")
+bot.run("token")
 ```
 
 ### Playing Example ### 
 
 ```py
 from discord.ext import commands
-from discord-super-utils.Music import  Player, music, search
+from discordSuperUtils.Music import Player, music, search
 
 bot = commands.Bot(command_prefix = ".")
 
