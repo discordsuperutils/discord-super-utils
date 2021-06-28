@@ -13,6 +13,9 @@ Features
 Examples
 --------------
 
+Leveling Example
+~~~~~~~~~~~~~
+
 ```py
     import DisCock
     import sqlite3
@@ -41,6 +44,9 @@ Examples
 
     bot.run("token")
 ```
+
+Player Example
+~~~~~~~~~~~~~
 
 ```py
     Koyashie add yo shit
