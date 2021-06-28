@@ -13,9 +13,6 @@ Features
 Examples
 --------------
 
-Leveling Example
-~~~~~~~~~~~~~
-
 ```py
     import DisCock
     import sqlite3
