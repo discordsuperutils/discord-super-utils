@@ -27,25 +27,32 @@ ytdl = youtube_dl.YoutubeDL(ytdl_opts)
 class NotPlaying(Exception):
     """Raises error when player is not playing"""
 
+
 class AlreadyPlaying(Exception):
     """Raises error when player is already playing"""
+
 
 class NotConnected(Exception):
     """Raises error when client is not connected to a voice channel"""
 
+
 class NotPaused(Exception):
     """Raises error when player is not paused"""
+
 
 class QueueEmpty(Exception):
     """Raises error when queue is empty"""
 
+
 class AlreadyConnected(Exception):
     """Raises error when client is already connected to voice"""
+
 
 def get_data(url):
     """Returns a dict with info extracted from the URL given"""
     info = ytdl.extract_info(str(url), download=False)
     return info
+
 
 async def search(query):
     """Returns URL of a video from Youtube"""
@@ -55,10 +62,12 @@ async def search(query):
     url = ("https://www.youtube.com/watch?v=" + video_ids[0])
     return url
 
+
 async def fetch_data(url):
     """Returns a dict with info extracted from the URL given"""
     info = ytdl.extract_info(str(url), download=False)
     return info
+
 
 def check_queue(ctx, queue):
     """Checks the queue, if song is in queue, it auto plays; if song is not in queue it leaves the voice channel."""
@@ -78,7 +87,8 @@ def check_queue(ctx, queue):
 
     await ctx.send(f"Now playing: {player.title}")
     ctx.voice_client.play(player, after = None)
-    
+
+
 class Player(discord.PCMVolumeTransformer):
     def __init__(self, source, *, data, volume=0.1):
         super().__init__(source, volume)
@@ -96,12 +106,13 @@ class Player(discord.PCMVolumeTransformer):
         player = cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
         return player   
 
+
 class MusicManager:
     def __init__(self, queue=None):
-        self.queue = queue
+        self.queue = queue if queue is not None else {}
 
-    async def create_player(self,url):
-        return await Player.make_player(url)
+    async def create_player(self, url):
+        return await Player.make_player(url=url)
     
     async def queue_add(self, player, ctx):
         if type(self.queue) is list:

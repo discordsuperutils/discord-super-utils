@@ -3,7 +3,7 @@ import sqlite3
 from discord.ext import commands
 
 
-database = discordSuperUtils.DatabaseManager(sqlite3.connect("database"))
+database = discordSuperUtils.DatabaseManager(sqlite3.connect('database'))
 bot = commands.Bot(command_prefix='-')
 LevelingManager = discordSuperUtils.LevelingManager(database, 'xp', bot)
 
