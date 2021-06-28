@@ -45,9 +45,6 @@ Leveling Example
     bot.run("token")
 ```
 
-Player Example
-~~~~~~~~~~~~~
-
 ```py
     Koyashie add yo shit
 ```
