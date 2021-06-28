@@ -17,29 +17,29 @@ class LevelingManager(EventManager):
         self.rank_multiplier = rank_multiplier
 
         self.cooldown_members = {}
-        self.bot.add_listener(self.handle_experience, "on_message")
+        self.bot.add_listener(self.__handle_experience, "on_message")
         self.database.createtable(self.table, [{'name': key, 'type': 'INTEGER'} for key in database_keys], True)
 
-    async def handle_experience(self, message):
+    async def __handle_experience(self, message):
         if not message.guild or message.author.bot:
             return
 
         if message.guild.id not in self.cooldown_members:
             self.cooldown_members[message.guild.id] = {}
 
-        self.create_account(message.guild, message.author)
+        self.create_account(message.author)
         member_timestamp = self.cooldown_members[message.guild.id].get(message.author.id, 0)
 
         if (time.time() - member_timestamp) >= 10:
             await self.add_experience(message, self.xp_on_message, self.rank_multiplier)
             self.cooldown_members[message.guild.id][message.author.id] = time.time()
 
-    def create_account(self, guild, member):
-        self.database.insertifnotexists(database_keys, [guild.id, member.id, 1, 0, 50],
-                                        self.table, [{'guild': guild.id}, {'member': member.id}])
+    def create_account(self, member):
+        self.database.insertifnotexists(database_keys, [member.guild.id, member.id, 1, 0, 50],
+                                        self.table, [{'guild': member.guild.id}, {'member': member.id}])
 
     async def add_experience(self, message, xp, rank_multiplier):
-        member_data = self.get_member(message.guild, message.author)
+        member_data = self.get_account(message.guild, message.author)
         if not member_data:
             return
 
@@ -71,8 +71,8 @@ class LevelingManager(EventManager):
 
         return formatted_member_data
 
-    def get_member(self, guild, member):
-        member_data = self.database.select([], self.table, [{'guild': guild.id}, {'member': member.id}])
+    def get_account(self, member):
+        member_data = self.database.select([], self.table, [{'guild': member.guild.id}, {'member': member.id}])
         if member_data:
             member_data = self.format_data(member_data)
 
