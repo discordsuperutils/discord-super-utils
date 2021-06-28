@@ -13,8 +13,7 @@ Features
 Examples
 --------------
 
-.. code:: py
-
+```py
     import DisCock
     import sqlite3
     from discord.ext import commands
@@ -41,10 +40,10 @@ Examples
         await ctx.send(f'You are currently level **{member_data["rank"]}**, with **{member_data["XP"]} XP.')
 
     bot.run("token")
+```
 
-
-.. code:: py
-
+```py
     Koyashie add yo shit
+```
 
 More examples are listed in the examples folder.
