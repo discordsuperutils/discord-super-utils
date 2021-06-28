@@ -47,8 +47,8 @@ Examples
 ### Playing Example ### 
 
 ```py
-    from discord.ext import commands
-from Music import  Player, music, search
+from discord.ext import commands
+from discord-super-utils.Music import  Player, music, search
 
 bot = commands.Bot(command_prefix = ".")
 
