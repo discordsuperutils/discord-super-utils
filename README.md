@@ -97,3 +97,8 @@ bot.run('token')
 ```
 
 More examples are listed in the examples folder.
+
+Support
+--------------
+
+**[Support Server](https://discord.gg/C5qwFtCRgJ)**
