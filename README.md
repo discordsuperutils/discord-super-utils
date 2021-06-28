@@ -47,7 +47,53 @@ Examples
 ### Playing Example ### 
 
 ```py
-    Koyashie add yo shit
+    from discord.ext import commands
+from Music import  Player, music, search
+
+bot = commands.Bot(command_prefix = ".")
+
+queue = []
+
+def check_queue(ctx):
+    queue.pop(0)
+    try:
+        player = queue[0]
+    except IndexError:
+        return
+    asyncio.run_coroutine_threadsafe(ctx.send( f"Now playing: {player.title}"), bot.loop)    #await can be used but the function isnt async
+    asyncio.run_coroutine_threadsafe(Player.play(ctx=ctx, player=player ,after= lambda x :check_queue(ctx)), bot.loop)
+
+@bot.event
+async def on_ready():
+    print(bot.user)
+    
+@bot.command()
+async def join(ctx):
+    await Player.join(ctx)
+
+@bot.command()
+async def play(ctx,*, query):
+    url = await search(query=query)
+    song = await music.create_player(url=url)
+    queue.append(song)
+    if not ctx.voice_client.is_playing():
+        player = queue[0]
+        await ctx.send(f"Now playing: {player.title}")
+        await Player.play(ctx=ctx, player=player ,after= lambda x :check_queue(ctx))
+
+@bot.command()
+async def pause(ctx):
+    await Player.pause(ctx)
+
+@bot.command()
+async def resume(ctx):
+    await Player.resume(ctx)
+
+@bot.command()
+async def leave(ctx):
+    await Player.leave(ctx)
+    
+bot.run('token')
 ```
 
 More examples are listed in the examples folder.
