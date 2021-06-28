@@ -1,6 +1,6 @@
 import urllib, discord, youtube_dl, re
 
-# just some options etc.
+#just some options etc. 
 
 ytdl_opts= {
     'format': 'bestaudio/best',
@@ -27,32 +27,25 @@ ytdl = youtube_dl.YoutubeDL(ytdl_opts)
 class NotPlaying(Exception):
     """Raises error when player is not playing"""
 
-
 class AlreadyPlaying(Exception):
     """Raises error when player is already playing"""
-
 
 class NotConnected(Exception):
     """Raises error when client is not connected to a voice channel"""
 
-
 class NotPaused(Exception):
     """Raises error when player is not paused"""
-
 
 class QueueEmpty(Exception):
     """Raises error when queue is empty"""
 
-
 class AlreadyConnected(Exception):
     """Raises error when client is already connected to voice"""
-
 
 def get_data(url):
     """Returns a dict with info extracted from the URL given"""
     info = ytdl.extract_info(str(url), download=False)
     return info
-
 
 async def search(query):
     """Returns URL of a video from Youtube"""
@@ -62,13 +55,30 @@ async def search(query):
     url = ("https://www.youtube.com/watch?v=" + video_ids[0])
     return url
 
-
 async def fetch_data(url):
     """Returns a dict with info extracted from the URL given"""
     info = ytdl.extract_info(str(url), download=False)
     return info
 
+def check_queue(ctx, queue):
+    """Checks the queue, if song is in queue, it auto plays; if song is not in queue it leaves the voice channel."""
+    """Must pass context and queue as parameter else it would break"""
+    """It's reccomended users make their own queueing system as this one is prone to breaking"""
+    """DONT USE THIS IT IS STILL IN TESTING"""
+    if type(queue) is list:
+        try:
+            player = queue[0]
+        except IndexError:
+            return
+    elif type(queue) is dict:
+        try:
+            player = queue[ctx.guild.id][0]
+        except IndexError:
+            return
 
+    await ctx.send(f"Now playing: {player.title}")
+    ctx.voice_client.play(player, after = None)
+    
 class Player(discord.PCMVolumeTransformer):
     def __init__(self, source, *, data, volume=0.1):
         super().__init__(source, volume)
@@ -79,69 +89,61 @@ class Player(discord.PCMVolumeTransformer):
         self.duration = data.get('duration')
 
     @classmethod
-    async def create_player(cls, **kwargs):
+    async def make_player(cls, **kwargs):
         url = kwargs.get("url")
         data = get_data(url)
         filename = data['url']
         player = cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
         return player   
 
-
 class MusicManager:
-    def __init__(self):
-        self.queue = {}
+    def __init__(self, queue=None):
+        self.queue = queue
 
-    async def check_queue(self, ctx, queue):
-        """Checks the queue, if song is in queue, it auto plays; if song is not in queue it leaves the voice channel."""
-        """Must pass context and queue as parameter else it would break"""
-        """It's reccomended users make their own queueing system as this one is prone to breaking"""
-        """DONT USE THIS IT IS STILL IN TESTING"""
-        player = None
+    async def create_player(self,url):
+        return await Player.make_player(url)
+    
+    async def queue_add(self, player, ctx):
+        if type(self.queue) is list:
+            self.queue.append(player)
+        elif type(self.queue) is dict:
+            if ctx.guild.id in self.queue:
+                self.queue[ctx.guild.id].append(player)
+            else:
+                self.queue[ctx.guild.id] = [player]
 
-        if type(queue) is list:
-            try:
-                player = queue[0]
-            except IndexError:
-                return
-        elif type(queue) is dict:
-            try:
-                player = queue[ctx.guild.id][0]
-            except IndexError:
-                return
-
-        if player:
-            await ctx.send(f"Now playing: {player.title}")
-            ctx.voice_client.play(player, after=None)
-
-    async def play(self, ctx, player, after=None):
+    async def play(self,ctx, player=None):
         if ctx.voice_client:
             if ctx.voice_client.is_connected():
                 if ctx.voice_client.is_playing():
                     raise AlreadyPlaying("Player is already playing audio")
                 else:
-                    ctx.voice_client.play(player, after = after)
+                    if not player is None:
+                        ctx.voice_client.play(player)
+                    else:
+                        pass #NIGGGAAAA I FINISH TOMORROW
             else:
                 raise NotConnected("Need to be connected to a voice channel.")
 
-    async def pause(self, ctx):
+    async def pause(self,ctx):
         """Pauses the voice client"""
         try:
             ctx.voice_client.pause()
         except:
             raise NotPaused("Player is either already paused or not connected to voice.")
 
-    async def resume(self, ctx):
+    async def resume(self,ctx):
         """Resumes the voice client"""
         try:
             ctx.voice_client.resume()
         except:
             raise AlreadyPlaying("Player is either already playing or not connceted to voice.")
 
-    async def skip(self, ctx):
+    async def skip(self,ctx):
         """Most likely wont work"""
         ctx.voice_client.stop()
 
-    async def volume(self, ctx, volume: int = None):
+    async def volume(self,ctx, volume: int = None):
         """Returns the volume if volume is not given or changes the volume if it is given"""
         if volume is None:
             return (ctx.voice_client.source.volume * 100)
@@ -149,7 +151,7 @@ class MusicManager:
             ctx.voice_client.source.volume = volume / 100
             return (ctx.voice_client.source.volume * 100)
 
-    async def join(self, ctx):
+    async def join(self,ctx):
         """Joins voice channel that user is in"""
         if ctx.voice_client:
             if ctx.voice_client.is_connected():
@@ -159,7 +161,7 @@ class MusicManager:
         else:
             await ctx.author.voice.channel.connect()
 
-    async def leave(self, ctx):
+    async def leave(self,ctx):
         """Leaves voice channel"""
         if ctx.voice_client:
             if ctx.voice_client.is_connected():
