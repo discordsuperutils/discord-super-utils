@@ -1,6 +1,6 @@
 import urllib.request, discord, youtube_dl, re
 
-#just some options etc. 
+# just some options etc.
 
 ytdl_opts = {
     'format': 'bestaudio/best',
@@ -12,12 +12,12 @@ ytdl_opts = {
     'quiet': True,
     'no_warnings': True,
     'default_search': 'auto',
-    'source_address': '0.0.0.0'  
+    'source_address': '0.0.0.0'
 }
 
 ffmpeg_options = {
-            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'
-        }
+    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'
+}
 
 ytdl = youtube_dl.YoutubeDL(ytdl_opts)
 
@@ -114,7 +114,8 @@ class MusicManager:
                 return
 
         if player is not None:
-            ctx.voice_client.play(player=player, after=lambda x: self.check_queue(ctx))  # dont add spaces here after='a'
+            ctx.voice_client.play(player=player,
+                                  after=lambda x: self.check_queue(ctx))  # dont add spaces here after='a'
 
     @classmethod
     async def search(cls, query: str):
@@ -134,7 +135,7 @@ class MusicManager:
     @classmethod
     async def create_player(cls, url):
         return await Player.make_player(url=url)
-    
+
     async def queue_add(self, player, ctx):
         """Adds specified player object to queue"""
         if type(self.queue) is list:
@@ -221,20 +222,17 @@ class MusicManager:
         if ctx.voice_client:
             if ctx.voice_client.is_connected():
                 raise AlreadyConnected("Client is already connected to a voice channel")
-            else:
-                await ctx.author.voice.channel.connect()
-        else:
-            await ctx.author.voice.channel.connect()
+
+        await ctx.author.voice.channel.connect()
 
     async def leave(self, ctx):
         """Leaves voice channel"""
         if ctx.voice_client:
             if ctx.voice_client.is_connected():
                 await ctx.voice_client.disconnect()
-            else:
-                raise NotConnected("Client is not connected to a voice channel")
-        else:
-            raise NotConnected("Client is not connected to a voice channel")
+                return
+
+        raise NotConnected("Client is not connected to a voice channel")
 
     async def now_playing(self, ctx):
         """Returns player of currently playing song"""
@@ -253,8 +251,8 @@ class MusicManager:
                         raise QueueEmpty("Queue is empty")
             else:
                 raise NotPlaying("Player is not playing anything currently")
-        else:
-            raise NotConnected("Client is not connected to voice currently")
+
+        raise NotConnected("Client is not connected to voice currently")
 
     async def queue(self):
         return self.queue  # Sure
@@ -267,7 +265,6 @@ class MusicManager:
                 return True
 
         return False
-
 
     def is_connected(self, ctx):
         if ctx.voice_client and ctx.voice_client.is_connected():
