@@ -73,8 +73,8 @@ class Player(discord.PCMVolumeTransformer):
         return f'<Player title={self.title}, url={self.url}, duration={self.duration}>'
 
     @classmethod
-    async def make_player(cls, url: str):
-        data = await MusicManager.fetch_data(url)
+    async def make_player(cls, query: str):
+        data = await MusicManager.fetch_data(query)
         if 'entries' in data:
             data = data['entries'][0]
 
@@ -117,14 +117,14 @@ class MusicManager(EventManager):
         return url
 
     @classmethod
-    async def fetch_data(cls, url: str):
-        """Returns a dict with info extracted from the URL given"""
+    async def fetch_data(cls, query: str):
+        """Returns a dict with info extracted from the URL/query given"""
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
+        return await loop.run_in_executor(None, lambda: ytdl.extract_info(query, download=False))
 
     @classmethod
-    async def create_player(cls, url):
-        return await Player.make_player(url=url)
+    async def create_player(cls, query):
+        return await Player.make_player(query)
 
     async def queue_add(self, player, ctx):
         """Adds specified player object to queue"""
@@ -208,7 +208,7 @@ class MusicManager(EventManager):
             await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
             return
 
-        if not self.is_playing(ctx):
+        if not ctx.voice_client.is_playing():
             await self.call_event('on_music_error', ctx, NotPlaying("Client is not playing music"))
             return
 
@@ -217,12 +217,19 @@ class MusicManager(EventManager):
 
     async def volume(self, ctx, volume: int = None):
         """Returns the volume if volume is not given or changes the volume if it is given"""
-        if self.is_playing(ctx):
-            if volume is None:
-                return ctx.voice_client.source.volume * 100
-            else:
-                ctx.voice_client.source.volume = volume / 100
-                return ctx.voice_client.source.volume * 100
+        if not ctx.voice_client or not ctx.voice_client.is_connected():
+            await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
+            return
+
+        if not ctx.voice_client.is_playing():
+            await self.call_event('on_music_error', ctx, NotPlaying("Client is not playing music"))
+            return
+
+        if volume is None:
+            return ctx.voice_client.source.volume * 100
+        else:
+            ctx.voice_client.source.volume = volume / 100
+            return ctx.voice_client.source.volume * 100
 
     async def join(self, ctx):
         """Joins voice channel that user is in"""
@@ -264,18 +271,3 @@ class MusicManager(EventManager):
                 return self.queue[ctx.guild.id][0]
             except:
                 await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty"))
-
-    ######## CHECKS ########
-
-    def is_playing(self, ctx):
-        if ctx.voice_client and ctx.voice_client.is_connected():
-            if ctx.voice_client.is_playing():
-                return True
-
-        return False
-
-    def is_connected(self, ctx):
-        if ctx.voice_client and ctx.voice_client.is_connected():
-            return True
-
-        return False
