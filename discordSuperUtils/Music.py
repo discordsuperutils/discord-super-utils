@@ -1,5 +1,5 @@
 import urllib.request, discord, youtube_dl, re
-from Base import *
+from .Base import *  # should be .Base, koyashie use Base
 # just some options etc.
 
 ytdl_opts = {
