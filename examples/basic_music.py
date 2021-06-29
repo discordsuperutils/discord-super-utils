@@ -1,5 +1,5 @@
 from discord.ext import commands
-from Music import MusicManager
+from discordSuperUtils import MusicManager
 
 bot = commands.Bot(command_prefix = ".")
 
