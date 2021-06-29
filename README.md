@@ -8,7 +8,8 @@ Features
 
 - Modern leveling manager.
 - Modern Music/Audio playing manager.
-- Database manager.
+- Modern Database manager (SQLite).
+- Modern Paginator.
 
 Examples
 --------------
@@ -43,6 +44,8 @@ async def rank(ctx):
 
 bot.run("token")
 ```
+
+![Leveling Manager Example](https://thumbs.gfycat.com/ReadyUntriedChick-mobile.mp4)
 
 ### Playing Example ### 
 
@@ -94,6 +97,49 @@ async def leave(ctx):
     await Player.leave(ctx)
     
 bot.run('token')
+```
+
+### Database Example ###
+
+```py
+import discordSuperUtils
+import sqlite3
+
+
+database = discordSuperUtils.DatabaseManager(sqlite3.connect("database"))
+values = database.select(keys=['guild'], table_name='xp', checks=[{'guild': 1}], fetchall=True) 
+```
+
+### Paginator Example ###  
+
+```py
+import discordSuperUtils
+from discord.ext import commands
+import discord
+
+
+bot = commands.Bot(command_prefix='-')
+
+
+@bot.event
+async def on_ready():
+    print('Page manager is ready.', bot.user)
+
+
+@bot.command()
+async def paginator(ctx):
+    messages = [
+        discord.Embed(
+            title='Data (1/2)',
+            description="Hello world"
+        ),
+        "Hello world"
+    ]
+
+    await discordSuperUtils.PageManager(ctx, messages).run()
+
+
+bot.run("token")
 ```
 
 More examples are listed in the examples folder.
