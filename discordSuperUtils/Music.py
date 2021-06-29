@@ -106,15 +106,6 @@ class MusicManager(EventManager):
         if player is not None:
             ctx.voice_client.play(player, after=lambda x: self.check_queue(ctx))  # dont add spaces here after='a'
 
-    @classmethod  # Useless, koyashie remove if not needed
-    async def search(cls, query: str):
-        """Returns URL of a video from Youtube"""
-        arg1 = query.replace(" ", "+")
-        html = urllib.request.urlopen("https://www.youtube.com/results?search_query=" + arg1)
-        video_ids = re.findall(r"watch\?v=(\S{11})", html.read().decode())
-        url = ("https://www.youtube.com/watch?v=" + video_ids[0])
-        return url
-
     @classmethod
     async def fetch_data(cls, query: str):
         """Returns a dict with info extracted from the URL/query given"""
