@@ -1,4 +1,4 @@
-import urllib.request , discord, youtube_dl, re, requests, json
+import urllib.request , discord, youtube_dl, re
 
 #just some options etc. 
 
@@ -209,11 +209,12 @@ class MusicManager:
 
     async def volume(self, ctx, volume: int = None):
         """Returns the volume if volume is not given or changes the volume if it is given"""
-        if volume is None:
-            return ctx.voice_client.source.volume * 100
-        else:
-            ctx.voice_client.source.volume = volume / 100
-            return ctx.voice_client.source.volume * 100
+        if self.is_playing():
+            if volume is None:
+                return ctx.voice_client.source.volume * 100
+            else:
+                ctx.voice_client.source.volume = volume / 100
+                return ctx.voice_client.source.volume * 100
 
     async def join(self, ctx):
         """Joins voice channel that user is in"""
@@ -257,3 +258,14 @@ class MusicManager:
 
     async def queue(self):
         return self.queue  # Sure
+
+    ######## CHECKS ########
+
+    def is_playing(self, ctx):
+        if ctx.voice_client and ctx.voice_client.is_connected():
+            if ctx.voice_client.is_playing():
+                return True
+
+    def is_connected(self, ctx):
+        if ctx.voice_client and ctx.voice_client.is_connected():
+            return True
