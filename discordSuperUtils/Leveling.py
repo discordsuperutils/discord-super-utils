@@ -53,9 +53,8 @@ class LevelingManager(EventManager):
 
         self.update_account(member_data)
 
-        if leveled_up and 'on_level_up' in self.events:
-            for event in self.events['on_level_up']:
-                await event(message, member_data)
+        if leveled_up:
+            await self.call_event('on_level_up', message, member_data)
 
     def update_account(self, member_data):
         member_data.pop('next_level_percentage', None)
