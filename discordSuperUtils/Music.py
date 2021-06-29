@@ -57,21 +57,6 @@ class QueueError(Exception):
     """Raises error when something is wrong with the queue"""
 
 
-def get_data(url: str):
-    """Returns a dict with info extracted from the URL given"""
-    info = ytdl.extract_info(url, download=False)
-    return info
-
-
-def search(query):
-    """Returns URL of a video from Youtube"""
-    query = query.replace(" ", "+")
-    info = urllib.request.urlopen("https://www.youtube.com/results?search_query=" + query)
-    video_ids = re.findall(r"watch\?v=(\S{11})", info.read().decode())
-    url = "https://www.youtube.com/watch?v=" + video_ids[0]
-    return url
-
-
 class Player(discord.PCMVolumeTransformer):
     def __init__(self, source, *, data, volume=0.1):
         super().__init__(source, volume)
@@ -89,13 +74,12 @@ class Player(discord.PCMVolumeTransformer):
 
     @classmethod
     async def make_player(cls, url: str):
-        data = ytdl.extract_info(url, download=False)
+        data = await MusicManager.fetch_data(url)
         if 'entries' in data:
             data = data['entries'][0]
-        print(data)
+
         filename = data['url']
-        player = cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
-        return player
+        return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
 
 
 class MusicManager(EventManager):
@@ -123,7 +107,7 @@ class MusicManager(EventManager):
             ctx.voice_client.play(player=player,
                                   after=lambda x: self.check_queue(ctx))  # dont add spaces here after='a'
 
-    @classmethod
+    @classmethod  # Useless, koyashie remove if not needed
     async def search(cls, query: str):
         """Returns URL of a video from Youtube"""
         arg1 = query.replace(" ", "+")
@@ -133,10 +117,10 @@ class MusicManager(EventManager):
         return url
 
     @classmethod
-    async def fetch_data(cls, url):
+    async def fetch_data(cls, url: str):
         """Returns a dict with info extracted from the URL given"""
-        info = ytdl.extract_info(str(url), download=False)
-        return info
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
 
     @classmethod
     async def create_player(cls, url):
