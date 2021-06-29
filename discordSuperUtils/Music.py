@@ -203,6 +203,7 @@ class MusicManager(EventManager):
             await self.call_event('on_music_error', ctx, AlreadyPaused("Player is already paused."))
 
         ctx.voice_client.pause()
+        return True
 
     async def resume(self, ctx):
         """Resumes the voice client"""
@@ -215,6 +216,7 @@ class MusicManager(EventManager):
             return
 
         ctx.voice_client.resume()
+        return True
 
     async def skip(self, ctx):
         """Most likely wont work"""
@@ -227,6 +229,7 @@ class MusicManager(EventManager):
             return
 
         ctx.voice_client.stop()
+        return True
 
     async def volume(self, ctx, volume: int = None):
         """Returns the volume if volume is not given or changes the volume if it is given"""
@@ -245,6 +248,7 @@ class MusicManager(EventManager):
             return
 
         await ctx.author.voice.channel.connect()
+        return True
 
     async def leave(self, ctx):
         """Leaves voice channel"""
@@ -253,6 +257,7 @@ class MusicManager(EventManager):
             return
 
         await ctx.voice_client.disconnect()
+        return True
 
     async def now_playing(self, ctx):
         """Returns player of currently playing song"""

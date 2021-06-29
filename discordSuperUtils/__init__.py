@@ -1,6 +1,6 @@
 from .Leveling import LevelingManager
 from .Database import DatabaseManager
-from .Music import MusicManager, Player
+from .Music import *
 from .Paginator import PageManager
 
 __title__ = "discordSuperUtils"
