@@ -104,8 +104,7 @@ class MusicManager(EventManager):
                 return
 
         if player is not None:
-            ctx.voice_client.play(player=player,
-                                  after=lambda x: self.check_queue(ctx))  # dont add spaces here after='a'
+            ctx.voice_client.play(player, after=lambda x: self.check_queue(ctx))  # dont add spaces here after='a'
 
     @classmethod  # Useless, koyashie remove if not needed
     async def search(cls, query: str):
