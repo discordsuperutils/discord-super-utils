@@ -26,7 +26,7 @@ ytdl = youtube_dl.YoutubeDL(ytdl_opts)
 # errors/exceptions
 
 class NotPlaying(Exception):
-    """Raises error when player is not playing"""
+    """Raises error when client is not playing"""
 
 
 class AlreadyPlaying(Exception):
@@ -74,7 +74,11 @@ class Player(discord.PCMVolumeTransformer):
 
     @classmethod
     async def make_player(cls, query: str):
-        data = await MusicManager.fetch_data(query)
+        try:
+            data = await MusicManager.fetch_data(query)
+        except:
+            return None
+
         if 'entries' in data:
             data = data['entries'][0]
 
@@ -230,7 +234,7 @@ class MusicManager(EventManager):
             return
 
         if not ctx.voice_client.is_playing():
-            await self.call_event('on_music_error', ctx, NotPlaying("Player is not playing anything currently"))
+            await self.call_event('on_music_error', ctx, NotPlaying("Client is not playing anything currently"))
             return
 
         try:
