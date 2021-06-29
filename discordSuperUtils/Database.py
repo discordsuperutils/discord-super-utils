@@ -77,7 +77,7 @@ class DatabaseManager:
 
     @__with_cursor
     @__with_commit
-    def createtable(self, cursor, table_name, columns, exists):
+    def createtable(self, cursor, table_name, columns, exists=False):
         query = f'CREATE TABLE {"IF NOT EXISTS" if exists else ""} {table_name} ('
 
         for column in columns:
