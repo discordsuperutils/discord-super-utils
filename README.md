@@ -147,5 +147,5 @@ More examples are listed in the examples folder.
 Support
 --------------
 
-- **[Support Server](https://discord.gg/C5qwFtCRgJ)**
+- **[Support Server](https://discord.gg/TttN2qc7Tg)**
 - **[Documentation](https://discord-super-utils.gitbook.io/discord-super-utils/)**
