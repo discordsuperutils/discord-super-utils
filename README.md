@@ -39,7 +39,7 @@ async def on_level_up(message, member_data):
 
 @bot.command()
 async def rank(ctx):
-    member_data = LevelingManager.get_member(ctx.guild, ctx.author)
+    member_data = LevelingManager.get_member(ctx.author)
     await ctx.send(f'You are currently level **{member_data["rank"]}**, with **{member_data["xp"]}** XP.')
 
 bot.run("token")
