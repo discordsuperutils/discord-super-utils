@@ -1,6 +1,6 @@
 from .Leveling import LevelingManager
 from .Database import DatabaseManager
-from .Music import Player
+from .Music import MusicManager, Player
 
 __title__ = "discordSuperUtils"
 __version__ = "0.0.1"

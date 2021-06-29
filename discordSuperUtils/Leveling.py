@@ -39,7 +39,7 @@ class LevelingManager(EventManager):
                                         self.table, [{'guild': member.guild.id}, {'member': member.id}])
 
     async def add_experience(self, message, xp, rank_multiplier):
-        member_data = self.get_account(message.guild, message.author)
+        member_data = self.get_account(message.author)
         if not member_data:
             return
 
