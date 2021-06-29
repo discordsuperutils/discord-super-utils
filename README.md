@@ -51,20 +51,13 @@ bot.run("token")
 
 ```py
 from discord.ext import commands
-from discordSuperUtils.Music import Player, music, search
+from discordSuperUtils import MusicManager
 
 bot = commands.Bot(command_prefix = ".")
 
-queue = []
+queue = []  # can be list or dict. Dict provides multi server functionality
 
-def check_queue(ctx):
-    queue.pop(0)
-    try:
-        player = queue[0]
-    except IndexError:
-        return
-    asyncio.run_coroutine_threadsafe(ctx.send( f"Now playing: {player.title}"), bot.loop)    #await can be used but the function isnt async
-    asyncio.run_coroutine_threadsafe(Player.play(ctx=ctx, player=player ,after= lambda x :check_queue(ctx)), bot.loop)
+music = MusicManager(queue)
 
 @bot.event
 async def on_ready():
@@ -72,31 +65,31 @@ async def on_ready():
     
 @bot.command()
 async def join(ctx):
-    await Player.join(ctx)
+    await music.join(ctx)
 
 @bot.command()
-async def play(ctx,*, query):
-    url = await search(query=query)
+async def play(ctx, *, query):
+    url = str(await music.search(query))
     song = await music.create_player(url=url)
-    queue.append(song)
+    await music.queue_add(player= song, ctx=ctx)
     if not ctx.voice_client.is_playing():
-        player = queue[0]
+        player = await music.play(ctx=ctx)
         await ctx.send(f"Now playing: {player.title}")
-        await Player.play(ctx=ctx, player=player ,after= lambda x :check_queue(ctx))
+
 
 @bot.command()
 async def pause(ctx):
-    await Player.pause(ctx)
+    await music.pause(ctx)
 
 @bot.command()
 async def resume(ctx):
-    await Player.resume(ctx)
+    await music.resume(ctx)
 
 @bot.command()
 async def leave(ctx):
-    await Player.leave(ctx)
-    
-bot.run('token')
+    await music.leave(ctx)
+
+bot.run("token")
 ```
 
 ### Database Example ###
