@@ -1,7 +1,6 @@
 import discord
 import youtube_dl
-
-from Base import *  # should be .Base, koyashie use Base for testing
+from .Base import *  # should be .Base, koyashie use Base for testing
 
 # just some options etc.
 
