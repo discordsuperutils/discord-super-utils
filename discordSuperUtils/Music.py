@@ -1,8 +1,8 @@
-import urllib.request , discord, youtube_dl, re
+import urllib.request, discord, youtube_dl, re
 
 #just some options etc. 
 
-ytdl_opts= {
+ytdl_opts = {
     'format': 'bestaudio/best',
     'restrictfilenames': True,
     'noplaylist': False,
@@ -22,7 +22,7 @@ ffmpeg_options = {
 ytdl = youtube_dl.YoutubeDL(ytdl_opts)
 
 
-#errors/exceptions
+# errors/exceptions
 
 class NotPlaying(Exception):
     """Raises error when player is not playing"""
@@ -52,9 +52,9 @@ class QueueError(Exception):
     """Raises error when something is wrong with the queue"""
 
 
-def get_data(url):
+def get_data(url: str):
     """Returns a dict with info extracted from the URL given"""
-    info = ytdl.extract_info(str(url), download=False)
+    info = ytdl.extract_info(url, download=False)
     return info
 
 
@@ -63,7 +63,7 @@ def search(query):
     query = query.replace(" ", "+")
     info = urllib.request.urlopen("https://www.youtube.com/results?search_query=" + query)
     video_ids = re.findall(r"watch\?v=(\S{11})", info.read().decode())
-    url = ("https://www.youtube.com/watch?v=" + video_ids[0])
+    url = "https://www.youtube.com/watch?v=" + video_ids[0]
     return url
 
 
@@ -83,7 +83,7 @@ class Player(discord.PCMVolumeTransformer):
         return f'<Player title={self.title}, url={self.url}, duration={self.duration}>'
 
     @classmethod
-    async def make_player(cls, url:str):
+    async def make_player(cls, url: str):
         data = ytdl.extract_info(url, download=False)
         if 'entries' in data:
             data = data['entries'][0]
@@ -209,7 +209,7 @@ class MusicManager:
 
     async def volume(self, ctx, volume: int = None):
         """Returns the volume if volume is not given or changes the volume if it is given"""
-        if self.is_playing():
+        if self.is_playing(ctx):
             if volume is None:
                 return ctx.voice_client.source.volume * 100
             else:
@@ -266,6 +266,11 @@ class MusicManager:
             if ctx.voice_client.is_playing():
                 return True
 
+        return False
+
+
     def is_connected(self, ctx):
         if ctx.voice_client and ctx.voice_client.is_connected():
             return True
+
+        return False
