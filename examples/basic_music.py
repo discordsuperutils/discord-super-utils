@@ -3,7 +3,7 @@ from Music import MusicManager
 
 bot = commands.Bot(command_prefix = ".")
 
-queue = [] # can be list or dict. Dict provides multi server functionality
+queue = []  # can be list or dict. Dict provides multi server functionality
 
 music = MusicManager(queue)
 
@@ -37,4 +37,4 @@ async def resume(ctx):
 async def leave(ctx):
     await music.leave(ctx)
 
-bot.run("ODExMzMyMDA4Njc2Mjk0NjY3.YCwp0A.z71CpnNpAhom-eLuX4H3DUaaqGQ")
+bot.run("token")
