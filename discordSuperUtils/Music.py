@@ -1,5 +1,6 @@
 import urllib.request, discord, youtube_dl, re
 from .Base import *  # should be .Base, koyashie use Base for testing
+
 # just some options etc.
 
 ytdl_opts = {
@@ -46,6 +47,10 @@ class QueueEmpty(Exception):
 
 class AlreadyConnected(Exception):
     """Raises error when client is already connected to voice"""
+
+
+class AlreadyPaused(Exception):
+    """Raises error when player is already paused."""
 
 
 class QueueError(Exception):
@@ -163,51 +168,65 @@ class MusicManager(EventManager):
 
     async def play(self, ctx, player=None):
         """Plays the top of the queue or plays specified player"""
-        if ctx.voice_client and ctx.voice_client.is_connected():
-            if ctx.voice_client.is_playing():
-                await self.call_event('on_music_error', ctx, AlreadyPlaying("Player is already playing audio"))
+        if not ctx.voice_client or not ctx.voice_client.is_connected():
+            await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
+            return
 
-            elif player is not None:
-                ctx.voice_client.play(player)
+        if ctx.voice_client.is_playing():
+            await self.call_event('on_music_error', ctx, AlreadyPlaying("Player is already playing audio"))
 
-            elif type(self.queue) is list:
+        elif player is not None:
+            ctx.voice_client.play(player)
+
+        elif type(self.queue) is list:
+            try:
+                ctx.voice_client.play(self.queue[0], after=lambda x: self.check_queue(ctx))
+                return self.queue[0]
+            except IndexError:
+                await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty."))
+
+        elif type(self.queue) is dict:
+            if ctx.guild.id in self.queue:
                 try:
-                    ctx.voice_client.play(self.queue[0], after=lambda x: self.check_queue(ctx))
-                    return self.queue[0]
+                    ctx.voice_client.play(self.queue[ctx.guild.id][0], after=lambda x: self.check_queue(ctx))
+                    return self.queue[ctx.guild.id][0]
                 except IndexError:
                     await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty."))
 
-            elif type(self.queue) is dict:
-                if ctx.guild.id in self.queue:
-                    try:
-                        ctx.voice_client.play(self.queue[ctx.guild.id][0], after=lambda x: self.check_queue(ctx))
-                        return self.queue[ctx.guild.id][0]
-                    except IndexError:
-                        await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty."))
-        else:
-            await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
-
     async def pause(self, ctx):
         """Pauses the voice client"""
-        if ctx.voice_client and ctx.voice_client.is_connected():
-            try:
-                ctx.voice_client.pause()
-            except:
-                await self.call_event('on_music_error', ctx, NotPaused("Player is either already paused or not connected to voice."))
+        if not ctx.voice_client or not ctx.voice_client.is_connected():
+            await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
+            return
+
+        if ctx.voice_client.is_paused():
+            await self.call_event('on_music_error', ctx, AlreadyPaused("Player is already paused."))
+
+        ctx.voice_client.pause()
 
     async def resume(self, ctx):
         """Resumes the voice client"""
-        if ctx.voice_client and ctx.voice_client.is_connected():
-            try:
-                ctx.voice_client.resume()
-            except:
-                await self.call_event('on_music_error', ctx, AlreadyPlaying("Player is either already playing or not connected to voice."))
+        if not ctx.voice_client or not ctx.voice_client.is_connected():
+            await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
+            return
+
+        if not ctx.voice_client.is_paused():
+            await self.call_event('on_music_error', ctx, NotPaused("Player is not paused"))
+            return
+
+        ctx.voice_client.resume()
 
     async def skip(self, ctx):
         """Most likely wont work"""
-        if ctx.voice_client and ctx.voice_client.is_connected():
-            if ctx.voice_client.is_playing():
-                ctx.voice_client.stop()
+        if not ctx.voice_client or not ctx.voice_client.is_connected():
+            await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
+            return
+
+        if not self.is_playing(ctx):
+            await self.call_event('on_music_error', ctx, NotPlaying("Client is not playing music"))
+            return
+
+        ctx.voice_client.stop()
 
     async def volume(self, ctx, volume: int = None):
         """Returns the volume if volume is not given or changes the volume if it is given"""
@@ -220,43 +239,42 @@ class MusicManager(EventManager):
 
     async def join(self, ctx):
         """Joins voice channel that user is in"""
-        if ctx.voice_client:
-            if ctx.voice_client.is_connected():
-                await self.call_event('on_music_error', ctx, AlreadyConnected("Client is already connected to a voice channel"))
+        if ctx.voice_client and ctx.voice_client.is_connected():
+            await self.call_event('on_music_error', ctx,
+                                  AlreadyConnected("Client is already connected to a voice channel"))
+            return
 
         await ctx.author.voice.channel.connect()
 
     async def leave(self, ctx):
         """Leaves voice channel"""
-        if ctx.voice_client:
-            if ctx.voice_client.is_connected():
-                await ctx.voice_client.disconnect()
-                return
+        if not ctx.voice_client or not ctx.voice_client.is_connected():
+            await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
+            return
 
-        await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
+        await ctx.voice_client.disconnect()
 
     async def now_playing(self, ctx):
         """Returns player of currently playing song"""
-        if ctx.voice_client and ctx.voice_client.is_connected():
-            if ctx.voice_client.is_playing():
-                if type(self.queue) is list:
-                    try:
-                        return self.queue[0]
-                    except:
-                        await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty"))
+        if not ctx.voice_client or not ctx.voice_client.is_connected():
+            await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
+            return
 
-                elif type(self.queue) is dict:
-                    try:
-                        return self.queue[ctx.guild.id][0]
-                    except:
-                        await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty"))
-            else:
-                await self.call_event('on_music_error', ctx, NotPlaying("Player is not playing anything currently"))
+        if not ctx.voice_client.is_playing():
+            await self.call_event('on_music_error', ctx, NotPlaying("Player is not playing anything currently"))
+            return
 
-        await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to voice"))
+        if type(self.queue) is list:
+            try:
+                return self.queue[0]
+            except:
+                await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty"))
 
-    async def queue(self):
-        return self.queue  # Sure
+        elif type(self.queue) is dict:
+            try:
+                return self.queue[ctx.guild.id][0]
+            except:
+                await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty"))
 
     ######## CHECKS ########
 
@@ -272,6 +290,3 @@ class MusicManager(EventManager):
             return True
 
         return False
-
-
-
