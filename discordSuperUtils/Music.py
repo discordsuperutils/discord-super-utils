@@ -1,5 +1,5 @@
 import urllib.request, discord, youtube_dl, re
-
+from Base import *
 # just some options etc.
 
 ytdl_opts = {
@@ -93,8 +93,9 @@ class Player(discord.PCMVolumeTransformer):
         return player
 
 
-class MusicManager:
+class MusicManager(EventManager):
     def __init__(self, queue=None):
+        super().__init__()
         self.queue = queue if queue is not None else {}
 
     def check_queue(self, ctx):
@@ -152,19 +153,19 @@ class MusicManager:
             try:
                 self.queue.remove(player)
             except:
-                raise QueueError("Failure to remove player from the queue")
+                await self.call_event('on_music_error', QueueError("Failure to remove player from the queue"))
         elif type(self.queue) is dict:
             if ctx.guild.id in self.queue:
                 try:
                     self.queue[ctx.guild.id].remove(player)
                 except:
-                    raise QueueError("Failure to remove player from the queue")
+                    await self.call_event('on_music_error', QueueError("Failure to remove player from the queue"))
 
     async def play(self, ctx, player=None):
         """Plays the top of the queue or plays specified player"""
         if ctx.voice_client and ctx.voice_client.is_connected():
             if ctx.voice_client.is_playing():
-                raise AlreadyPlaying("Player is already playing audio")
+                await self.call_event('on_music_error', AlreadyPlaying("Player is already playing audio"))
 
             elif player is not None:
                 ctx.voice_client.play(player)
@@ -174,7 +175,7 @@ class MusicManager:
                     ctx.voice_client.play(self.queue[0], after=lambda x: self.check_queue(ctx))
                     return self.queue[0]
                 except IndexError:
-                    raise QueueEmpty("Queue is empty.")
+                    await self.call_event('on_music_error', QueueEmpty("Queue is empty."))
 
             elif type(self.queue) is dict:
                 if ctx.guild.id in self.queue:
@@ -182,9 +183,9 @@ class MusicManager:
                         ctx.voice_client.play(self.queue[ctx.guild.id][0], after=lambda x: self.check_queue(ctx))
                         return self.queue[ctx.guild.id][0]
                     except IndexError:
-                        raise QueueEmpty("Queue is empty.")
+                        await self.call_event('on_music_error', QueueEmpty("Queue is empty."))
         else:
-            raise NotConnected("Need to be connected to a voice channel.")
+            await self.call_event('on_music_error',NotConnected("Client is not connected to a voice channel"))
 
     async def pause(self, ctx):
         """Pauses the voice client"""
@@ -192,7 +193,7 @@ class MusicManager:
             try:
                 ctx.voice_client.pause()
             except:
-                raise NotPaused("Player is either already paused or not connected to voice.")
+                await self.call_event('on_music_error', NotPaused("Player is either already paused or not connected to voice."))
 
     async def resume(self, ctx):
         """Resumes the voice client"""
@@ -200,7 +201,7 @@ class MusicManager:
             try:
                 ctx.voice_client.resume()
             except:
-                raise AlreadyPlaying("Player is either already playing or not connected to voice.")
+                await self.call_event('on_music_error', AlreadyPlaying("Player is either already playing or not connected to voice."))
 
     async def skip(self, ctx):
         """Most likely wont work"""
@@ -221,7 +222,7 @@ class MusicManager:
         """Joins voice channel that user is in"""
         if ctx.voice_client:
             if ctx.voice_client.is_connected():
-                raise AlreadyConnected("Client is already connected to a voice channel")
+                await self.call_event('on_music_error', AlreadyConnected("Client is already connected to a voice channel"))
 
         await ctx.author.voice.channel.connect()
 
@@ -232,7 +233,7 @@ class MusicManager:
                 await ctx.voice_client.disconnect()
                 return
 
-        raise NotConnected("Client is not connected to a voice channel")
+        await self.call_event('on_music_error',NotConnected("Client is not connected to a voice channel"))
 
     async def now_playing(self, ctx):
         """Returns player of currently playing song"""
@@ -242,17 +243,17 @@ class MusicManager:
                     try:
                         return self.queue[0]
                     except:
-                        raise QueueEmpty("Queue is empty")
+                        await self.call_event('on_music_error', QueueEmpty("Queue is empty"))
 
                 elif type(self.queue) is dict:
                     try:
                         return self.queue[ctx.guild.id][0]
                     except:
-                        raise QueueEmpty("Queue is empty")
+                        await self.call_event('on_music_error', QueueEmpty("Queue is empty"))
             else:
-                raise NotPlaying("Player is not playing anything currently")
+                await self.call_event('on_music_error', NotPlaying("Player is not playing anything currently"))
 
-        raise NotConnected("Client is not connected to voice currently")
+        await self.call_event('on_music_error', NotConnected("Client is not connected to voice"))
 
     async def queue(self):
         return self.queue  # Sure
@@ -271,3 +272,6 @@ class MusicManager:
             return True
 
         return False
+
+
+
