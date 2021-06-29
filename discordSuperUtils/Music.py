@@ -1,4 +1,4 @@
-import urllib.request, discord, youtube_dl, re
+import asyncio, discord, youtube_dl
 from .Base import *  # should be .Base, koyashie use Base for testing
 
 # just some options etc.
@@ -83,28 +83,21 @@ class Player(discord.PCMVolumeTransformer):
 
 
 class MusicManager(EventManager):
-    def __init__(self, queue=None):
+    def __init__(self, bot):
         super().__init__()
-        self.queue = queue if queue is not None else {}
+        self.bot = bot
+        self.queue = {}
 
     def check_queue(self, ctx):
-        player = None
-        if type(self.queue) is list:
-            try:
-                self.queue.pop(0)
-                player = self.queue[0]
-            except IndexError:
-                return
-
-        elif type(self.queue) is dict:
-            try:
-                self.queue[ctx.guild.id].pop(0)
-                player = self.queue[ctx.guild.id][0]
-            except IndexError:
-                return
-
-        if player is not None:
-            ctx.voice_client.play(player, after=lambda x: self.check_queue(ctx))  # dont add spaces here after='a'
+        try:
+            player = self.queue[ctx.guild.id]['queue'].pop(0)
+            if player is not None and ctx.voice_client:
+                ctx.voice_client.play(player, after=lambda x: self.check_queue(ctx))  # dont add spaces here after='a'
+                self.bot.loop.create_task(
+                    self.call_event('on_play', ctx, player)
+                )
+        except IndexError:
+            return
 
     @classmethod
     async def fetch_data(cls, query: str):
@@ -118,27 +111,18 @@ class MusicManager(EventManager):
 
     async def queue_add(self, player, ctx):
         """Adds specified player object to queue"""
-        if type(self.queue) is list:
-            self.queue.append(player)
-        elif type(self.queue) is dict:
-            if ctx.guild.id in self.queue:
-                self.queue[ctx.guild.id].append(player)
-            else:
-                self.queue[ctx.guild.id] = [player]
+        if ctx.guild.id in self.queue:
+            self.queue[ctx.guild.id]['queue'].append(player)
+        else:
+            self.queue[ctx.guild.id] = {'queue': [player], 'volume': 5, 'currently_playing': None}
 
     async def queue_remove(self, player, ctx):
         """Removed specified player object from queue"""
-        if type(self.queue) is list:
+        if ctx.guild.id in self.queue:
             try:
-                self.queue.remove(player)
+                self.queue[ctx.guild.id]['queue'].remove(player)
             except:
                 await self.call_event('on_music_error', ctx, QueueError("Failure to remove player from the queue"))
-        elif type(self.queue) is dict:
-            if ctx.guild.id in self.queue:
-                try:
-                    self.queue[ctx.guild.id].remove(player)
-                except:
-                    await self.call_event('on_music_error', ctx, QueueError("Failure to remove player from the queue"))
 
     async def play(self, ctx, player=None):
         """Plays the top of the queue or plays specified player"""
@@ -146,27 +130,18 @@ class MusicManager(EventManager):
             await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
             return
 
-        if ctx.voice_client.is_playing():
-            await self.call_event('on_music_error', ctx, AlreadyPlaying("Player is already playing audio"))
-
         elif player is not None:
             ctx.voice_client.play(player)
             return True
 
-        elif type(self.queue) is list:
+        if not ctx.voice_client.is_playing():
             try:
-                ctx.voice_client.play(self.queue[0], after=lambda x: self.check_queue(ctx))
-                return self.queue[0]
-            except IndexError:
+                player = self.queue[ctx.guild.id]['queue'].pop(0)
+                ctx.voice_client.play(player, after=lambda x: self.check_queue(ctx))
+                await self.call_event('on_play', ctx, player)
+                return True
+            except:
                 await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty."))
-
-        elif type(self.queue) is dict:
-            if ctx.guild.id in self.queue:
-                try:
-                    ctx.voice_client.play(self.queue[ctx.guild.id][0], after=lambda x: self.check_queue(ctx))
-                    return self.queue[ctx.guild.id][0]
-                except IndexError:
-                    await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty."))
 
     async def pause(self, ctx):
         """Pauses the voice client"""
@@ -251,14 +226,7 @@ class MusicManager(EventManager):
             await self.call_event('on_music_error', ctx, NotPlaying("Player is not playing anything currently"))
             return
 
-        if type(self.queue) is list:
-            try:
-                return self.queue[0]
-            except:
-                await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty"))
-
-        elif type(self.queue) is dict:
-            try:
-                return self.queue[ctx.guild.id][0]
-            except:
-                await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty"))
+        try:
+            return self.queue[ctx.guild.id]['queue'][0]
+        except:
+            await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty"))
