@@ -1,4 +1,4 @@
-import asyncio, discord, youtube_dl
+import discord, youtube_dl
 from .Base import *  # should be .Base, koyashie use Base for testing
 
 # just some options etc.
@@ -91,7 +91,10 @@ class MusicManager(EventManager):
     def check_queue(self, ctx):
         try:
             player = self.queue[ctx.guild.id]['queue'].pop(0)
+            self.queue[ctx.guild.id]["now_playing"] = player
             if player is not None and ctx.voice_client:
+                player.volume = self.queue[ctx.guild.id]['volume']
+
                 ctx.voice_client.play(player, after=lambda x: self.check_queue(ctx))  # dont add spaces here after='a'
                 self.bot.loop.create_task(
                     self.call_event('on_play', ctx, player)
@@ -114,7 +117,7 @@ class MusicManager(EventManager):
         if ctx.guild.id in self.queue:
             self.queue[ctx.guild.id]['queue'].append(player)
         else:
-            self.queue[ctx.guild.id] = {'queue': [player], 'volume': 5, 'currently_playing': None}
+            self.queue[ctx.guild.id] = {'queue': [player], 'volume': 0.1, 'currently_playing': None}
 
     async def queue_remove(self, player, ctx):
         """Removed specified player object from queue"""
@@ -137,9 +140,12 @@ class MusicManager(EventManager):
         if not ctx.voice_client.is_playing():
             try:
                 player = self.queue[ctx.guild.id]['queue'].pop(0)
-                ctx.voice_client.play(player, after=lambda x: self.check_queue(ctx))
-                await self.call_event('on_play', ctx, player)
-                return True
+                self.queue[ctx.guild.id]["now_playing"] = player
+
+                if player is not None:
+                    ctx.voice_client.play(player, after=lambda x: self.check_queue(ctx))
+                    await self.call_event('on_play', ctx, player)
+                    return True
             except:
                 await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty."))
 
@@ -195,6 +201,7 @@ class MusicManager(EventManager):
             return ctx.voice_client.source.volume * 100
         else:
             ctx.voice_client.source.volume = volume / 100
+            self.queue[ctx.guild.id]['volume'] = volume / 100
             return ctx.voice_client.source.volume * 100
 
     async def join(self, ctx):
@@ -227,6 +234,6 @@ class MusicManager(EventManager):
             return
 
         try:
-            return self.queue[ctx.guild.id]['queue'][0]
+            return self.queue[ctx.guild.id]['now_playing']
         except:
             await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty"))
