@@ -161,6 +161,7 @@ class MusicManager(EventManager):
 
         elif player is not None:
             ctx.voice_client.play(player)
+            return True
 
         elif type(self.queue) is list:
             try:
