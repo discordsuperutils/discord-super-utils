@@ -10,6 +10,7 @@ Features
 - Modern Music/Audio playing manager.
 - Modern Database manager (SQLite).
 - Modern Paginator.
+- Modern Reaction Manager.
 
 Examples
 --------------
