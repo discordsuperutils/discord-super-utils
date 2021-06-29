@@ -45,7 +45,7 @@ async def rank(ctx):
 bot.run("token")
 ```
 
-![Leveling Manager Example](https://thumbs.gfycat.com/ReadyUntriedChick-mobile.mp4)
+![Leveling Manager Example](https://gfycat.com/readyuntriedchick)
 
 ### Playing Example ### 
 
