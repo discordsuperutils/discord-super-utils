@@ -1,5 +1,5 @@
 import discord, youtube_dl, asyncio
-from Base import *  # should be .Base, koyashie use Base for testing
+from .Base import *  # should be .Base, koyashie use Base for testing
 
 # just some options etc.
 
