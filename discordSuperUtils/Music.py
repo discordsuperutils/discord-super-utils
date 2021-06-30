@@ -77,6 +77,8 @@ class Player(discord.PCMVolumeTransformer):
     async def make_player(cls, query: str):
         try:
             data = await MusicManager.fetch_data(query)
+            if data is None:
+                return None
         except:
             return None
 
@@ -100,11 +102,8 @@ class QueueManager:
     def clear(self):
         self.queue.clear()
 
-    async def remove(self, ctx, index):
-        try:
-            self.queue.pop(index)
-        except:
-            await self.call_event('on_music_error', ctx, QueueError("Failure to remove player from the queue"))
+    def remove(self, index):
+        return self.queue.pop(index)
 
 
 class MusicManager(EventManager):
@@ -118,15 +117,15 @@ class MusicManager(EventManager):
             if self.queue[ctx.guild.id].looping:
                 song = self.queue[ctx.guild.id].queue[0]
                 player = Player(discord.FFmpegPCMAudio(song.url, **ffmpeg_options), data=song.data)
-                self.queue[ctx.guild.id].queue[0] = player
             else:
-                player = self.queue[ctx.guild.id].queue.pop(0)
+                player = self.queue[ctx.guild.id].remove(0)
 
             self.queue[ctx.guild.id].now_playing = player
 
             if player is not None and ctx.voice_client:
                 player.volume = self.queue[ctx.guild.id].volume
                 ctx.voice_client.play(player, after=lambda x: self.check_queue(ctx))  # dont add spaces here after='a'
+
                 if not self.queue[ctx.guild.id].looping:
                     self.bot.loop.create_task(
                         self.call_event('on_play', ctx, player)
@@ -148,14 +147,17 @@ class MusicManager(EventManager):
     async def queue_add(self, player, ctx):
         """Adds specified player object to queue"""
         if ctx.guild.id in self.queue:
-            await self.queue[ctx.guild.id].add(player)
+            self.queue[ctx.guild.id].add(player)
         else:
             self.queue[ctx.guild.id] = QueueManager(0.1, [player])
 
     async def queue_remove(self, player, ctx):
         """Removed specified player object from queue"""
         if ctx.guild.id in self.queue:
-            await self.queue[ctx.guild.id].remove(ctx, player)
+            try:
+                await self.queue[ctx.guild.id].remove(player)
+            except:
+                await self.call_event('on_music_error', ctx, QueueError("Failure when removing player from queue"))
 
     async def play(self, ctx, player=None):
         """Plays the top of the queue or plays specified player"""
@@ -168,16 +170,8 @@ class MusicManager(EventManager):
             return True
 
         if not ctx.voice_client.is_playing():
-            try:
-                player = self.queue[ctx.guild.id].queue[0]
-                self.queue[ctx.guild.id].now_playing = player
-
-                if player is not None:
-                    ctx.voice_client.play(player, after=lambda x: self.check_queue(ctx))
-                    await self.call_event('on_play', ctx, player)
-                    return True
-            except:
-                await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty."))
+            self.check_queue(ctx)
+            return True
 
     async def pause(self, ctx):
         """Pauses the voice client"""
@@ -237,7 +231,8 @@ class MusicManager(EventManager):
     async def join(self, ctx):
         """Joins voice channel that user is in"""
         if ctx.voice_client and ctx.voice_client.is_connected():
-            await self.call_event('on_music_error', ctx, AlreadyConnected("Client is already connected to a voice channel"))
+            await self.call_event('on_music_error', ctx,
+                                  AlreadyConnected("Client is already connected to a voice channel"))
             return
 
         await ctx.author.voice.channel.connect()
