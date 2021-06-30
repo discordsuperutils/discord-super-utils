@@ -1,23 +1,38 @@
-from setuptools import setup, find_packages
- 
-classifiers = [
-  'Development Status :: 5 - Production/Stable',
-  'Intended Audience :: Education',
-  'Operating System :: Microsoft :: Windows',
-  'License :: OSI Approved :: MIT License',
-  'Programming Language :: Python :: 3'
-]
- 
+  
+from distutils.core import setup
 setup(
-  name='discord-super-utils',
-  version='0.0.1',
-  description='Module to complement discord.py that has Music and Levelling',
-  long_description=open('README.md').read() + '\n\n' + open('CHANGELOG.txt').read(),
-  url='',  
-  author='koyashie07 & adam7100',
-  license='MIT', 
-  classifiers=classifiers,
-  keywords=['discord', 'music', 'levelling', 'discord.py'], 
-  packages=find_packages(),
-  install_requires=['youtube-dl','discord.py'] 
+  name = 'discordSuperUtils',
+  packages = ['discordSuperUtils'],
+  version = '0.0.1',
+  license='MIT',
+  description = 'Discord Bot Development made easy!',
+  author = 'koyashie07 and adam7100',
+  url = 'https://github.com/koyashie07/discord-super-utils',
+  keywords = ['discord', 'easy', 'discord.py', 'music', 'download', 'links', 'images', 'videos','audio', 'bot'],
+  install_requires=[
+          'youtube-dl',
+          'sqlite3',
+          'discord.py'
+      ],
+  classifiers=[  # Optional
+    # How mature is this project? Common values are
+    #   3 - Alpha
+    #   4 - Beta
+    #   5 - Production/Stable
+    'Development Status :: 4 - Beta',
+
+    # Indicate who your project is intended for
+    'Intended Audience :: Developers',
+    'Topic :: Software Development :: Build Tools',
+
+    # Pick your license as you wish
+    'License :: OSI Approved :: MIT License',
+
+    # Specify the Python versions you support here. In particular, ensure
+    # that you indicate whether you support Python 2, Python 3 or both.
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.4',
+    'Programming Language :: Python :: 3.5',
+    'Programming Language :: Python :: 3.6',
+  ],
 )
