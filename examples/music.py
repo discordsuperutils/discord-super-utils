@@ -67,7 +67,7 @@ async def history(ctx):
                                                25,
                                                "Title: {}")
 
-    page_manager = discordSuperUtils.PageManager(ctx, embeds)
+    page_manager = discordSuperUtils.PageManager(ctx, embeds, public=True)
     await page_manager.run()
 
 
