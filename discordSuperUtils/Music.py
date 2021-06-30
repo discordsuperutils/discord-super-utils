@@ -94,14 +94,17 @@ class QueueManager:
         self.now_playing = None
         self.looping = False
 
-    async def add(self, player):
+    def add(self, player):
         self.queue.append(player)
 
-    async def clear(self):
+    def clear(self):
         self.queue.clear()
 
-    async def remove(self, index):
-        return self.queue.pop(index)
+    def remove(self, ctx, index):
+        try:
+            self.queue.pop(index)
+        except:
+            await self.call_event('on_music_error', ctx, QueueError("Failure to remove player from the queue"))
 
 
 class MusicManager(EventManager):
@@ -152,10 +155,7 @@ class MusicManager(EventManager):
     async def queue_remove(self, player, ctx):
         """Removed specified player object from queue"""
         if ctx.guild.id in self.queue:
-            try:
-                self.queue[ctx.guild.id].remove(player)
-            except:
-                await self.call_event('on_music_error', ctx, QueueError("Failure to remove player from the queue"))
+            self.queue[ctx.guild.id].remove(ctx, player)
 
     async def play(self, ctx, player=None):
         """Plays the top of the queue or plays specified player"""
