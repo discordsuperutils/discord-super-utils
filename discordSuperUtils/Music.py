@@ -95,6 +95,7 @@ class QueueManager:
         self.volume = volume
         self.now_playing = None
         self.looping = False
+        self.queue_loop = False
 
     def add(self, player):
         self.queue.append(player)
@@ -117,6 +118,13 @@ class MusicManager(EventManager):
             if self.queue[ctx.guild.id].looping:
                 song = self.queue[ctx.guild.id].now_playing
                 player = Player(discord.FFmpegPCMAudio(song.url, **ffmpeg_options), data=song.data)
+
+            elif self.queue[ctx.guild.id].queue_loop:
+                player = self.queue[ctx.guild.id].remove(0)
+                self.queue[ctx.guild.id].add(player)
+
+                player = Player(discord.FFmpegPCMAudio(player.url, **ffmpeg_options), data=player.data)
+
             else:
                 player = self.queue[ctx.guild.id].remove(0)
 
@@ -126,7 +134,7 @@ class MusicManager(EventManager):
                 player.volume = self.queue[ctx.guild.id].volume
                 ctx.voice_client.play(player, after=lambda x: self.check_queue(ctx))  # dont add spaces here after='a'
 
-                if not self.queue[ctx.guild.id].looping:
+                if not self.queue[ctx.guild.id].looping and not self.queue[ctx.guild.id].queue_loop:
                     self.bot.loop.create_task(
                         self.call_event('on_play', ctx, player)
                     )
@@ -260,6 +268,22 @@ class MusicManager(EventManager):
         try:
             return self.queue[ctx.guild.id].now_playing
         except:
+            await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty"))
+
+    async def queueloop(self, ctx):
+        """Sets queue loops to be on or off"""
+        if not ctx.voice_client or not ctx.voice_client.is_connected():
+            await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
+            return
+
+        if not ctx.voice_client.is_playing():
+            await self.call_event('on_music_error', ctx, NotPlaying("Client is not playing anything currently"))
+            return
+
+        try:
+            self.queue[ctx.guild.id].queue_loop = not self.queue[ctx.guild.id].queue_loop
+            return self.queue[ctx.guild.id].queue_loop
+        except IndexError:
             await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty"))
 
     async def loop(self, ctx):
