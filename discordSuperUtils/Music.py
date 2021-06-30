@@ -93,7 +93,7 @@ class QueueManager:
     def __init__(self, volume, queue):
         self.queue = queue
         self.volume = volume
-        self.now_playing = None
+        self.history = []
         self.looping = False
         self.queue_loop = False
 
@@ -135,6 +135,7 @@ class MusicManager(EventManager):
                 ctx.voice_client.play(player, after=lambda x: self.check_queue(ctx))  # dont add spaces here after='a'
 
                 if not self.queue[ctx.guild.id].looping and not self.queue[ctx.guild.id].queue_loop:
+                    self.queue[ctx.guild.id].history.append(player)
                     self.bot.loop.create_task(
                         self.call_event('on_play', ctx, player)
                     )
@@ -254,6 +255,16 @@ class MusicManager(EventManager):
 
         await ctx.voice_client.disconnect()
         return True
+
+    async def history(self, ctx):
+        if not ctx.voice_client or not ctx.voice_client.is_connected():
+            await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
+            return
+
+        try:
+            return self.queue[ctx.guild.id].history
+        except:
+            await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty"))
 
     async def now_playing(self, ctx):
         """Returns player of currently playing song"""

@@ -1,5 +1,36 @@
 import asyncio
+from math import ceil
 import discord
+
+
+def generate_embeds(list_to_generate, title, description, fields, string_format):
+    num_of_embeds = ceil((len(list_to_generate) + 1) / fields)
+
+    embeds = [
+        discord.Embed(
+            title=f"{title} (Page 1/{num_of_embeds})",
+            description=description,
+            color=0xff0000
+        )
+    ]
+
+    for i in range(2, num_of_embeds + 1):
+        embeds.append(discord.Embed(
+            title=f"{title} (Page {i}/{num_of_embeds})",
+            color=0xff0000
+        )
+        )
+
+    embed_index = 0
+    for index, element in enumerate(list_to_generate):
+        embeds[embed_index].add_field(name=f"**{index + 1}.**",
+                                      value=string_format.format(element),
+                                      inline=False)
+
+        if (index + 1) % fields == 0:
+            embed_index += 1
+
+    return embeds
 
 
 class EmojiError(Exception):

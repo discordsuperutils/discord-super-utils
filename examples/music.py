@@ -54,6 +54,24 @@ async def loop(ctx):
 
 
 @bot.command()
+async def queueloop(ctx):
+    is_loop = await MusicManager.queueloop(ctx)
+    await ctx.send(f"Queue looping toggled to {is_loop}")
+
+
+@bot.command()
+async def history(ctx):
+    embeds = discordSuperUtils.generate_embeds(await MusicManager.history(ctx),
+                                               "Song History",
+                                               "Shows all played songs",
+                                               25,
+                                               "Title: {}")
+
+    page_manager = discordSuperUtils.PageManager(ctx, embeds)
+    await page_manager.run()
+
+
+@bot.command()
 async def skip(ctx):
     await MusicManager.skip(ctx)
 

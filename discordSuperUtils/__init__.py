@@ -1,7 +1,7 @@
 from .Leveling import LevelingManager
 from .Database import DatabaseManager
 from .Music import *
-from .Paginator import PageManager
+from .Paginator import PageManager, generate_embeds
 from .ReactionRoles import ReactionManager
 
 __title__ = "discordSuperUtils"
