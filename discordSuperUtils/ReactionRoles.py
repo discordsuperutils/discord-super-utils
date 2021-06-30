@@ -54,20 +54,19 @@ class ReactionManager(EventManager):
 
         guild = self.bot.get_guild(payload.guild_id)
         role = guild.get_role(formatted_data["role"])
-        member = await guild.fetch_member(payload.user_id)
         channel = guild.get_channel(payload.channel_id)
         message = await channel.fetch_message(payload.message_id)
         emoji = str(payload.emoji) if payload.emoji.id is None else str(payload.emoji.id)
 
         if emoji == formatted_data["emoji"]:
             if role is None:
-                await self.call_event('on_reaction_event', guild, channel, message, member, emoji)
+                await self.call_event('on_reaction_event', guild, channel, message, payload.member, emoji)
 
             else:
-                if role not in member.roles:
-                    await member.add_roles(role)
+                if role not in payload.member.roles:
+                    await payload.member.add_roles(role)
                 elif formatted_data['remove_on_reaction'] == 1:
-                    await member.remove_roles(role)
+                    await payload.member.remove_roles(role)
 
     async def create_reaction(self, guild, message, role, emoji, remove_on_reaction):
         self.database.insertifnotexists(reaction_keys, [
