@@ -269,6 +269,14 @@ class MusicManager(EventManager):
 
     async def loop(self, ctx):
         """Sets loops to be on or off"""
+        if not ctx.voice_client or not ctx.voice_client.is_connected():
+            await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
+            return
+
+        if not ctx.voice_client.is_playing():
+            await self.call_event('on_music_error', ctx, NotPlaying("Client is not playing anything currently"))
+            return
+
         try:
             self.queue[ctx.guild.id].looping = not self.queue[ctx.guild.id].looping
             return self.queue[ctx.guild.id].looping
