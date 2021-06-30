@@ -1,4 +1,5 @@
-import discord, youtube_dl, asyncio
+import discord
+import youtube_dl
 from .Base import *  # should be .Base, koyashie use Base for testing
 
 # just some options etc.
@@ -85,6 +86,7 @@ class Player(discord.PCMVolumeTransformer):
         filename = data['url']
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
 
+
 class QueueManager:
     def __init__(self, volume, queue):
         self.queue = queue
@@ -99,7 +101,8 @@ class QueueManager:
         self.queue.clear()
 
     async def remove(self, index):
-        self.queue.pop(index)
+        return self.queue.pop(index)
+
 
 class MusicManager(EventManager):
     def __init__(self, bot):
