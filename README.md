@@ -51,44 +51,64 @@ bot.run("token")
 ### Playing Example ### 
 
 ```py
-from discord.ext import commands
 from discordSuperUtils import MusicManager
+from discord.ext import commands
 
-bot = commands.Bot(command_prefix = ".")
 
-queue = []  # can be list or dict. Dict provides multi server functionality
+bot = commands.Bot(command_prefix='-')
+MusicManager = MusicManager(bot)
 
-music = MusicManager(queue)
+
+@MusicManager.event
+async def on_play(ctx, player):
+    await ctx.send(f"Now playing: {player.title}")
 
 @bot.event
 async def on_ready():
-    print(bot.user)
-    
-@bot.command()
-async def join(ctx):
-    await music.join(ctx)
-
-@bot.command()
-async def play(ctx, *, query):
-    url = str(await music.search(query))
-    song = await music.create_player(url=url)
-    await music.queue_add(player= song, ctx=ctx)
-    if not ctx.voice_client.is_playing():
-        player = await music.play(ctx=ctx)
-        await ctx.send(f"Now playing: {player.title}")
+    print('Music manager is ready.', bot.user)
 
 
-@bot.command()
-async def pause(ctx):
-    await music.pause(ctx)
-
-@bot.command()
-async def resume(ctx):
-    await music.resume(ctx)
 
 @bot.command()
 async def leave(ctx):
-    await music.leave(ctx)
+    if await MusicManager.leave(ctx):
+        await ctx.send("Left Voice Channel Lol Gang Shit")
+
+
+@bot.command()
+async def np(ctx):
+    if player := await MusicManager.now_playing(ctx):
+        await ctx.send(f"Currently playing: {player}")
+
+
+@bot.command()
+async def join(ctx):
+    if await MusicManager.join(ctx):
+        await ctx.send("Joined Voice Channel Lol Gang Shit!")
+
+
+@bot.command()
+async def play(ctx, *, query: str):
+    player = await MusicManager.create_player(query)
+    await MusicManager.queue_add(player=player, ctx=ctx)
+
+    if not await MusicManager.play(ctx):
+        await ctx.send("Added to queue")
+
+
+@bot.command()
+async def volume(ctx, volume: int):
+    await MusicManager.volume(ctx, volume)
+
+@bot.command()
+async def loop(ctx):
+    is_loop = await MusicManager.loop(ctx)
+    await ctx.send(f"Looping toggled to {is_loop}")
+
+@bot.command()
+async def stop(ctx):
+    ctx.voice_client.stop()
+
 
 bot.run("token")
 ```
