@@ -52,8 +52,8 @@ async def loop(ctx):
 
     
 @bot.command()
-async def stop(ctx):
-    ctx.voice_client.stop()
+async def skip(ctx):
+    await MusicManager.skip(ctx)
 
     
 bot.run("token")
