@@ -12,7 +12,6 @@ setup(
   keywords = ['discord', 'easy', 'discord.py', 'music', 'download', 'links', 'images', 'videos','audio', 'bot'],
   install_requires=[
           'youtube-dl',
-          'sqlite3',
           'discord.py'
       ],
   classifiers=[  # Optional
