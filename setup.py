@@ -3,7 +3,7 @@ from distutils.core import setup
 setup(
   name = 'discordSuperUtils',
   packages = ['discordSuperUtils'],
-  version = '0.0.2',
+  version = '0.0.4',
   license='MIT',
   description = 'Discord Bot Development made easy!',
   author = 'koyashie07 and adam7100',
