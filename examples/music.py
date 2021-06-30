@@ -1,16 +1,18 @@
 import discordSuperUtils
 from discord.ext import commands
 
-
-
 bot = commands.Bot(command_prefix='-')
 MusicManager = discordSuperUtils.MusicManager(bot)
+
+
+@MusicManager.event()
+async def on_play(ctx, player):
+    await ctx.send(f"Playing {player}")
 
 
 @bot.event
 async def on_ready():
     print('Music manager is ready.', bot.user)
-
 
 
 @bot.command()
@@ -44,16 +46,16 @@ async def play(ctx, *, query: str):
 async def volume(ctx, volume: int):
     await MusicManager.volume(ctx, volume)
 
-    
+
 @bot.command()
 async def loop(ctx):
     is_loop = await MusicManager.loop(ctx)
     await ctx.send(f"Looping toggled to {is_loop}")
 
-    
+
 @bot.command()
 async def skip(ctx):
     await MusicManager.skip(ctx)
 
-    
+
 bot.run("token")
