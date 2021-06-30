@@ -100,7 +100,7 @@ class QueueManager:
     def clear(self):
         self.queue.clear()
 
-    def remove(self, ctx, index):
+    async def remove(self, ctx, index):
         try:
             self.queue.pop(index)
         except:
@@ -155,7 +155,7 @@ class MusicManager(EventManager):
     async def queue_remove(self, player, ctx):
         """Removed specified player object from queue"""
         if ctx.guild.id in self.queue:
-            self.queue[ctx.guild.id].remove(ctx, player)
+            await self.queue[ctx.guild.id].remove(ctx, player)
 
     async def play(self, ctx, player=None):
         """Plays the top of the queue or plays specified player"""
