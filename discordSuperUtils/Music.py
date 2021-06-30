@@ -115,7 +115,7 @@ class MusicManager(EventManager):
     def check_queue(self, ctx):
         try:
             if self.queue[ctx.guild.id].looping:
-                song = self.queue[ctx.guild.id].queue[0]
+                song = self.queue[ctx.guild.id].now_playing
                 player = Player(discord.FFmpegPCMAudio(song.url, **ffmpeg_options), data=song.data)
             else:
                 player = self.queue[ctx.guild.id].remove(0)
