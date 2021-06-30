@@ -1,6 +1,5 @@
-import discord
-import youtube_dl
-from .Base import *  # should be .Base, koyashie use Base for testing
+import discord, youtube_dl, asyncio
+from Base import *  # should be .Base, koyashie use Base for testing
 
 # just some options etc.
 
@@ -86,6 +85,21 @@ class Player(discord.PCMVolumeTransformer):
         filename = data['url']
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
 
+class QueueManager:
+    def __init__(self, volume, queue):
+        self.queue = queue
+        self.volume = volume
+        self.now_playing = None
+        self.looping = False
+
+    async def add(self, player):
+        self.queue.append(player)
+
+    async def clear(self):
+        self.queue.clear()
+
+    async def remove(self, index):
+        self.queue.pop(index)
 
 class MusicManager(EventManager):
     def __init__(self, bot):
@@ -95,21 +109,22 @@ class MusicManager(EventManager):
 
     def check_queue(self, ctx):
         try:
-            if self.queue[ctx.guild.id]['loop']:
-                song = self.queue[ctx.guild.id]['queue'][0]
+            if self.queue[ctx.guild.id].looping:
+                song = self.queue[ctx.guild.id].queue[0]
                 player = Player(discord.FFmpegPCMAudio(song.url, **ffmpeg_options), data=song.data)
-                self.queue[ctx.guild.id]['queue'][0] = player
+                self.queue[ctx.guild.id].queue[0] = player
             else:
-                player = self.queue[ctx.guild.id]['queue'].pop(0)
+                player = self.queue[ctx.guild.id].queue.pop(0)
 
-            self.queue[ctx.guild.id]["now_playing"] = player
+            self.queue[ctx.guild.id].now_playing = player
 
             if player is not None and ctx.voice_client:
-                player.volume = self.queue[ctx.guild.id]['volume']
+                player.volume = self.queue[ctx.guild.id].volume
                 ctx.voice_client.play(player, after=lambda x: self.check_queue(ctx))  # dont add spaces here after='a'
-                self.bot.loop.create_task(
-                    self.call_event('on_play', ctx, player)
-                )
+                if not self.queue[ctx.guild.id].looping:
+                    self.bot.loop.create_task(
+                        self.call_event('on_play', ctx, player)
+                    )
 
         except IndexError:
             return
@@ -127,15 +142,15 @@ class MusicManager(EventManager):
     async def queue_add(self, player, ctx):
         """Adds specified player object to queue"""
         if ctx.guild.id in self.queue:
-            self.queue[ctx.guild.id]['queue'].append(player)
+            await self.queue[ctx.guild.id].add(player)
         else:
-            self.queue[ctx.guild.id] = {'queue': [player], 'volume': 0.1, 'currently_playing': None, 'loop': False}
+            self.queue[ctx.guild.id] = QueueManager(0.1, [player])
 
     async def queue_remove(self, player, ctx):
         """Removed specified player object from queue"""
         if ctx.guild.id in self.queue:
             try:
-                self.queue[ctx.guild.id]['queue'].remove(player)
+                self.queue[ctx.guild.id].remove(player)
             except:
                 await self.call_event('on_music_error', ctx, QueueError("Failure to remove player from the queue"))
 
@@ -151,8 +166,8 @@ class MusicManager(EventManager):
 
         if not ctx.voice_client.is_playing():
             try:
-                player = self.queue[ctx.guild.id]['queue'].pop(0)
-                self.queue[ctx.guild.id]["now_playing"] = player
+                player = self.queue[ctx.guild.id].queue[0]
+                self.queue[ctx.guild.id].now_playing = player
 
                 if player is not None:
                     ctx.voice_client.play(player, after=lambda x: self.check_queue(ctx))
@@ -213,7 +228,7 @@ class MusicManager(EventManager):
             return ctx.voice_client.source.volume * 100
         else:
             ctx.voice_client.source.volume = volume / 100
-            self.queue[ctx.guild.id]['volume'] = volume / 100
+            self.queue[ctx.guild.id].volume = volume / 100
             return ctx.voice_client.source.volume * 100
 
     async def join(self, ctx):
@@ -245,14 +260,14 @@ class MusicManager(EventManager):
             return
 
         try:
-            return self.queue[ctx.guild.id]['now_playing']
+            return self.queue[ctx.guild.id].now_playing
         except:
             await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty"))
 
     async def loop(self, ctx):
         """Sets loops to be on or off"""
         try:
-            self.queue[ctx.guild.id]['loop'] = not self.queue[ctx.guild.id]['loop']
-            return self.queue[ctx.guild.id]['loop']
+            self.queue[ctx.guild.id].looping = not self.queue[ctx.guild.id].looping
+            return self.queue[ctx.guild.id].looping
         except IndexError:
             await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty"))
