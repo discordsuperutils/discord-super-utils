@@ -59,6 +59,10 @@ class QueueError(Exception):
     """Raises error when something is wrong with the queue"""
 
 
+class SkipError(Exception):
+    """Raises error when there is no song to skip to"""
+
+
 class Player(discord.PCMVolumeTransformer):
     def __init__(self, source, *, data, volume=0.1):
         super().__init__(source, volume)
@@ -228,8 +232,12 @@ class MusicManager(EventManager):
             await self.call_event('on_music_error', ctx, NotPlaying("Client is not playing music"))
             return
 
-        ctx.voice_client.stop()
-        return True
+        if len(self.queue[ctx.guild.id].queue) > 0:
+            player = self.queue[ctx.guild.id].queue[0]
+            ctx.voice_client.stop()
+            return player
+
+        await self.call_event('on_music_error', ctx, SkipError("No song to skip to."))
 
     async def volume(self, ctx, volume: int = None):
         """Returns the volume if volume is not given or changes the volume if it is given"""
