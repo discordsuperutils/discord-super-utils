@@ -1,3 +1,4 @@
+import aiohttp
 import discord
 import youtube_dl
 from .Base import *  # should be .Base, koyashie use Base for testing
@@ -167,6 +168,16 @@ class MusicManager(EventManager):
                 await self.queue[ctx.guild.id].remove(player)
             except:
                 await self.call_event('on_music_error', ctx, QueueError("Failure when removing player from queue"))
+
+    async def lyrics(self, title, author, query=None):
+        query = f"{title} {author}" if query is None else query
+        url = f"https://some-random-api.ml/lyrics?title={query}"
+
+        async with aiohttp.ClientSession() as session:
+            request = await session.get(url)
+            request_json = await request.json()
+
+            await request_json.get('lyrics', None)
 
     async def play(self, ctx, player=None):
         """Plays the top of the queue or plays specified player"""
