@@ -3,12 +3,12 @@ from distutils.core import setup
 setup(
   name = 'discordSuperUtils',
   packages = ['discordSuperUtils'],
-  version = '0.0.8',
+  version = '0.0.9',
   license='MIT',
   description = 'Discord Bot Development made easy!',
   author = 'koyashie07 and adam7100',
   url = 'https://github.com/koyashie07/discord-super-utils',
-  download_url = 'https://github.com/koyashie07/discord-super-utils/archive/refs/tags/v0.0.8.tar.gz',
+  download_url = 'https://github.com/koyashie07/discord-super-utils/archive/refs/tags/v0.0.9.tar.gz',
   keywords = ['discord', 'easy', 'discord.py', 'music', 'download', 'links', 'images', 'videos','audio', 'bot'],
   install_requires=[
           'youtube-dl',
