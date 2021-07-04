@@ -1,73 +1,64 @@
 import PIL.ImageShow
-import discord, PIL, requests, os
+import discord, PIL, os
+import aiohttp  # koyashie fix unused / duplicate imports
 from io import BytesIO
 from PIL import Image, ImageFont, ImageDraw
 
 
 class ImageManager:
-    def __init__(self, bot, txt_colour = None):
+    def __init__(self, bot, txt_colour=None):
         self.bot = bot
-        self.txt_colour = txt_colour #choices: red, green , lime, cyan, blue, pink, yellow, purple,
-        self.default_bg = os.path.join(os.path.dirname(__file__), 'assets', 'card.jpg')
-        self.online = os.path.join(os.path.dirname(__file__), 'assets', 'online.png')
-        self.offline = os.path.join(os.path.dirname(__file__), 'assets', 'offline.png')
-        self.idle = os.path.join(os.path.dirname(__file__), 'assets', 'idle.png')
-        self.dnd = os.path.join(os.path.dirname(__file__), 'assets', 'dnd.png')
-        self.streaming = os.path.join(os.path.dirname(__file__), 'assets', 'streaming.png')
-        self.font = os.path.join(os.path.dirname(__file__), 'assets', 'font.ttf')
-        self.bk = os.path.join(os.path.dirname(__file__), 'assets', 'grey.png')
+        self.txt_colour = txt_colour  # choices: red, green , lime, cyan, blue, pink, yellow, purple
+        self.default_bg = self.load_asset('card.jpg')
+        self.online = self.load_asset('online.png')
+        self.offline = self.load_asset('offline.png')
+        self.idle = self.load_asset('idle.png')
+        self.dnd = self.load_asset('dnd.png')
+        self.streaming = self.load_asset('streaming.png')
+        self.font = self.load_asset('font.ttf')
+        self.bk = self.load_asset('grey.png')
 
-    def add_gay(self, avatar_url: str, discord_file=True):
+    @classmethod
+    def load_asset(cls, name):
+        return os.path.join(os.path.dirname(__file__), 'assets', name)
+
+    @classmethod
+    async def make_request(cls, url):
+        async with aiohttp.ClientSession as session:
+            request = await session.get(url)
+            return await request.read()
+
+    async def add_gay(self, avatar_url: str, discord_file=True):
         """Adds gay overlay to image url given"""
-        b = BytesIO()
-        f = os.path.join(os.path.dirname(__file__), 'assets', 'gay.jpg')
-        data = requests.get(avatar_url)
-        av = PIL.Image.open(BytesIO(data.content))
-        gayimg = PIL.Image.open(f)
+        gay_image = PIL.Image.open(self.load_asset('gay.jpg'))
+        background = PIL.Image.open(BytesIO(await self.make_request(avatar_url))).convert('RGBA')
 
-        background = av.convert('RGBA')
-        foreground = gayimg.convert('RGBA')
         width, height = background.size
+        foreground = gay_image.convert('RGBA').resize((width, height), PIL.Image.ANTIALIAS)
 
-        foreground = foreground.resize((width, height), PIL.Image.ANTIALIAS)
-        avatar = PIL.Image.blend(background, foreground, alpha=0.4)
+        return self.merge_image(foreground, background, 0.4)
 
-        if discord_file:
-            avatar.save(b, format="PNG")
-            b.seek(0)
-            return discord.File(b, filename="rank.png")
-
-        return avatar
-
-    def merge_image(self, foreground: str, background : str , blend_level : float = 0.6,  discord_file=True):
+    async def merge_image(self, foreground: PIL.Image, background: PIL.Image, blend_level: float = 0.6, discord_file=True):
         """Merges two images together"""
-        b = BytesIO()
-        fg = requests.get(foreground)
-        foreground = PIL.Image.open(BytesIO(fg.content))
-        bg = requests.get(background)
-        background = PIL.Image.open(BytesIO(bg.content))
-
-        background = background.convert('RGBA')
-        foreground = foreground.convert('RGBA')
+        result_bytes = BytesIO()
         width, height = background.size
 
         foreground = foreground.resize((width, height), PIL.Image.ANTIALIAS)
-        avatar = PIL.Image.blend(background, foreground, alpha= blend_level)
+        result = PIL.Image.blend(background, foreground, alpha=blend_level)
 
         if discord_file:
-            avatar.save(b, format="PNG")
-            b.seek(0)
-            return discord.File(b, filename="mergedimage.png")
+            result.save(result_bytes, format="PNG")
+            result_bytes.seek(0)
+            return discord.File(result_bytes, filename="mergedimage.png")
 
-        return avatar
+        return result
 
     def create_card(self):
-        img = PIL.Image.new('RGB', (900, 238), color = (91, 95, 102))
+        img = PIL.Image.new('RGB', (900, 238), color=(91, 95, 102))
 
-    def create_profile(self, user : discord.Member, rank : int, level : int, xp : int, next_level_xp : int = None, current_level_xp : int = None, discord_file=True):
+    async def create_profile(self, user: discord.Member, rank: int, level: int, xp: int, next_level_xp: int = None, current_level_xp: int = None, discord_file=True):
 
-        avatar = (PIL.Image.open(BytesIO(requests.get(user.avatar_url).content))).convert('RGBA').resize((180, 180))
-        test = current_level_xp
+        avatar = PIL.Image.open(BytesIO(await self.make_request(user.avatar_url))).convert('RGBA').resize((180, 180))
         card = Image.open(self.default_bg)
         card = card.resize((900, 238))
         #bk = Image.open(self.bk).resize((850,210))
@@ -75,18 +66,9 @@ class ImageManager:
         font_small = ImageFont.truetype(self.font, 20)
         #card.paste(bk, (23, 15))
         BLUE = (3, 78, 252)
-        b = BytesIO()
+        result_bytes = BytesIO()
 
-        if user.status.name == 'online':
-            status = Image.open(self.online)
-        if user.status.name == 'offline':
-            status = Image.open(self.offline)
-        if user.status.name == 'idle':
-            status = Image.open(self.idle)
-        if user.status.name == 'streaming':
-            status = Image.open(self.streaming)
-        if user.status.name == 'dnd':
-            status = Image.open(self.dnd)
+        status = Image.open(getattr(self, user.status.name))
 
         status = status.convert("RGBA").resize((55, 55))
         profile_pic_holder = Image.new("RGBA", card.size, (255, 255, 255, 0))
@@ -110,8 +92,10 @@ class ImageManager:
         blank = Image.new("RGBA", card.size, (255, 255, 255, 0))
         blank.paste(status, (165, 165))
         finalcard = Image.alpha_composite(precard, blank)
+
         if discord_file:
-            finalcard.save(b, format="PNG")
-            b.seek(0)
-            return discord.File(b, filename="mergedimage.png")
+            finalcard.save(result_bytes, format="PNG")
+            result_bytes.seek(0)
+            return discord.File(result_bytes, filename="mergedimage.png")
+
         return finalcard
