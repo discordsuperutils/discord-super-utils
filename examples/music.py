@@ -6,6 +6,11 @@ MusicManager = discordSuperUtils.MusicManager(bot)
 
 
 @MusicManager.event()
+async def on_music_error(ctx, error):
+    raise error
+
+
+@MusicManager.event()
 async def on_play(ctx, player):
     await ctx.send(f"Playing {player}")
 
@@ -76,4 +81,4 @@ async def skip(ctx):
     await MusicManager.skip(ctx)
 
 
-bot.run("token")
+bot.run("ODEwNjE2NDc3ODM3Mjk1NjYw.YCmPbA.MW4BjNQTIKUIHS54p2CpMYGOGp0")
