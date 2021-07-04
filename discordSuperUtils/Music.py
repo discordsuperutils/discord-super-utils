@@ -137,7 +137,7 @@ class MusicManager(EventManager):
 
             if player is not None and ctx.voice_client:
                 player.volume = self.queue[ctx.guild.id].volume
-                ctx.voice_client.play(player, after=lambda x: self.check_queue(ctx))  # dont add spaces here after='a'
+                ctx.voice_client.play(player, after=lambda x: self.check_queue(ctx))
 
                 if not self.queue[ctx.guild.id].looping and not self.queue[ctx.guild.id].queue_loop:
                     self.queue[ctx.guild.id].history.append(player)

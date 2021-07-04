@@ -6,6 +6,11 @@ MusicManager = discordSuperUtils.MusicManager(bot)
 
 
 @MusicManager.event()
+async def on_music_error(ctx, error):
+    raise error
+
+
+@MusicManager.event()
 async def on_play(ctx, player):
     await ctx.send(f"Playing {player}")
 
