@@ -76,4 +76,4 @@ async def skip(ctx):
     await MusicManager.skip(ctx)
 
 
-bot.run("token")
+bot.run("ODEwNjE2NDc3ODM3Mjk1NjYw.YCmPbA.MW4BjNQTIKUIHS54p2CpMYGOGp0")
