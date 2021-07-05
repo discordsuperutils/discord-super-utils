@@ -5,13 +5,12 @@ import discordSuperUtils
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="-", intents=intents)
 
-ImageManager = discordSuperUtils.ImageManager(bot)
+ImageManager = discordSuperUtils.ImageManager(bot, card_back=3, txt_colour=(255, 64, 99), custom_card_back=False)
 
 
 @bot.event
 async def on_ready():
     print(bot.user)
-    ImageManager.create_card()
 
 
 @bot.command()
@@ -23,16 +22,16 @@ async def gay(ctx, member: discord.Member = None):
 
 @bot.command()
 async def sex(ctx, member1: discord.Member, member2: discord.Member):
-    img = await ImageManager.merge_image(member1.avatar_url, member2.avatar_url)
+    img = await ImageManager.merge_image(member1.avatar_url, member2.avatar_url, if_url=True)
     await ctx.send(file=img)
 
 
 @bot.command()
 async def test(ctx, member: discord.Member = None):
     member = ctx.author if not member else member
-    img = await ImageManager.create_profile(member, 2, 100, 1000)
+    img = await ImageManager.create_profile(member, 1, 100, 1230000, 2500000, 100000)
     await ctx.send(file=img)
 
 
-bot.run("token")
+bot.run("ODEwNjE2NDc3ODM3Mjk1NjYw.YCmPbA.8vuxLPAShLfjkgVk_qTqumKlWbk")
 
