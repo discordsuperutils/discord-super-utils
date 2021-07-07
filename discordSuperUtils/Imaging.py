@@ -39,7 +39,7 @@ class ImageManager:
 
     @classmethod
     def get_str(cls, xp):
-        if xp < 1000:
+        if xp < 1000:  # TODO: add int formatter
             return str(xp)
         if xp >= 1000 and xp < 1000000:
             return str(round(xp / 1000, 1)) + "k"
