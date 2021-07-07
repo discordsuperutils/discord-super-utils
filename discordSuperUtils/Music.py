@@ -1,7 +1,8 @@
 import aiohttp
 import discord
 import youtube_dl
-from .Base import *  # should be .Base, koyashie use Base for testing
+from .Base import *
+# should be .Base, koyashie use Base for testing
 
 # just some options etc.
 
@@ -75,8 +76,6 @@ class Player(discord.PCMVolumeTransformer):
     def __str__(self):
         return self.title
 
-    def __repr__(self):
-        return f'<Player title={self.title}, url={self.url}, duration={self.duration}>'
 
     @classmethod
     async def make_player(cls, query: str):
@@ -88,7 +87,10 @@ class Player(discord.PCMVolumeTransformer):
             return None
 
         if 'entries' in data:
-            data = data['entries'][0]
+            players = []
+            for info in data['entries']:
+                players.append(cls(discord.FFmpegPCMAudio(info['url'], **ffmpeg_options), data=info))
+            return players
 
         filename = data['url']
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
@@ -161,9 +163,10 @@ class MusicManager(EventManager):
     async def queue_add(self, player, ctx):
         """Adds specified player object to queue"""
         if ctx.guild.id in self.queue:
-            self.queue[ctx.guild.id].add(player)
+            for song in player:
+                self.queue[ctx.guild.id].add(song)
         else:
-            self.queue[ctx.guild.id] = QueueManager(0.1, [player])
+            self.queue[ctx.guild.id] = QueueManager(0.1, player)
 
     async def queue_remove(self, player, ctx):
         """Removed specified player object from queue"""
@@ -333,3 +336,7 @@ class MusicManager(EventManager):
             return self.queue[ctx.guild.id].looping
         except IndexError:
             await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty"))
+
+    async def fetch_queue(self, ctx):
+        return self.queue[ctx.guild.id].queue
+

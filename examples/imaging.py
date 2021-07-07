@@ -33,5 +33,5 @@ async def test(ctx, member: discord.Member = None):
     await ctx.send(file=img)
 
 
-bot.run("ODEwNjE2NDc3ODM3Mjk1NjYw.YCmPbA.8vuxLPAShLfjkgVk_qTqumKlWbk")
+bot.run("ODEwNjE2NDc3ODM3Mjk1NjYw.YCmPbA.HX9K6t-EIcioF6BBsc4fXm752DM")
 
