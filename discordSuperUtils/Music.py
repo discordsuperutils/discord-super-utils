@@ -314,8 +314,10 @@ class MusicManager(EventManager):
 
         try:
             self.queue[ctx.guild.id].queue_loop = not self.queue[ctx.guild.id].queue_loop
+
             if self.queue[ctx.guild.id].queue_loop:
                 self.queue[ctx.guild.id].add(self.queue[ctx.guild.id].now_playing)
+
             return self.queue[ctx.guild.id].queue_loop
         except IndexError:
             await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty"))
