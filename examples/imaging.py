@@ -21,13 +21,13 @@ async def gay(ctx, member: discord.Member = None):
 
 
 @bot.command()
-async def sex(ctx, member1: discord.Member, member2: discord.Member):
+async def merge(ctx, member1: discord.Member, member2: discord.Member):
     img = await ImageManager.merge_image(member1.avatar_url, member2.avatar_url, if_url=True)
     await ctx.send(file=img)
 
 
 @bot.command()
-async def test(ctx, member: discord.Member = None):
+async def testrank(ctx, member: discord.Member = None):
     member = ctx.author if not member else member
     img = await ImageManager.create_profile(member, 1, 100, 1230000, 2500000, 100000)
     await ctx.send(file=img)
