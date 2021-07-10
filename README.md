@@ -1,7 +1,13 @@
 discord-super-utils
 ==========
 
-[![Downloads](https://pepy.tech/badge/discordsuperutils)](https://pepy.tech/project/discordsuperutils)
+.. image:: https://discord.com/api/guilds/863388828734586880/embed.png
+   :target: https://discord.gg/zhwcpTBBeC
+   :alt: Discord server invite
+.. image:: https://pepy.tech/badge/discordsuperutils
+   :target: https://pepy.tech/project/discordsuperutils
+   :alt: PyPI downloads
+
 A modern python module including many useful features that make discord bot programming extremely easy.
 
 Features
