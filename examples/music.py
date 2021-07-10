@@ -1,5 +1,6 @@
 import discordSuperUtils
 from discord.ext import commands
+import discord
 
 bot = commands.Bot(command_prefix='-')
 MusicManager = discordSuperUtils.MusicManager(bot)
@@ -80,5 +81,16 @@ async def history(ctx):
 async def skip(ctx):
     await MusicManager.skip(ctx)
 
+@bot.command()
+async def queue(ctx):
+    embed = discord.Embed(title="Queue", description=f" Now Playing: {await MusicManager.now_playing(ctx)}")
+    queue = await MusicManager.fetch_queue(ctx)
+    if len(queue) < 27:
+        for song in queue:
+            embed.add_field(name=f"{queue.index(song) + 1}", value=f"{song}", inline=False)
+    await ctx.send(embed=embed)
 
-bot.run("ODEwNjE2NDc3ODM3Mjk1NjYw.YCmPbA.MW4BjNQTIKUIHS54p2CpMYGOGp0")
+
+
+
+bot.run("ODExMzMyMDA4Njc2Mjk0NjY3.YCwp0A.IXel_tk8lEU4mJ15Tv8W-c4iwIc")

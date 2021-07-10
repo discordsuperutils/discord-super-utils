@@ -6,10 +6,11 @@ from PIL import Image, ImageFont, ImageDraw
 
 
 class ImageManager:
-    def __init__(self, bot, txt_colour=None):
+    def __init__(self, bot, txt_colour=None, card_back=1, custom_card_back: bool = False):
         self.bot = bot
-        self.txt_colour = txt_colour  # choices: red, green , lime, cyan, blue, pink, yellow, purple
-        self.default_bg = self.load_asset('card.jpg')
+        txt_colour = (80, 92, 112) if not txt_colour else txt_colour
+        self.txt_colour = txt_colour  # tuple with rgb colour
+        self.default_bg = self.fetch_card_back(card_back, custom_card_back)
         self.online = self.load_asset('online.png')
         self.offline = self.load_asset('offline.png')
         self.idle = self.load_asset('idle.png')
@@ -23,10 +24,27 @@ class ImageManager:
         return os.path.join(os.path.dirname(__file__), 'assets', name)
 
     @classmethod
+    def fetch_card_back(cls, card_back, custom_card_back):
+        if custom_card_back:
+            return card_back
+        elif card_back in [1, 2, 3]:
+            return cls.load_asset(f"{card_back}.png")
+
+
+    @classmethod
     async def make_request(cls, url):
-        async with aiohttp.ClientSession as session:
-            request = await session.get(url)
-            return await request.read()
+        async with aiohttp.ClientSession() as session:
+            async with session.get(str(url)) as response:
+                return await response.read()
+
+    @classmethod
+    def get_str(cls, xp):
+        if xp < 1000:  # TODO: add int formatter
+            return str(xp)
+        if xp >= 1000 and xp < 1000000:
+            return str(round(xp / 1000, 1)) + "k"
+        if xp > 1000000:
+            return str(round(xp / 1000000, 1)) + "M"
 
     async def add_gay(self, avatar_url: str, discord_file=True):
         """Adds gay overlay to image url given"""
@@ -36,10 +54,13 @@ class ImageManager:
         width, height = background.size
         foreground = gay_image.convert('RGBA').resize((width, height), PIL.Image.ANTIALIAS)
 
-        return self.merge_image(foreground, background, 0.4)
+        return await self.merge_image(foreground, background, 0.4)
 
-    async def merge_image(self, foreground: PIL.Image, background: PIL.Image, blend_level: float = 0.6, discord_file=True):
+    async def merge_image(self, foreground, background, if_url: bool = False, blend_level: float = 0.6, discord_file=True):
         """Merges two images together"""
+        if if_url:
+            foreground = PIL.Image.open(BytesIO(await self.make_request(foreground))).convert('RGBA')
+            background = PIL.Image.open(BytesIO(await self.make_request(background))).convert('RGBA')
         result_bytes = BytesIO()
         width, height = background.size
 
@@ -58,14 +79,12 @@ class ImageManager:
 
     async def create_profile(self, user: discord.Member, rank: int, level: int, xp: int, next_level_xp: int = None, current_level_xp: int = None, discord_file=True):
 
-        avatar = PIL.Image.open(BytesIO(await self.make_request(user.avatar_url))).convert('RGBA').resize((180, 180))
+        avatar = PIL.Image.open(BytesIO(await self.make_request(str(user.avatar_url))))
+        avatar = avatar.convert('RGBA').resize((180, 180))
         card = Image.open(self.default_bg)
         card = card.resize((900, 238))
-        #bk = Image.open(self.bk).resize((850,210))
         font = ImageFont.truetype(self.font, 36)
         font_small = ImageFont.truetype(self.font, 20)
-        #card.paste(bk, (23, 15))
-        BLUE = (3, 78, 252)
         result_bytes = BytesIO()
 
         status = Image.open(getattr(self, user.status.name))
@@ -80,22 +99,33 @@ class ImageManager:
         )
 
         draw = ImageDraw.Draw(card)
-        draw.text((245, 22), user.name, BLUE, font=font)
-        draw.text((245, 80), f"Rank #{rank}", BLUE, font=font)
-        draw.text((245, 123), f"Level {level}", BLUE, font=font_small)
-        draw.text((245, 150),f"Exp {(xp)}/{(next_level_xp)}", BLUE, font=font_small)
+        draw.text((245, 60),f"{user}", self.txt_colour, font=font)
+        draw.text((620, 60), f"Rank #{rank}",  self.txt_colour, font=font)
+        draw.text((245, 145), f"Level {level}",  self.txt_colour, font=font_small)
+        draw.text((620, 145),f"{self.get_str(xp)} / {self.get_str(next_level_xp)} XP",  self.txt_colour, font=font_small)
+
+        blank = Image.new("RGBA", card.size, (255, 255, 255, 0))
+        blankdraw = ImageDraw.Draw(blank)
+        blankdraw.rounded_rectangle((245, 185, 750, 205), fill=(255, 255, 255, 0), outline=self.txt_colour, radius=10)
+
+        xpneed = next_level_xp - current_level_xp
+        xphave = xp - current_level_xp
+        length_of_bar = (((xphave / xpneed) * 100) * 4.9) + 248
+
+        blankdraw.rounded_rectangle((248, 188, length_of_bar, 202), fill=self.txt_colour, radius=7)
 
         profile_pic_holder.paste(avatar, (29, 29, 209, 209))
         precard = Image.composite(profile_pic_holder, card, mask)
         precard = precard.convert('RGBA')
+        precard = Image.alpha_composite(precard, blank)
 
         blank = Image.new("RGBA", card.size, (255, 255, 255, 0))
-        blank.paste(status, (165, 165))
+        blank.paste(status, (155, 155))
         finalcard = Image.alpha_composite(precard, blank)
 
         if discord_file:
             finalcard.save(result_bytes, format="PNG")
             result_bytes.seek(0)
-            return discord.File(result_bytes, filename="mergedimage.png")
+            return discord.File(result_bytes, filename="rankcard.png")
 
         return finalcard

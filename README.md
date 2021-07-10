@@ -1,6 +1,9 @@
 discord-super-utils
 ==========
 
+[![Discord Server Invite](https://discord.com/api/guilds/863388828734586880/embed.png)](https://discord.gg/zhwcpTBBeC)
+[![Pypi Downloads](https://pepy.tech/badge/discordsuperutils)](https://pepy.tech/project/discordsuperutils)
+
 A modern python module including many useful features that make discord bot programming extremely easy.
 
 Features
@@ -197,5 +200,5 @@ More examples are listed in the examples folder.
 Support
 --------------
 
-- **[Support Server](https://discord.gg/TttN2qc7Tg)**
+- **[Support Server](https://discord.gg/zhwcpTBBeC)**
 - **[Documentation](https://discord-super-utils.gitbook.io/discord-super-utils/)**
