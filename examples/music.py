@@ -8,7 +8,7 @@ MusicManager = discordSuperUtils.MusicManager(bot)
 
 @MusicManager.event()
 async def on_music_error(ctx, error):
-    raise error
+    raise error  # add your error handling here! Errors are listed in the documentation.
 
 
 @MusicManager.event()
@@ -81,16 +81,17 @@ async def history(ctx):
 async def skip(ctx):
     await MusicManager.skip(ctx)
 
+
 @bot.command()
 async def queue(ctx):
-    embed = discord.Embed(title="Queue", description=f" Now Playing: {await MusicManager.now_playing(ctx)}")
-    queue = await MusicManager.fetch_queue(ctx)
-    if len(queue) < 27:
-        for song in queue:
-            embed.add_field(name=f"{queue.index(song) + 1}", value=f"{song}", inline=False)
-    await ctx.send(embed=embed)
+    embeds = discordSuperUtils.generate_embeds(MusicManager.get_queue(ctx),
+                                               "Queue",
+                                               f"Now Playing: {await MusicManager.now_playing(ctx)}",
+                                               25,
+                                               "Title: {}")
+
+    page_manager = discordSuperUtils.PageManager(ctx, embeds, public=True)
+    await page_manager.run()
 
 
-
-
-bot.run("ODExMzMyMDA4Njc2Mjk0NjY3.YCwp0A.IXel_tk8lEU4mJ15Tv8W-c4iwIc")
+bot.run("token")

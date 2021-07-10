@@ -76,7 +76,6 @@ class Player(discord.PCMVolumeTransformer):
     def __str__(self):
         return self.title
 
-
     @classmethod
     async def make_player(cls, query: str):
         try:
@@ -337,6 +336,6 @@ class MusicManager(EventManager):
         except IndexError:
             await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty"))
 
-    async def fetch_queue(self, ctx):
+    def get_queue(self, ctx):
         return self.queue[ctx.guild.id].queue
 
