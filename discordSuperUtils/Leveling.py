@@ -8,13 +8,14 @@ database_keys = ['guild', 'member', 'rank', 'xp', 'level_up']
 
 
 class LevelingManager(EventManager):
-    def __init__(self, database: DatabaseManager, table, bot, xp_on_message=5, rank_multiplier=1.5):
+    def __init__(self, database: DatabaseManager, table, bot, xp_on_message=5, rank_multiplier=1.5, xp_cooldown=60):
         super().__init__()
         self.database = database
         self.table = table
         self.bot = bot
         self.xp_on_message = xp_on_message
         self.rank_multiplier = rank_multiplier
+        self.xp_cooldown = xp_cooldown
 
         self.cooldown_members = {}
         self.bot.add_listener(self.__handle_experience, "on_message")
@@ -30,7 +31,7 @@ class LevelingManager(EventManager):
         self.create_account(message.author)
         member_timestamp = self.cooldown_members[message.guild.id].get(message.author.id, 0)
 
-        if (time.time() - member_timestamp) >= 10:
+        if (time.time() - member_timestamp) >= self.xp_cooldown:
             await self.add_experience(message, self.xp_on_message, self.rank_multiplier)
             self.cooldown_members[message.guild.id][message.author.id] = time.time()
 
