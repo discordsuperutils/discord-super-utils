@@ -1,6 +1,7 @@
 discord-super-utils
 ==========
 
+[![Downloads](https://pepy.tech/badge/discordsuperutils)](https://pepy.tech/project/discordsuperutils)
 A modern python module including many useful features that make discord bot programming extremely easy.
 
 Features
