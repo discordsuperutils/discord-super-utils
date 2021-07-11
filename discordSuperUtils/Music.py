@@ -123,7 +123,7 @@ class MusicManager(EventManager):
         self.bot = bot
         self.queue = {}
 
-    def __check_connection(self, ctx, check_playing: bool = False, check_queue: bool = False) -> Optional[bool]:
+    async def __check_connection(self, ctx, check_playing: bool = False, check_queue: bool = False) -> Optional[bool]:
         if not ctx.voice_client or not ctx.voice_client.is_connected():
             await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
             return
@@ -188,7 +188,7 @@ class MusicManager(EventManager):
     async def queue_remove(self, player, ctx):
         """Removed specified player object from queue"""
 
-        if not self.__check_connection(ctx, check_queue=True):
+        if not await self.__check_connection(ctx, check_queue=True):
             return
 
         try:
@@ -209,7 +209,7 @@ class MusicManager(EventManager):
     async def play(self, ctx, player=None):
         """Plays the top of the queue or plays specified player"""
 
-        if not self.__check_connection(ctx):
+        if not await self.__check_connection(ctx):
             return
 
         if player is not None:
@@ -222,7 +222,7 @@ class MusicManager(EventManager):
 
     async def pause(self, ctx):
         """Pauses the voice client"""
-        if not self.__check_connection(ctx):
+        if not await self.__check_connection(ctx):
             return
 
         if ctx.voice_client.is_paused():
@@ -234,7 +234,7 @@ class MusicManager(EventManager):
 
     async def resume(self, ctx):
         """Resumes the voice client"""
-        if not self.__check_connection(ctx):
+        if not await self.__check_connection(ctx):
             return
 
         if not ctx.voice_client.is_paused():
@@ -245,7 +245,7 @@ class MusicManager(EventManager):
         return True
 
     async def skip(self, ctx):
-        if not self.__check_connection(ctx, True, check_queue=True):
+        if not await self.__check_connection(ctx, True, check_queue=True):
             return
 
         if len(self.queue[ctx.guild.id].queue) > 0:
@@ -257,7 +257,7 @@ class MusicManager(EventManager):
 
     async def volume(self, ctx, volume: int = None):
         """Returns the volume if volume is not given or changes the volume if it is given"""
-        if not self.__check_connection(ctx, True, check_queue=True):
+        if not await self.__check_connection(ctx, True, check_queue=True):
             return
 
         if volume is None:
@@ -279,7 +279,7 @@ class MusicManager(EventManager):
 
     async def leave(self, ctx):
         """Leaves voice channel"""
-        if not self.__check_connection(ctx):
+        if not await self.__check_connection(ctx):
             return
 
         await ctx.voice_client.disconnect()
@@ -287,21 +287,21 @@ class MusicManager(EventManager):
 
     async def history(self, ctx):
         """Leaves voice channel"""
-        if not self.__check_connection(ctx, check_queue=True):
+        if not await self.__check_connection(ctx, check_queue=True):
             return
 
         return self.queue[ctx.guild.id].history
 
     async def now_playing(self, ctx):
         """Returns player of currently playing song"""
-        if not self.__check_connection(ctx, check_playing=True, check_queue=True):
+        if not await self.__check_connection(ctx, check_playing=True, check_queue=True):
             return
 
         return self.queue[ctx.guild.id].now_playing
 
     async def queueloop(self, ctx):
         """Sets queue loops to be on or off"""
-        if not self.__check_connection(ctx, check_playing=True, check_queue=True):
+        if not await self.__check_connection(ctx, check_playing=True, check_queue=True):
             return
 
         self.queue[ctx.guild.id].queue_loop = not self.queue[ctx.guild.id].queue_loop
@@ -313,7 +313,7 @@ class MusicManager(EventManager):
 
     async def loop(self, ctx):
         """Sets loops to be on or off"""
-        if not self.__check_connection(ctx, check_playing=True, check_queue=True):
+        if not await self.__check_connection(ctx, check_playing=True, check_queue=True):
             return
 
         self.queue[ctx.guild.id].looping = not self.queue[ctx.guild.id].looping
