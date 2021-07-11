@@ -67,6 +67,10 @@ class SkipError(Exception):
     """Raises error when there is no song to skip to"""
 
 
+class UserNotConnected(Exception):
+    """Raises error when user is not connected to channel"""
+
+
 class InvalidSkipIndex(Exception):
     """Raises error when the skip index is < 0"""
 
@@ -87,11 +91,9 @@ class Player(discord.PCMVolumeTransformer):
     async def make_player(cls, query: str):
         try:
             data = await MusicManager.fetch_data(query)
-
-            if data is None:
-                return None
         except:
-            return None
+            await self.call_event('on_music_error', ctx, FetchFailed("Failed to fetch query data."))
+            return []
 
         if 'entries' in data:
             return [cls(discord.FFmpegPCMAudio(player['url'],
@@ -213,8 +215,6 @@ class MusicManager(EventManager):
             return await request_json.get('lyrics', None)
 
     async def play(self, ctx, player=None):
-        """Plays the top of the queue or plays specified player"""
-
         if not await self.__check_connection(ctx):
             return
 
@@ -227,7 +227,6 @@ class MusicManager(EventManager):
             return True
 
     async def pause(self, ctx):
-        """Pauses the voice client"""
         if not await self.__check_connection(ctx):
             return
 
@@ -239,7 +238,6 @@ class MusicManager(EventManager):
         return True
 
     async def resume(self, ctx):
-        """Resumes the voice client"""
         if not await self.__check_connection(ctx):
             return
 
@@ -250,17 +248,21 @@ class MusicManager(EventManager):
         ctx.voice_client.resume()
         return True
 
-    async def skip(self, ctx, index=0):
+    async def skip(self, ctx, index=None):
         if not await self.__check_connection(ctx, True, check_queue=True):
             return
 
-        if index < 0:
-            await self.call_event('on_music_error', ctx, InvalidSkipIndex("Skip index invalid."))
-            return
+        # Created duplicate to make sure InvalidSkipIndex isn't raised when the user does pass an index and the queue
+        # is empty.
+        skip_index = 0 if index is None else index - 1
+        if not -1 < skip_index < len(self.queue[ctx.guild.id].queue):
+            if index:
+                await self.call_event('on_music_error', ctx, InvalidSkipIndex("Skip index invalid."))
+                return
 
-        if len(self.queue[ctx.guild.id].queue) > index:
-            if index > 0:
-                self.queue[ctx.guild.id].queue = self.queue[ctx.guild.id].queue[index:]
+        if len(self.queue[ctx.guild.id].queue) > skip_index:
+            if skip_index > 0:
+                self.queue[ctx.guild.id].queue = self.queue[ctx.guild.id].queue[skip_index:]
 
             player = self.queue[ctx.guild.id].queue[0]
             ctx.voice_client.stop()
@@ -269,7 +271,6 @@ class MusicManager(EventManager):
         await self.call_event('on_music_error', ctx, SkipError("No song to skip to."))
 
     async def volume(self, ctx, volume: int = None):
-        """Returns the volume if volume is not given or changes the volume if it is given"""
         if not await self.__check_connection(ctx, True, check_queue=True):
             return
 
@@ -281,17 +282,19 @@ class MusicManager(EventManager):
         return ctx.voice_client.source.volume * 100
 
     async def join(self, ctx):
-        """Joins voice channel that user is in"""
         if ctx.voice_client and ctx.voice_client.is_connected():
             await self.call_event('on_music_error', ctx,
                                   AlreadyConnected("Client is already connected to a voice channel"))
+            return
+
+        if not ctx.author.voice:
+            await self.call_event('on_music_error', ctx, UserNotConnected("User is not connected to a voice channel"))
             return
 
         await ctx.author.voice.channel.connect()
         return True
 
     async def leave(self, ctx):
-        """Leaves voice channel"""
         if not await self.__check_connection(ctx):
             return
 
@@ -299,21 +302,18 @@ class MusicManager(EventManager):
         return True
 
     async def history(self, ctx):
-        """Leaves voice channel"""
         if not await self.__check_connection(ctx, check_queue=True):
             return
 
         return self.queue[ctx.guild.id].history
 
     async def now_playing(self, ctx):
-        """Returns player of currently playing song"""
         if not await self.__check_connection(ctx, check_playing=True, check_queue=True):
             return
 
         return self.queue[ctx.guild.id].now_playing
 
     async def queueloop(self, ctx):
-        """Sets queue loops to be on or off"""
         if not await self.__check_connection(ctx, check_playing=True, check_queue=True):
             return
 
@@ -325,7 +325,6 @@ class MusicManager(EventManager):
         return self.queue[ctx.guild.id].queue_loop
 
     async def loop(self, ctx):
-        """Sets loops to be on or off"""
         if not await self.__check_connection(ctx, check_playing=True, check_queue=True):
             return
 
