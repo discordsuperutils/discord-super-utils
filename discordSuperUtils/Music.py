@@ -187,26 +187,26 @@ class MusicManager(EventManager):
         else:
             self.queue[ctx.guild.id] = QueueManager(0.1, player)
 
-    async def queue_remove(self, player, ctx):
+    async def queue_remove(self, ctx, index):
         """Removed specified player object from queue"""
 
         if not await self.__check_connection(ctx, check_queue=True):
             return
 
         try:
-            await self.queue[ctx.guild.id].remove_object(player)
-        except ValueError:
+            await self.queue[ctx.guild.id].remove(index)
+        except IndexError:
             await self.call_event('on_music_error', ctx, QueueError("Failure when removing player from queue"))
 
-    async def lyrics(self, title, author, query=None):
-        query = f"{title} {author}" if query is None else query
+    async def lyrics(self, ctx, query=None):
+        query = self.now_playing(ctx) if query is None else query
         url = f"https://some-random-api.ml/lyrics?title={query}"
 
         async with aiohttp.ClientSession() as session:
             request = await session.get(url)
             request_json = await request.json()
 
-            await request_json.get('lyrics', None)
+            return await request_json.get('lyrics', None)
 
     async def play(self, ctx, player=None):
         """Plays the top of the queue or plays specified player"""
