@@ -82,8 +82,8 @@ class LevelingManager(EventManager):
 
             member_data['next_level_percentage'] = percentage
             return member_data
-        else:
-            return None
+
+        return None
 
     def get_leaderboard(self, guild):
         xp_data = self.database.select([], self.table, [{'guild': guild.id}], True)

@@ -1,8 +1,10 @@
+import PIL
 import PIL.ImageShow
-import discord, PIL, os
 import aiohttp  # koyashie fix unused / duplicate imports
-from io import BytesIO
+import discord
+import os
 from PIL import Image, ImageFont, ImageDraw
+from io import BytesIO
 
 
 class ImageManager:
@@ -30,7 +32,6 @@ class ImageManager:
         elif card_back in [1, 2, 3]:
             return cls.load_asset(f"{card_back}.png")
 
-
     @classmethod
     async def make_request(cls, url):
         async with aiohttp.ClientSession() as session:
@@ -41,7 +42,7 @@ class ImageManager:
     def get_str(cls, xp):
         if xp < 1000:  # TODO: add int formatter
             return str(xp)
-        if xp >= 1000 and xp < 1000000:
+        if 1000 <= xp < 1000000:
             return str(round(xp / 1000, 1)) + "k"
         if xp > 1000000:
             return str(round(xp / 1000000, 1)) + "M"
@@ -56,7 +57,8 @@ class ImageManager:
 
         return await self.merge_image(foreground, background, 0.4)
 
-    async def merge_image(self, foreground, background, if_url: bool = False, blend_level: float = 0.6, discord_file=True):
+    async def merge_image(self, foreground, background, if_url: bool = False, blend_level: float = 0.6,
+                          discord_file=True):
         """Merges two images together"""
         if if_url:
             foreground = PIL.Image.open(BytesIO(await self.make_request(foreground))).convert('RGBA')
@@ -77,7 +79,8 @@ class ImageManager:
     def create_card(self):
         img = PIL.Image.new('RGB', (900, 238), color=(91, 95, 102))
 
-    async def create_profile(self, user: discord.Member, rank: int, level: int, xp: int, next_level_xp: int = None, current_level_xp: int = None, discord_file=True):
+    async def create_profile(self, user: discord.Member, rank: int, level: int, xp: int, next_level_xp: int = None,
+                             current_level_xp: int = None, discord_file=True):
 
         avatar = PIL.Image.open(BytesIO(await self.make_request(str(user.avatar_url))))
         avatar = avatar.convert('RGBA').resize((180, 180))
@@ -99,10 +102,11 @@ class ImageManager:
         )
 
         draw = ImageDraw.Draw(card)
-        draw.text((245, 60),f"{user}", self.txt_colour, font=font)
-        draw.text((620, 60), f"Rank #{rank}",  self.txt_colour, font=font)
-        draw.text((245, 145), f"Level {level}",  self.txt_colour, font=font_small)
-        draw.text((620, 145),f"{self.get_str(xp)} / {self.get_str(next_level_xp)} XP",  self.txt_colour, font=font_small)
+        draw.text((245, 60), f"{user}", self.txt_colour, font=font)
+        draw.text((620, 60), f"Rank #{rank}", self.txt_colour, font=font)
+        draw.text((245, 145), f"Level {level}", self.txt_colour, font=font_small)
+        draw.text((620, 145), f"{self.get_str(xp)} / {self.get_str(next_level_xp)} XP", self.txt_colour,
+                  font=font_small)
 
         blank = Image.new("RGBA", card.size, (255, 255, 255, 0))
         blankdraw = ImageDraw.Draw(blank)

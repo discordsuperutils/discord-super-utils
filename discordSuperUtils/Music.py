@@ -1,7 +1,7 @@
 import aiohttp
 import discord
 import youtube_dl
-from .Base import *
+from .Base import EventManager
 # should be .Base, koyashie use Base for testing
 
 # just some options etc.
@@ -102,6 +102,7 @@ class QueueManager:
         self.history = []
         self.looping = False
         self.queue_loop = False
+        self.now_playing = None
 
     def add(self, player):
         self.queue.append(player)
@@ -191,7 +192,7 @@ class MusicManager(EventManager):
             await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
             return
 
-        elif player is not None:
+        if player is not None:
             ctx.voice_client.play(player)
             return True
 
@@ -253,10 +254,10 @@ class MusicManager(EventManager):
 
         if volume is None:
             return ctx.voice_client.source.volume * 100
-        else:
-            ctx.voice_client.source.volume = volume / 100
-            self.queue[ctx.guild.id].volume = volume / 100
-            return ctx.voice_client.source.volume * 100
+
+        ctx.voice_client.source.volume = volume / 100
+        self.queue[ctx.guild.id].volume = volume / 100
+        return ctx.voice_client.source.volume * 100
 
     async def join(self, ctx):
         """Joins voice channel that user is in"""
@@ -299,7 +300,7 @@ class MusicManager(EventManager):
 
         try:
             return self.queue[ctx.guild.id].now_playing
-        except:
+        except KeyError:
             await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty"))
 
     async def queueloop(self, ctx):
@@ -319,7 +320,7 @@ class MusicManager(EventManager):
                 self.queue[ctx.guild.id].add(self.queue[ctx.guild.id].now_playing)
 
             return self.queue[ctx.guild.id].queue_loop
-        except IndexError:
+        except KeyError:
             await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty"))
 
     async def loop(self, ctx):
