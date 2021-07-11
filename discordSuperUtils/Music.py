@@ -2,6 +2,7 @@ import aiohttp
 import discord
 import youtube_dl
 from .Base import EventManager
+from typing import Optional
 
 # should be .Base, koyashie use Base for testing
 
