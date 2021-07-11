@@ -67,6 +67,10 @@ class SkipError(Exception):
     """Raises error when there is no song to skip to"""
 
 
+class InvalidSkipIndex(Exception):
+    """Raises error when the skip index is < 0"""
+
+
 class Player(discord.PCMVolumeTransformer):
     def __init__(self, source, *, data, volume=0.1):
         super().__init__(source, volume)
@@ -246,11 +250,18 @@ class MusicManager(EventManager):
         ctx.voice_client.resume()
         return True
 
-    async def skip(self, ctx):
+    async def skip(self, ctx, index=0):
         if not await self.__check_connection(ctx, True, check_queue=True):
             return
 
-        if len(self.queue[ctx.guild.id].queue) > 0:
+        if index < 0:
+            await self.call_event('on_music_error', ctx, InvalidSkipIndex("Skip index invalid."))
+            return
+
+        if len(self.queue[ctx.guild.id].queue) > index:
+            if index > 0:
+                self.queue[ctx.guild.id].queue = self.queue[ctx.guild.id].queue[index:]
+
             player = self.queue[ctx.guild.id].queue[0]
             ctx.voice_client.stop()
             return player
