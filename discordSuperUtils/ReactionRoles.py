@@ -19,19 +19,11 @@ class ReactionManager(EventManager):
 
     @classmethod
     def format_data(cls, data):
-        formatted_data = {}
-        for key, value in zip(reaction_keys, data):
-            formatted_data[key] = value
-
-        return formatted_data
+        return {key: value for key, value in zip(reaction_keys, data)}
 
     @classmethod
-    def checks(cls, guild_id, message_id, emoji):
-        return [
-            {'guild': guild_id},
-            {'message': message_id},
-            {'emoji': emoji}
-        ]
+    def checks(cls, **kwargs):
+        return [{key: value} for key, value in kwargs.items()]
 
     def __create_table(self, names, types, table_name):
         columns = [{'name': x, 'type': y} for x, y in zip(names, types)]
@@ -41,9 +33,9 @@ class ReactionManager(EventManager):
         if payload.user_id == self.bot.user.id:
             return
 
-        database_checks = self.checks(payload.guild_id,
-                                      payload.message_id,
-                                      payload.emoji.id if payload.emoji.id is not None else str(payload.emoji))
+        database_checks = self.checks(guild=payload.guild_id,
+                                      message=payload.message_id,
+                                      emoji=payload.emoji.id if payload.emoji.id is not None else str(payload.emoji))
 
         reaction_role_data = self.database.select(reaction_keys, self.table, database_checks)
 
@@ -75,7 +67,7 @@ class ReactionManager(EventManager):
             role.id if role is not None else role,
             emoji,
             remove_on_reaction
-        ], self.table, self.checks(guild.id, message.id, emoji))
+        ], self.table, self.checks(guild=guild.id, message=message.id, emoji=emoji))
 
         if len(emoji) > 1:
             emoji = self.bot.get_emoji(emoji)
@@ -85,5 +77,9 @@ class ReactionManager(EventManager):
         except:
             raise EmojiError("Cannot add reaction to message.")
 
-    async def delete_reaction(self, guild, message, emoji):
-        self.database.delete(self.table, self.checks(guild.id, message.id, emoji))
+    def delete_reaction(self, guild, message, emoji):
+        self.database.delete(self.table, self.checks(guild=guild.id, message=message.id, emoji=emoji))
+
+    def get_reactions(self, **kwargs):
+        reactions = self.database.select(reaction_keys, self.table, self.checks(**kwargs), True)
+        return [self.format_data(reaction) for reaction in reactions]

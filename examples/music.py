@@ -78,8 +78,8 @@ async def history(ctx):
 
 
 @bot.command()
-async def skip(ctx):
-    await MusicManager.skip(ctx)
+async def skip(ctx, index: int = None):
+    await MusicManager.skip(ctx, index)
 
 
 @bot.command()
