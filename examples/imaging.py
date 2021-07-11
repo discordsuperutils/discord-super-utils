@@ -34,4 +34,3 @@ async def testrank(ctx, member: discord.Member = None):
 
 
 bot.run("token")
-

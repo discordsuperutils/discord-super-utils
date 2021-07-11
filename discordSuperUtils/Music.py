@@ -2,6 +2,7 @@ import aiohttp
 import discord
 import youtube_dl
 from .Base import EventManager
+
 # should be .Base, koyashie use Base for testing
 
 # just some options etc.
@@ -80,16 +81,15 @@ class Player(discord.PCMVolumeTransformer):
     async def make_player(cls, query: str):
         try:
             data = await MusicManager.fetch_data(query)
+
             if data is None:
                 return None
         except:
             return None
 
         if 'entries' in data:
-            players = []
-            for info in data['entries']:
-                players.append(cls(discord.FFmpegPCMAudio(info['url'], **ffmpeg_options), data=info))
-            return players
+            return [cls(discord.FFmpegPCMAudio(player['url'],
+                                               **ffmpeg_options), data=player) for player in data['entries']]
 
         filename = data['url']
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
@@ -110,6 +110,9 @@ class QueueManager:
     def clear(self):
         self.queue.clear()
 
+    def remove_object(self, object):
+        self.queue.remove(object)
+
     def remove(self, index):
         return self.queue.pop(index)
 
@@ -120,7 +123,22 @@ class MusicManager(EventManager):
         self.bot = bot
         self.queue = {}
 
-    def check_queue(self, ctx):
+    def __check_connection(self, ctx, check_playing: bool = False, check_queue: bool = False) -> Optional[bool]:
+        if not ctx.voice_client or not ctx.voice_client.is_connected():
+            await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
+            return
+
+        if check_playing and not ctx.voice_client.is_playing():
+            await self.call_event('on_music_error', ctx, NotPlaying("Client is not playing anything currently"))
+            return
+
+        if check_queue and ctx.guild.id not in self.queue:
+            await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty"))
+            return
+
+        return True
+
+    def __check_queue(self, ctx):
         try:
             if self.queue[ctx.guild.id].looping:
                 song = self.queue[ctx.guild.id].now_playing
@@ -139,20 +157,18 @@ class MusicManager(EventManager):
 
             if player is not None and ctx.voice_client:
                 player.volume = self.queue[ctx.guild.id].volume
-                ctx.voice_client.play(player, after=lambda x: self.check_queue(ctx))
+                ctx.voice_client.play(player, after=lambda x: self.__check_queue(ctx))
 
                 if not self.queue[ctx.guild.id].looping and not self.queue[ctx.guild.id].queue_loop:
                     self.queue[ctx.guild.id].history.append(player)
                     self.bot.loop.create_task(
                         self.call_event('on_play', ctx, player)
                     )
-
-        except IndexError:
+        except (IndexError, KeyError):
             return
 
     @classmethod
     async def fetch_data(cls, query: str):
-        """Returns a dict with info extracted from the URL/query given"""
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, lambda: ytdl.extract_info(query, download=False))
 
@@ -162,6 +178,7 @@ class MusicManager(EventManager):
 
     async def queue_add(self, player, ctx):
         """Adds specified player object to queue"""
+
         if ctx.guild.id in self.queue:
             for song in player:
                 self.queue[ctx.guild.id].add(song)
@@ -170,11 +187,14 @@ class MusicManager(EventManager):
 
     async def queue_remove(self, player, ctx):
         """Removed specified player object from queue"""
-        if ctx.guild.id in self.queue:
-            try:
-                await self.queue[ctx.guild.id].remove(player)
-            except:
-                await self.call_event('on_music_error', ctx, QueueError("Failure when removing player from queue"))
+
+        if not self.__check_connection(ctx, check_queue=True):
+            return
+
+        try:
+            await self.queue[ctx.guild.id].remove_object(player)
+        except ValueError:
+            await self.call_event('on_music_error', ctx, QueueError("Failure when removing player from queue"))
 
     async def lyrics(self, title, author, query=None):
         query = f"{title} {author}" if query is None else query
@@ -188,8 +208,8 @@ class MusicManager(EventManager):
 
     async def play(self, ctx, player=None):
         """Plays the top of the queue or plays specified player"""
-        if not ctx.voice_client or not ctx.voice_client.is_connected():
-            await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
+
+        if not self.__check_connection(ctx):
             return
 
         if player is not None:
@@ -197,25 +217,24 @@ class MusicManager(EventManager):
             return True
 
         if not ctx.voice_client.is_playing():
-            self.check_queue(ctx)
+            self.__check_queue(ctx)
             return True
 
     async def pause(self, ctx):
         """Pauses the voice client"""
-        if not ctx.voice_client or not ctx.voice_client.is_connected():
-            await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
+        if not self.__check_connection(ctx):
             return
 
         if ctx.voice_client.is_paused():
             await self.call_event('on_music_error', ctx, AlreadyPaused("Player is already paused."))
+            return
 
         ctx.voice_client.pause()
         return True
 
     async def resume(self, ctx):
         """Resumes the voice client"""
-        if not ctx.voice_client or not ctx.voice_client.is_connected():
-            await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
+        if not self.__check_connection(ctx):
             return
 
         if not ctx.voice_client.is_paused():
@@ -226,13 +245,7 @@ class MusicManager(EventManager):
         return True
 
     async def skip(self, ctx):
-        """Most likely wont work"""
-        if not ctx.voice_client or not ctx.voice_client.is_connected():
-            await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
-            return
-
-        if not ctx.voice_client.is_playing():
-            await self.call_event('on_music_error', ctx, NotPlaying("Client is not playing music"))
+        if not self.__check_connection(ctx, True, check_queue=True):
             return
 
         if len(self.queue[ctx.guild.id].queue) > 0:
@@ -244,12 +257,7 @@ class MusicManager(EventManager):
 
     async def volume(self, ctx, volume: int = None):
         """Returns the volume if volume is not given or changes the volume if it is given"""
-        if not ctx.voice_client or not ctx.voice_client.is_connected():
-            await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
-            return
-
-        if not ctx.voice_client.is_playing():
-            await self.call_event('on_music_error', ctx, NotPlaying("Client is not playing music"))
+        if not self.__check_connection(ctx, True, check_queue=True):
             return
 
         if volume is None:
@@ -271,74 +279,45 @@ class MusicManager(EventManager):
 
     async def leave(self, ctx):
         """Leaves voice channel"""
-        if not ctx.voice_client or not ctx.voice_client.is_connected():
-            await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
+        if not self.__check_connection(ctx):
             return
 
         await ctx.voice_client.disconnect()
         return True
 
     async def history(self, ctx):
-        if not ctx.voice_client or not ctx.voice_client.is_connected():
-            await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
+        """Leaves voice channel"""
+        if not self.__check_connection(ctx, check_queue=True):
             return
 
-        try:
-            return self.queue[ctx.guild.id].history
-        except:
-            await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty"))
+        return self.queue[ctx.guild.id].history
 
     async def now_playing(self, ctx):
         """Returns player of currently playing song"""
-        if not ctx.voice_client or not ctx.voice_client.is_connected():
-            await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
+        if not self.__check_connection(ctx, check_playing=True, check_queue=True):
             return
 
-        if not ctx.voice_client.is_playing():
-            await self.call_event('on_music_error', ctx, NotPlaying("Client is not playing anything currently"))
-            return
-
-        try:
-            return self.queue[ctx.guild.id].now_playing
-        except KeyError:
-            await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty"))
+        return self.queue[ctx.guild.id].now_playing
 
     async def queueloop(self, ctx):
         """Sets queue loops to be on or off"""
-        if not ctx.voice_client or not ctx.voice_client.is_connected():
-            await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
+        if not self.__check_connection(ctx, check_playing=True, check_queue=True):
             return
 
-        if not ctx.voice_client.is_playing():
-            await self.call_event('on_music_error', ctx, NotPlaying("Client is not playing anything currently"))
-            return
+        self.queue[ctx.guild.id].queue_loop = not self.queue[ctx.guild.id].queue_loop
 
-        try:
-            self.queue[ctx.guild.id].queue_loop = not self.queue[ctx.guild.id].queue_loop
+        if self.queue[ctx.guild.id].queue_loop:
+            self.queue[ctx.guild.id].add(self.queue[ctx.guild.id].now_playing)
 
-            if self.queue[ctx.guild.id].queue_loop:
-                self.queue[ctx.guild.id].add(self.queue[ctx.guild.id].now_playing)
-
-            return self.queue[ctx.guild.id].queue_loop
-        except KeyError:
-            await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty"))
+        return self.queue[ctx.guild.id].queue_loop
 
     async def loop(self, ctx):
         """Sets loops to be on or off"""
-        if not ctx.voice_client or not ctx.voice_client.is_connected():
-            await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
+        if not self.__check_connection(ctx, check_playing=True, check_queue=True):
             return
 
-        if not ctx.voice_client.is_playing():
-            await self.call_event('on_music_error', ctx, NotPlaying("Client is not playing anything currently"))
-            return
-
-        try:
-            self.queue[ctx.guild.id].looping = not self.queue[ctx.guild.id].looping
-            return self.queue[ctx.guild.id].looping
-        except IndexError:
-            await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty"))
+        self.queue[ctx.guild.id].looping = not self.queue[ctx.guild.id].looping
+        return self.queue[ctx.guild.id].looping
 
     def get_queue(self, ctx):
         return self.queue[ctx.guild.id].queue
-
