@@ -3,6 +3,7 @@ import discord
 import youtube_dl
 from .Base import EventManager
 from typing import Optional
+import asyncio
 
 # should be .Base, koyashie use Base for testing
 
