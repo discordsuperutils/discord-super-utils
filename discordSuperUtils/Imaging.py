@@ -29,7 +29,8 @@ class ImageManager:
     def fetch_card_back(cls, card_back, custom_card_back):
         if custom_card_back:
             return card_back
-        elif card_back in [1, 2, 3]:
+
+        if card_back in [1, 2, 3]:
             return cls.load_asset(f"{card_back}.png")
 
     @classmethod
@@ -38,14 +39,24 @@ class ImageManager:
             async with session.get(str(url)) as response:
                 return await response.read()
 
-    @classmethod
-    def get_str(cls, xp):
-        if xp < 1000:  # TODO: add int formatter
-            return str(xp)
-        if 1000 <= xp < 1000000:
-            return str(round(xp / 1000, 1)) + "k"
-        if xp > 1000000:
-            return str(round(xp / 1000000, 1)) + "M"
+    @staticmethod
+    def human_format(cls, num):
+        original_num = num
+
+        num = float('{:.3g}'.format(num))
+        magnitude = 0
+        matches = ['', 'K', 'M', 'B', 'T', 'Qua', 'Qui']
+        while abs(num) >= 1000:
+            if magnitude >= 5:
+                break
+
+            magnitude += 1
+            num /= 1000.0
+
+        try:
+            return '{}{}'.format('{:f}'.format(num).rstrip('0').rstrip('.'), matches[magnitude])
+        except IndexError:
+            return original_num
 
     async def add_gay(self, avatar_url: str, discord_file=True):
         """Adds gay overlay to image url given"""
@@ -105,7 +116,7 @@ class ImageManager:
         draw.text((245, 60), f"{user}", self.txt_colour, font=font)
         draw.text((620, 60), f"Rank #{rank}", self.txt_colour, font=font)
         draw.text((245, 145), f"Level {level}", self.txt_colour, font=font_small)
-        draw.text((620, 145), f"{self.get_str(xp)} / {self.get_str(next_level_xp)} XP", self.txt_colour,
+        draw.text((620, 145), f"{self.human_format(xp)} / {self.human_format(next_level_xp)} XP", self.txt_colour,
                   font=font_small)
 
         blank = Image.new("RGBA", card.size, (255, 255, 255, 0))
