@@ -3,21 +3,21 @@ from math import ceil
 import discord
 
 
-def generate_embeds(list_to_generate, title, description, fields, string_format='{}'):
+def generate_embeds(list_to_generate, title, description, fields, color=0xff0000, string_format='{}'):
     num_of_embeds = ceil((len(list_to_generate) + 1) / fields)
 
     embeds = [
         discord.Embed(
             title=f"{title} (Page 1/{num_of_embeds})",
             description=description,
-            color=0xff0000
+            color=color
         )
     ]
 
     for i in range(2, num_of_embeds + 1):
         embeds.append(discord.Embed(
             title=f"{title} (Page {i}/{num_of_embeds})",
-            color=0xff0000
+            color=color
         )
         )
 
