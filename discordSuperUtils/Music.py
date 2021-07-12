@@ -4,6 +4,7 @@ import youtube_dl
 from .Base import EventManager
 from typing import Optional
 import asyncio
+from enum import Enum
 
 # should be .Base, koyashie use Base for testing
 
@@ -75,6 +76,12 @@ class InvalidSkipIndex(Exception):
     """Raises error when the skip index is < 0"""
 
 
+class Loops(Enum):
+    NO_LOOP = 0
+    LOOP = 1
+    QUEUE_LOOP = 2
+
+
 class Player(discord.PCMVolumeTransformer):
     def __init__(self, source, *, data, volume=0.1):
         super().__init__(source, volume)
@@ -107,8 +114,7 @@ class QueueManager:
         self.queue = queue
         self.volume = volume
         self.history = []
-        self.looping = False
-        self.queue_loop = False
+        self.loop = Loops.NO_LOOP
         self.now_playing = None
 
     def add(self, player):
@@ -144,11 +150,11 @@ class MusicManager(EventManager):
 
     def __check_queue(self, ctx):
         try:
-            if self.queue[ctx.guild.id].looping:
+            if self.queue[ctx.guild.id].loop == Loops.LOOP:
                 song = self.queue[ctx.guild.id].now_playing
                 player = Player(discord.FFmpegPCMAudio(song.url, **ffmpeg_options), data=song.data)
 
-            elif self.queue[ctx.guild.id].queue_loop:
+            elif self.queue[ctx.guild.id].loop == Loops.QUEUE_LOOP:
                 player = self.queue[ctx.guild.id].remove(0)
                 self.queue[ctx.guild.id].add(player)
 
@@ -163,7 +169,7 @@ class MusicManager(EventManager):
                 player.volume = self.queue[ctx.guild.id].volume
                 ctx.voice_client.play(player, after=lambda x: self.__check_queue(ctx))
 
-                if not self.queue[ctx.guild.id].looping and not self.queue[ctx.guild.id].queue_loop:
+                if self.queue[ctx.guild.id].loop == Loops.NO_LOOP:
                     self.queue[ctx.guild.id].history.append(player)
                     self.bot.loop.create_task(
                         self.call_event('on_play', ctx, player)
@@ -317,19 +323,20 @@ class MusicManager(EventManager):
         if not await self.__check_connection(ctx, check_playing=True, check_queue=True):
             return
 
-        self.queue[ctx.guild.id].queue_loop = not self.queue[ctx.guild.id].queue_loop
+        self.queue[ctx.guild.id].loop = Loops.QUEUE_LOOP if self.queue[ctx.guild.id].loop != Loops.QUEUE_LOOP else\
+            Loops.NO_LOOP
 
-        if self.queue[ctx.guild.id].queue_loop:
+        if self.queue[ctx.guild.id].loop == Loops.QUEUE_LOOP:
             self.queue[ctx.guild.id].add(self.queue[ctx.guild.id].now_playing)
 
-        return self.queue[ctx.guild.id].queue_loop
+        return self.queue[ctx.guild.id].loop == Loops.QUEUE_LOOP
 
     async def loop(self, ctx):
         if not await self.__check_connection(ctx, check_playing=True, check_queue=True):
             return
 
-        self.queue[ctx.guild.id].looping = not self.queue[ctx.guild.id].looping
-        return self.queue[ctx.guild.id].looping
+        self.queue[ctx.guild.id].loop = Loops.LOOP if self.queue[ctx.guild.id].loop != Loops.LOOP else Loops.NO_LOOP
+        return self.queue[ctx.guild.id].loop == Loops.LOOP
 
     def get_queue(self, ctx):
         return self.queue[ctx.guild.id].queue
