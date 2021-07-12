@@ -3,6 +3,7 @@ discord-super-utils
 
 [![Discord Server Invite](https://img.shields.io/discord/863388828734586880?logo=discord&color=blue&style=flat-square)](https://discord.gg/zhwcpTBBeC)
 [![Pypi Downloads](https://img.shields.io/pypi/dm/discordSuperUtils?color=green&style=flat-square)](https://pepy.tech/project/discordsuperutils)
+![](https://img.shields.io/codefactor/grade/github/discordsuperutils/discord-super-utils?style=flat-square)
 
 A modern python module including many useful features that make discord bot programming extremely easy.
 
