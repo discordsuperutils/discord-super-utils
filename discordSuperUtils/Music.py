@@ -19,8 +19,7 @@ ytdl_opts = {
     'logtostderr': False,
     'quiet': True,
     'no_warnings': True,
-    'default_search': 'auto',
-    'source_address': '0.0.0.0'
+    'default_search': 'auto'
 }
 
 ffmpeg_options = {
@@ -97,6 +96,7 @@ class Player(discord.PCMVolumeTransformer):
     @classmethod
     async def make_player(cls, query: str):
         data = await MusicManager.fetch_data(query)
+        print(data)
         if data is None:
             await self.call_event('on_music_error', ctx, FetchFailed("Failed to fetch query data."))
             return []
