@@ -120,14 +120,15 @@ class DatabaseManager:
     @__with_cursor
     @__with_commit
     def delete(self, cursor, table_name, checks):
-        query = f"DELETE FROM {table_name} "
+        if not checks:
+            return
 
-        if checks:
-            query += "WHERE "
-            for check in checks:
-                query += f"{list(check)[0]} = ? AND "
+        query = f"DELETE FROM {table_name} WHERE "
 
-            query = query[:-4]
+        for check in checks:
+            query += f"{list(check)[0]} = ? AND "
+
+        query = query[:-4]
 
         values = [list(x.values())[0] for x in checks]
         cursor.execute(query, values)
