@@ -1,0 +1,4 @@
+discord
+aiohttp
+sqlite3
+Pillow
