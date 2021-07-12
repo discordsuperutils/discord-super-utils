@@ -94,4 +94,4 @@ async def queue(ctx):
     await page_manager.run()
 
 
-bot.run("token")
+bot.run("TOKEN")
