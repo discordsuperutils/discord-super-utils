@@ -118,9 +118,6 @@ class QueueManager:
     def clear(self):
         self.queue.clear()
 
-    def remove_object(self, object):
-        self.queue.remove(object)
-
     def remove(self, index):
         return self.queue.pop(index)
 
