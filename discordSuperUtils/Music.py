@@ -171,13 +171,13 @@ class MusicManager(EventManager):
         except (IndexError, KeyError):
             return
 
-    @classmethod
-    async def fetch_data(cls, query: str):
+    @staticmethod
+    async def fetch_data(query: str):
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, lambda: ytdl.extract_info(query, download=False))
 
-    @classmethod
-    async def create_player(cls, query):
+    @staticmethod
+    async def create_player(query):
         return await Player.make_player(query)
 
     async def queue_add(self, player, ctx):
