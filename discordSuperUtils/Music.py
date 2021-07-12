@@ -262,7 +262,11 @@ class MusicManager(EventManager):
 
         if len(self.queue[ctx.guild.id].queue) > skip_index:
             if skip_index > 0:
+                removed_songs = self.queue[ctx.guild.id].queue[:skip_index]
+
                 self.queue[ctx.guild.id].queue = self.queue[ctx.guild.id].queue[skip_index:]
+                if self.queue[ctx.guild.id].queue_loop:
+                    self.queue[ctx.guild.id].queue += removed_songs
 
             player = self.queue[ctx.guild.id].queue[0]
             ctx.voice_client.stop()
