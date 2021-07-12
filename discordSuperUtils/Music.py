@@ -89,9 +89,8 @@ class Player(discord.PCMVolumeTransformer):
 
     @classmethod
     async def make_player(cls, query: str):
-        try:
-            data = await MusicManager.fetch_data(query)
-        except:
+        data = await MusicManager.fetch_data(query)
+        if data is None:
             await self.call_event('on_music_error', ctx, FetchFailed("Failed to fetch query data."))
             return []
 
