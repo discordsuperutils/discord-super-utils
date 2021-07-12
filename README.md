@@ -1,11 +1,14 @@
-discord-super-utils
-==========
+<h1 align="center">discord-super-utils</h1>
 
-[![Discord Server Invite](https://img.shields.io/discord/863388828734586880?logo=discord&color=blue&style=flat-square)](https://discord.gg/zhwcpTBBeC)
-[![Pypi Downloads](https://img.shields.io/pypi/dm/discordSuperUtils?color=green&style=flat-square)](https://pepy.tech/project/discordsuperutils)
-![](https://img.shields.io/codefactor/grade/github/discordsuperutils/discord-super-utils?style=flat-square)
+<p align="center">
+  <a href="#"><img src="https://img.shields.io/codefactor/grade/github/discordsuperutils/discord-super-utils?style=flat-square" /></a>
+  <a href="https://discord.gg/zhwcpTBBeC"><img src="https://img.shields.io/discord/863388828734586880?logo=discord&color=blue&style=flat-square" /></a>
+  <a href="https://pepy.tech/project/discordsuperutils"><img src="https://img.shields.io/pypi/dm/discordSuperUtils?color=green&style=flat-square" /></a>
+</p>
 
-A modern python module including many useful features that make discord bot programming extremely easy.
+<p align="center">
+   A modern python module including many useful features that make discord bot programming extremely easy.
+</p>
 
 Features
 -------------
