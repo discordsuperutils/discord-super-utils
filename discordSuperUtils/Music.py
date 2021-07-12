@@ -82,7 +82,7 @@ class Player(discord.PCMVolumeTransformer):
         self.data = data
         self.title = data.get('title')
         self.url = data.get('url')
-        self.duration = data.get('duration')
+        self.duration = data.get('duration') if data.get('duration') != 0 else "LIVE"
 
     def __str__(self):
         return self.title
