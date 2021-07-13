@@ -2,3 +2,4 @@ discord
 aiohttp
 sqlite3
 Pillow
+youtube_dl
