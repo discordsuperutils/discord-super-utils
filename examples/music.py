@@ -71,7 +71,7 @@ async def history(ctx):
                                                "Song History",
                                                "Shows all played songs",
                                                25,
-                                               "Title: {}")
+                                               string_format="Title: {}")
 
     page_manager = discordSuperUtils.PageManager(ctx, embeds, public=True)
     await page_manager.run()
@@ -88,7 +88,7 @@ async def queue(ctx):
                                                "Queue",
                                                f"Now Playing: {await MusicManager.now_playing(ctx)}",
                                                25,
-                                               "Title: {}")
+                                               string_format="Title: {}")
 
     page_manager = discordSuperUtils.PageManager(ctx, embeds, public=True)
     await page_manager.run()
