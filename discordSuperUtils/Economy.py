@@ -60,10 +60,16 @@ class EconomyManager:
                                         self.table, self.generate_checks(member.guild.id, member.id))
 
     async def get_account(self, member: discord.Member):
-        return EconomyAccount(member.guild.id, member.id, self.database, self.table)
+        member_data = self.select([], table_name, generate_checks(member.guild.id, member.id), True)
+
+        if member_data:
+            return EconomyAccount(member.guild.id, member.id, self.database, self.table)
+
+        return None
 
     async def get_leaderboard(self, guild):
         guild_info = self.database.select([], self.table, [{'guild': guild.id}], True)
         members = [EconomyAccount(*member_info[:2], self.database, self.table) for member_info in guild_info]
+
         members.sort()
         return members

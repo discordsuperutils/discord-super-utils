@@ -15,12 +15,12 @@ async def on_ready():
 
 @LevelingManager.event()
 async def on_level_up(message, member_data):
-    await message.reply(f"You are now level {member_data['rank']}")
+    await message.reply(f"You are now level {member_data.level}")
 
 
 @bot.command()
 async def rank(ctx):
     member_data = LevelingManager.get_account(ctx.author)
-    await ctx.send(f'You are currently level **{member_data["rank"]}**, with **{member_data["xp"]}** XP.')
+    await ctx.send(f'You are currently level **{member_data.level}**, with **{member_data.xp}** XP.')
 
 bot.run("token")

@@ -66,7 +66,7 @@ class DatabaseManager:
     def insertifnotexists(self, keys, values, table_name, checks):
         response = self.select([], table_name, checks, True)
 
-        if len(response) == 0:
+        if not response:
             self.insert(keys, values, table_name)
 
     @__with_cursor

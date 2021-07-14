@@ -2,9 +2,61 @@ from .Database import DatabaseManager
 import time
 import math
 from .Base import EventManager
+import asyncio
 
 
 database_keys = ['guild', 'member', 'rank', 'xp', 'level_up']
+
+
+class LevelingAccount:
+    def __init__(self, database: DatabaseManager, table, guild: int, member: int, rank_multiplier=1.5):
+        self.database = database
+        self.table = table
+        self.guild = guild
+        self.member = member
+        self.rank_multiplier = rank_multiplier
+
+    def __str__(self):
+        return f"<Account MEMBER={self.member}, GUILD={self.guild}>"
+
+    def __repr__(self):
+        return f"<Account GUILD={self.guild}, MEMBER={self.member}, XP={self.xp}, LEVEL={self.level}>"
+
+    def __lt__(self, other):
+        return self.net < other.net
+
+    @property
+    def __checks(self):
+        return LevelingManager.generate_checks(self.guild, self.member)
+
+    @property
+    def xp(self):
+        return self.database.select(['xp'], self.table, self.__checks)[0]
+
+    @property
+    def level(self):
+        return self.database.select(['rank'], self.table, self.__checks)[0]
+
+    @property
+    def next_level(self):
+        return self.database.select(['level_up'], self.table, self.__checks)[0]
+
+    @property
+    def percentage_next_level(self):
+        initial_rank_xp = 0 if self.level_up == 50 else self.level_up / self.rank_multiplier
+        return math.floor(abs(self.xp - initial_rank_xp) / (self.level_up - initial_rank_xp) * 100)
+
+    @xp.setter
+    def xp(self, value):
+        self.database.update(['xp'], [value], self.table, self.__checks)
+
+    @level.setter
+    def level(self, value):
+        self.database.update(['rank'], [value], self.table, self.__checks)
+
+    @next_level.setter
+    def next_level(self, value):
+        self.database.update(['level_up'], [value], self.table, self.__checks)
 
 
 class LevelingManager(EventManager):
@@ -21,6 +73,10 @@ class LevelingManager(EventManager):
         self.bot.add_listener(self.__handle_experience, "on_message")
         self.database.createtable(self.table, [{'name': key, 'type': 'INTEGER'} for key in database_keys], True)
 
+    @staticmethod
+    def generate_checks(guild: int, member: int):
+        return [{'guild': guild}, {'member': member}]
+
     async def __handle_experience(self, message):
         if not message.guild or message.author.bot:
             return
@@ -29,65 +85,39 @@ class LevelingManager(EventManager):
             self.cooldown_members[message.guild.id] = {}
 
         self.create_account(message.author)
+        member_account = self.get_account(message.author)
         member_timestamp = self.cooldown_members[message.guild.id].get(message.author.id, 0)
 
         if (time.time() - member_timestamp) >= self.xp_cooldown:
-            await self.add_experience(message, self.xp_on_message, self.rank_multiplier)
+            member_account.xp += self.xp_on_message
             self.cooldown_members[message.guild.id][message.author.id] = time.time()
+
+            leveled_up = False
+            while member_account.xp >= member_account.next_level:
+                member_account.next_level *= member_account.rank_multiplier
+                member_account.level += 1
+                leveled_up = True
+
+            if leveled_up:
+                loop = asyncio.get_event_loop()
+                loop.create_task(self.call_event('on_level_up', message, member_account))
 
     def create_account(self, member):
         self.database.insertifnotexists(database_keys, [member.guild.id, member.id, 1, 0, 50],
                                         self.table, [{'guild': member.guild.id}, {'member': member.id}])
 
-    async def add_experience(self, message, xp, rank_multiplier):
-        member_data = self.get_account(message.author)
-        if not member_data:
-            return
-
-        member_data['xp'] += xp
-
-        leveled_up = False
-        while member_data['xp'] >= member_data['level_up']:
-            member_data['level_up'] *= rank_multiplier
-            member_data['rank'] += 1
-            leveled_up = True
-
-        self.update_account(member_data)
-
-        if leveled_up:
-            await self.call_event('on_level_up', message, member_data)
-
-    def update_account(self, member_data):
-        member_data.pop('next_level_percentage', None)
-
-        self.database.update(list(member_data), list(member_data.values()),
-                             self.table, [{'guild': member_data["guild"]}, {'member': member_data["member"]}])
-
-    @classmethod
-    def format_data(cls, data):
-        formatted_member_data = {}
-        for key, value in zip(database_keys + ['next_level_percentage'], data):
-            formatted_member_data[key] = value
-
-        return formatted_member_data
-
     def get_account(self, member):
-        member_data = self.database.select([], self.table, [{'guild': member.guild.id}, {'member': member.id}])
+        member_data = self.database.select([], self.table, self.generate_checks(member.guild.id, member.id), True)
+
         if member_data:
-            member_data = self.format_data(member_data)
-
-            initial_rank_xp = 0 if member_data['level_up'] == 50 else member_data['level_up'] / self.rank_multiplier
-            percentage = math.floor(abs(member_data['xp'] - initial_rank_xp) /
-                                    (member_data['level_up'] - initial_rank_xp) * 100)
-
-            member_data['next_level_percentage'] = percentage
-            return member_data
+            return LevelingAccount(self.database, self.table, member.guild.id, member.id, self.rank_multiplier)
 
         return None
 
     def get_leaderboard(self, guild):
-        xp_data = self.database.select([], self.table, [{'guild': guild.id}], True)
+        guild_info = self.database.select([], self.table, [{'guild': guild.id}], True)
+        members = [LevelingAccount(self.database, self.table, *member_info[:2], self.rank_multiplier)
+                   for member_info in guild_info]
 
-        guild_xp_data = [self.format_data(member_data) for member_data in xp_data]
-
-        return sorted(guild_xp_data, key=lambda item: item["xp"], reverse=True)
+        members.sort()
+        return members
