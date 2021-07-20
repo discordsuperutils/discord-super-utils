@@ -39,6 +39,11 @@ class ImageManager:
             async with session.get(str(url)) as response:
                 return await response.read()
 
+    @classmethod
+    async def convert_image(cls, url):
+        info = await cls.make_request(url)
+        return PIL.Image.open(BytesIO(info)).convert('RGBA')
+
     @staticmethod
     def human_format(cls, num):
         original_num = num
@@ -61,7 +66,7 @@ class ImageManager:
     async def add_gay(self, avatar_url: str, discord_file=True):
         """Adds gay overlay to image url given"""
         gay_image = PIL.Image.open(self.load_asset('gay.jpg'))
-        background = PIL.Image.open(BytesIO(await self.make_request(avatar_url))).convert('RGBA')
+        background = self.convert_image(avatar_url)
 
         width, height = background.size
         foreground = gay_image.convert('RGBA').resize((width, height), PIL.Image.ANTIALIAS)
