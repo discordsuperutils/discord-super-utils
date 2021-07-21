@@ -45,6 +45,11 @@ class ImageManager:
         return PIL.Image.open(BytesIO(info)).convert('RGBA')
 
     @staticmethod
+    def create_card():
+        """Solely for testing | Creates a blank image"""
+        img = PIL.Image.new('RGB', (900, 238), color=(91, 95, 102))
+
+    @classmethod
     def human_format(cls, num):
         original_num = num
 
@@ -63,22 +68,26 @@ class ImageManager:
         except IndexError:
             return original_num
 
-    async def add_gay(self, avatar_url: str, discord_file=True):
+    async def add_gay(self, avatar, discord_file: bool = True, if_url : bool = False):
         """Adds gay overlay to image url given"""
         gay_image = PIL.Image.open(self.load_asset('gay.jpg'))
-        background = self.convert_image(avatar_url)
+        if if_url:
+            avatar = await self.convert_image(avatar)
 
-        width, height = background.size
+        width, height = avatar.size
         foreground = gay_image.convert('RGBA').resize((width, height), PIL.Image.ANTIALIAS)
+        img = discord.File(await self.merge_image(foreground, avatar, 0.4))
 
-        return await self.merge_image(foreground, background, 0.4)
+        if discord_file:
+            return discord.File(img, filename="Gay.png")
+        return img
 
     async def merge_image(self, foreground, background, if_url: bool = False, blend_level: float = 0.6,
-                          discord_file=True):
+                          discord_file: bool = True):
         """Merges two images together"""
         if if_url:
-            foreground = PIL.Image.open(BytesIO(await self.make_request(foreground))).convert('RGBA')
-            background = PIL.Image.open(BytesIO(await self.make_request(background))).convert('RGBA')
+            foreground = self.convert_image(foreground)
+            background = self.convert_image(background)
         result_bytes = BytesIO()
         width, height = background.size
 
@@ -91,9 +100,6 @@ class ImageManager:
             return discord.File(result_bytes, filename="mergedimage.png")
 
         return result
-
-    def create_card(self):
-        img = PIL.Image.new('RGB', (900, 238), color=(91, 95, 102))
 
     async def create_profile(self, user: discord.Member, rank: int, level: int, xp: int, next_level_xp: int = None,
                              current_level_xp: int = None, discord_file=True):
@@ -149,3 +155,10 @@ class ImageManager:
             return discord.File(result_bytes, filename="rankcard.png")
 
         return finalcard
+
+    async def greyscale(self, img, if_url: bool = False, discord_file: bool = False):
+        if if_url:
+            img = await self.convert_image(img)
+        if discord_file:
+            return discord.File(img.convert('LA'))
+        return img.convert('LA')
