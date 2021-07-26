@@ -23,7 +23,7 @@ class LevelingAccount:
         return f"<Account GUILD={self.guild}, MEMBER={self.member}, XP={self.xp}, LEVEL={self.level}>"
 
     def __lt__(self, other):
-        return self.net < other.net
+        return self.xp < other.xp
 
     @property
     def __checks(self):
