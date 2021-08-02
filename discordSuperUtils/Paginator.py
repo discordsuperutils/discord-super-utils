@@ -3,7 +3,7 @@ from math import ceil
 import discord
 
 
-def generate_embeds(list_to_generate, title, description, fields, color=0xff0000, string_format='{}'):
+def generate_embeds(list_to_generate, title, description, fields=25, color=0xff0000, string_format='{}'):
     num_of_embeds = ceil((len(list_to_generate) + 1) / fields)
 
     embeds = [
