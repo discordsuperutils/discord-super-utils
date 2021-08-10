@@ -43,8 +43,11 @@ class LevelingAccount:
 
     @property
     def percentage_next_level(self):
-        initial_rank_xp = 0 if self.level_up == 50 else self.level_up / self.rank_multiplier
-        return math.floor(abs(self.xp - initial_rank_xp) / (self.level_up - initial_rank_xp) * 100)
+        return math.floor(abs(self.xp - self.initial_rank_xp) / (self.next_level - self.initial_rank_xp) * 100)
+
+    @property
+    def initial_rank_xp(self):
+        return 0 if self.next_level == 50 else self.next_level / self.rank_multiplier
 
     @xp.setter
     def xp(self, value):
