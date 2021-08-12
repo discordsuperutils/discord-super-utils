@@ -1,5 +1,7 @@
-discord
-aiohttp
+discord~=1.7.3
+aiohttp~=3.7.4.post0
 sqlite3
-Pillow
+Pillow~=8.2.0
 youtube_dl
+setuptools~=56.0.0
+requests~=2.25.1
