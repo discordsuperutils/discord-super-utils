@@ -74,7 +74,7 @@ class ReactionManager(EventManager):
 
         try:
             await message.add_reaction(emoji)
-        except:
+        except Exception:
             raise EmojiError("Cannot add reaction to message.")
 
     def delete_reaction(self, guild, message, emoji):

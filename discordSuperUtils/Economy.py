@@ -60,7 +60,7 @@ class EconomyManager:
                                         self.table, self.generate_checks(member.guild.id, member.id))
 
     async def get_account(self, member: discord.Member):
-        member_data = self.select([], table_name, generate_checks(member.guild.id, member.id), True)
+        member_data = self.database.select([], self.table, self.generate_checks(member.guild.id, member.id), True)
 
         if member_data:
             return EconomyAccount(member.guild.id, member.id, self.database, self.table)

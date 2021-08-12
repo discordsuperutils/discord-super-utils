@@ -10,8 +10,7 @@ from io import BytesIO
 class ImageManager:
     def __init__(self, bot, txt_colour=None, card_back=1, custom_card_back: bool = False):
         self.bot = bot
-        txt_colour = (80, 92, 112) if not txt_colour else txt_colour
-        self.txt_colour = txt_colour  # tuple with rgb colour
+        self.txt_colour = (80, 92, 112) if not txt_colour else txt_colour
         self.default_bg = self.fetch_card_back(card_back, custom_card_back)
         self.online = self.load_asset('online.png')
         self.offline = self.load_asset('offline.png')
@@ -76,7 +75,7 @@ class ImageManager:
 
         width, height = avatar.size
         foreground = gay_image.convert('RGBA').resize((width, height), PIL.Image.ANTIALIAS)
-        img = discord.File(await self.merge_image(foreground, avatar, 0.4))
+        img = discord.File(await self.merge_image(foreground, avatar, blend_level=0.4))
 
         if discord_file:
             return discord.File(img, filename="Gay.png")
