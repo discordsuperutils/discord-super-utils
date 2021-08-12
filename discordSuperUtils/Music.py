@@ -97,7 +97,8 @@ class Player(discord.PCMVolumeTransformer):
     async def make_player(cls, query: str):
         data = await MusicManager.fetch_data(query)
         if data is None:
-            await self.call_event('on_music_error', ctx, FetchFailed("Failed to fetch query data."))
+            # await self.call_event('on_music_error', ctx, FetchFailed("Failed to fetch query data."))
+            # doesnt inherit EventManager so cant call on_music_error event!
             return []
 
         if 'entries' in data:
@@ -322,7 +323,7 @@ class MusicManager(EventManager):
         if not await self.__check_connection(ctx, check_playing=True, check_queue=True):
             return
 
-        self.queue[ctx.guild.id].loop = Loops.QUEUE_LOOP if self.queue[ctx.guild.id].loop != Loops.QUEUE_LOOP else\
+        self.queue[ctx.guild.id].loop = Loops.QUEUE_LOOP if self.queue[ctx.guild.id].loop != Loops.QUEUE_LOOP else \
             Loops.NO_LOOP
 
         if self.queue[ctx.guild.id].loop == Loops.QUEUE_LOOP:
