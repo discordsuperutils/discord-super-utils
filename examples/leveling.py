@@ -23,4 +23,18 @@ async def rank(ctx):
     member_data = LevelingManager.get_account(ctx.author)
     await ctx.send(f'You are currently level **{member_data.level}**, with **{member_data.xp}** XP.')
 
+
+@bot.command()
+async def leaderboard(ctx):
+    guild_leaderboard = LevelingManager.get_leaderboard(ctx.guild)
+    formatted_leaderboard = [f"Member: {x.member}, XP: {x.xp}" for x in guild_leaderboard]
+
+    await discordSuperUtils.PageManager(ctx, discordSuperUtils.generate_embeds(
+        formatted_leaderboard,
+        title="Leveling Leaderboard",
+        fields=25,
+        description=f"Leaderboard of {ctx.guild}"
+    )).run()
+
+
 bot.run("token")

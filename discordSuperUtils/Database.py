@@ -1,6 +1,7 @@
 import os
 import pymongo.database
 import sqlite3
+import psycopg2.extensions
 
 
 class UnsupportedDatabase(Exception):
@@ -85,12 +86,9 @@ class _MongoDatabase:
         return result
 
 
-class _SqliteDatabase:
+class _SqlDatabase:
     def __str__(self):
-        return f"<DATABASE '{self.name}'>"
-
-    def __repr__(self):
-        return f"<DATABASE {self.name}, PATH={self.path}, SIZE={self.size}, TABLES={', '.join(self.tables)}>"
+        return f"<SQL DATABASE>"
 
     def __with_commit(func):
         def inner(self, *args, **kwargs):
@@ -111,36 +109,15 @@ class _SqliteDatabase:
 
         return inner
 
-    def __init__(self, database: sqlite3.Connection):
+    def __init__(self, database):
         self.database = database
+        self.place_holder = DATABASE_TYPES[type(database)]["placeholder"]
 
     def commit(self):
         self.database.commit()
 
     def close(self):
         self.database.close()
-
-    @property
-    def size(self):
-        return os.stat(self.path).st_size
-
-    @property
-    @__with_cursor
-    def tables(self, cursor):
-        cursor.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
-        return [x[0] for x in cursor.fetchall()]
-
-    @property
-    @__with_cursor
-    def name(self, cursor):
-        cursor.execute("PRAGMA database_list")
-        return cursor.fetchall()[0][1]
-
-    @property
-    @__with_cursor
-    def path(self, cursor):
-        cursor.execute("PRAGMA database_list")
-        return cursor.fetchall()[0][2]
 
     def insertifnotexists(self, data, table_name, checks):
         response = self.select([], table_name, checks, True)
@@ -151,7 +128,7 @@ class _SqliteDatabase:
     @__with_cursor
     @__with_commit
     def insert(self, cursor, data, table_name):
-        query = f"INSERT INTO {table_name} ({', '.join(data.keys())}) VALUES ({', '.join(['?'] * len(data.values()))})"
+        query = f"INSERT INTO {table_name} ({', '.join(data.keys())}) VALUES ({', '.join([self.place_holder] * len(data.values()))})"
         cursor.execute(query, list(data.values()))
 
     @__with_cursor
@@ -160,11 +137,10 @@ class _SqliteDatabase:
         query = f'CREATE TABLE {"IF NOT EXISTS" if exists else ""} {table_name} ('
 
         for column in [] if columns is None else columns:
-            query += f"\n{column['name']} {column['type']},"
+            query += f"\n\"{column['name']}\" {column['type']},"
         query = query[:-1]
 
-        query += "\n)"
-
+        query += "\n);"
         cursor.execute(query)
 
     @__with_cursor
@@ -174,13 +150,13 @@ class _SqliteDatabase:
 
         if data:
             for key in data:
-                query += f"{key} = ?, "
+                query += f"{key} = {self.place_holder}, "
             query = query[:-2]
 
         if checks:
             query += "WHERE "
             for check in checks:
-                query += f"{check} = ? AND "
+                query += f"{check} = {self.place_holder} AND "
 
             query = query[:-4]
 
@@ -204,7 +180,7 @@ class _SqliteDatabase:
         if checks:
             query += "WHERE "
             for check in checks:
-                query += f"{list(check)[0]} = ? AND "
+                query += f"{list(check)[0]} = {self.place_holder} AND "
 
             query = query[:-4]
 
@@ -219,7 +195,7 @@ class _SqliteDatabase:
         if checks:
             query += "WHERE "
             for check in checks:
-                query += f"{check} = ? AND "
+                query += f"{check} = {self.place_holder} AND "
 
             query = query[:-4]
 
@@ -230,8 +206,9 @@ class _SqliteDatabase:
 
 
 DATABASE_TYPES = {
-    pymongo.database.Database: _MongoDatabase,
-    sqlite3.Connection: _SqliteDatabase
+    pymongo.database.Database: {"class": _MongoDatabase, "placeholder": None},
+    sqlite3.Connection: {"class": _SqlDatabase, "placeholder": '?'},
+    psycopg2.extensions.connection: {"class": _SqlDatabase, "placeholder": '%s'}
 }
 
 
@@ -246,4 +223,4 @@ class DatabaseManager:
         if type(database) not in DATABASE_TYPES:
             raise UnsupportedDatabase(f"Database of type {type(database)} is not supported by the database manager.")
 
-        return DATABASE_TYPES[type(database)](database)
+        return DATABASE_TYPES[type(database)]["class"](database)
