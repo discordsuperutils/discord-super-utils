@@ -5,6 +5,10 @@ from .Base import EventManager
 from typing import Optional
 import asyncio
 from enum import Enum
+from spotify_dl import spotify
+from spotipy import SpotifyClientCredentials
+import spotipy
+import re
 
 # should be .Base, koyashie use Base for testing
 
@@ -75,6 +79,10 @@ class InvalidSkipIndex(Exception):
     """Raises error when the skip index is < 0"""
 
 
+class PlaylistTooLarge(Exception):
+    """Raises error when Spotify playlist is too large"""
+
+
 class Loops(Enum):
     NO_LOOP = 0
     LOOP = 1
@@ -106,6 +114,20 @@ class Player(discord.PCMVolumeTransformer):
                                                **ffmpeg_options), data=player) for player in data['entries']]
 
         filename = data['url']
+        return [cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)]
+
+    @classmethod
+    async def generate_player(cls, query: str):
+        data = await MusicManager.fetch_data(query)
+        if data is None:
+            # await self.call_event('on_music_error', ctx, FetchFailed("Failed to fetch query data."))
+            # doesnt inherit EventManager so cant call on_music_error event!
+            return []
+
+        if 'entries' in data:
+            data = data['entries'][0]
+
+        filename = data['url']
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
 
 
@@ -128,10 +150,21 @@ class QueueManager:
 
 
 class MusicManager(EventManager):
-    def __init__(self, bot):
+    def __init__(self, bot, spotify_support=False, **kwargs):
         super().__init__()
         self.bot = bot
         self.queue = {}
+        self.client_id = kwargs.get('client_id')
+        self.client_secret = kwargs.get('client_secret')
+        self.spotify_reg = "^https://open.spotify.com/"
+        self.yt_reg = "^https://youtu.be/"
+        self.ytbe_reg = "^https://www.youtube.com/watch"
+        self.sc_reg = "^https://soundcloud.com/"
+        self.sc2_reg = "^https://soundcloud.app.goo.gl/"
+        if spotify_support:
+            self.sp = spotipy.Spotify(auth_manager=
+                                      SpotifyClientCredentials(client_id=self.client_id,
+                                                               client_secret=self.client_secret))
 
     async def __check_connection(self, ctx, check_playing: bool = False, check_queue: bool = False) -> Optional[bool]:
         if not ctx.voice_client or not ctx.voice_client.is_connected():
@@ -182,9 +215,29 @@ class MusicManager(EventManager):
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, lambda: ytdl.extract_info(query, download=False))
 
-    @staticmethod
-    async def create_player(query):
-        return await Player.make_player(query)
+    async def check_amount(self, url):
+        items = self.sp.playlist(playlist_id=url)
+        items = items['tracks']['items']
+        if len(items) > 50:
+            return False
+        return True
+
+    async def create_player(self, query):
+
+        if re.match(self.yt_reg, query) or re.match(self.ytbe_reg, query) or re.match(self.sc_reg, query) or re.match(
+                self.sc2_reg, query):
+            return await Player.make_player(query)
+        elif re.match(self.spotify_reg, query):
+            loop = asyncio.get_event_loop()
+            spottype = await loop.run_in_executor(None, lambda: spotify.parse_spotify_url(query))
+            if spottype[0] == 'playlist' and await self.check_amount(query):
+                data = await loop.run_in_executor(None, lambda: spotify.fetch_tracks(sp=self.sp, item_type=spottype[0],
+                                                                                     url=query))
+                return [await Player.generate_player(f"{song['name']} {song['artist']}") for song in data]
+            else:
+                raise PlaylistTooLarge("Spotify playlist too large!")
+        else:
+            return await Player.make_player(query)
 
     async def queue_add(self, player, ctx):
         """Adds specified player object to queue"""
