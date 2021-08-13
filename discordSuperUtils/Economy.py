@@ -55,7 +55,7 @@ class EconomyManager:
     def generate_checks(guild: int, member: int):
         return {'guild': guild, 'member': member}
 
-    async def create_account(self, member: discord.Member):
+    def create_account(self, member: discord.Member):
         self.database.insertifnotexists({"guild": member.guild.id,
                                          "member": member.id,
                                          "currency": 0,
@@ -63,7 +63,7 @@ class EconomyManager:
                                          },
                                         self.table, self.generate_checks(member.guild.id, member.id))
 
-    async def get_account(self, member: discord.Member):
+    def get_account(self, member: discord.Member):
         member_data = self.database.select([], self.table, self.generate_checks(member.guild.id, member.id), True)
 
         if member_data:
@@ -71,9 +71,9 @@ class EconomyManager:
 
         return None
 
-    async def get_leaderboard(self, guild):
+    def get_leaderboard(self, guild):
         guild_info = self.database.select([], self.table, {'guild': guild.id}, True)
-        members = [EconomyAccount(*member_info[:2],
+        members = [EconomyAccount(*list(member_info.values())[:2],
                                   database=self.database,
                                   table=self.table) for member_info in guild_info]
 

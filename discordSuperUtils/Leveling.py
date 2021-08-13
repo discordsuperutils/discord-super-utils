@@ -118,10 +118,10 @@ class LevelingManager(EventManager):
         return None
 
     def get_leaderboard(self, guild):
-        guild_info = self.database.select([], self.table, [{'guild': guild.id}], True)
+        guild_info = self.database.select([], self.table, {'guild': guild.id}, True)
         members = [LevelingAccount(self.database,
                                    self.table,
-                                   *member_info.values()[:2],
+                                   *list(member_info.values())[:2],
                                    rank_multiplier=self.rank_multiplier)
                    for member_info in guild_info]
 
