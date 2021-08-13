@@ -5,3 +5,4 @@ Pillow~=8.2.0
 youtube_dl
 setuptools~=56.0.0
 requests~=2.25.1
+pymongo[srv]>=3.12.0
