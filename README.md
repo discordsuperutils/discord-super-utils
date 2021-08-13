@@ -24,6 +24,15 @@ Features
 - Modern Image Manager (PIL).
 - Modern Invite Tracker.
 
+Installation
+--------------
+
+Installing discordSuperUtils is very easy.
+
+```sh
+python -m pip install discordSuperUtils
+```
+
 Examples
 --------------
 
