@@ -4,6 +4,8 @@
   <a href="#"><img src="https://img.shields.io/codefactor/grade/github/discordsuperutils/discord-super-utils?style=flat-square" /></a>
   <a href="https://discord.gg/zhwcpTBBeC"><img src="https://img.shields.io/discord/863388828734586880?logo=discord&color=blue&style=flat-square" /></a>
   <a href="https://pepy.tech/project/discordsuperutils"><img src="https://img.shields.io/pypi/dm/discordSuperUtils?color=green&style=flat-square" /></a>
+  <br></br>
+  <a href="https://discord-super-utils.gitbook.io/discord-super-utils/">Documentation</a>
 </p>
 
 <p align="center">
@@ -13,11 +15,13 @@
 Features
 -------------
 
-- Modern leveling manager.
+- Modern Leveling Manager.
 - Modern Music/Audio playing manager.
-- Modern Database manager (SQLite).
+- Modern Database manager (SQLite, MongoDB (More coming soon!)).
 - Modern Paginator.
 - Modern Reaction Manager.
+- Modern Economy Manager.
+- Modern Image Manager (PIL).
 
 Examples
 --------------
@@ -37,18 +41,18 @@ LevelingManager = discordSuperUtils.LevelingManager(database, 'xp', bot)
 
 @bot.event
 async def on_ready():
-    print('Leveling manager is ready.')
+    print('Leveling manager is ready.', bot.user)
 
 
 @LevelingManager.event()
 async def on_level_up(message, member_data):
-    await message.reply(f"You are now level {member_data['rank']}")
+    await message.reply(f"You are now level {member_data.level}")
 
 
 @bot.command()
 async def rank(ctx):
-    member_data = LevelingManager.get_member(ctx.author)
-    await ctx.send(f'You are currently level **{member_data["rank"]}**, with **{member_data["xp"]}** XP.')
+    member_data = LevelingManager.get_account(ctx.author)
+    await ctx.send(f'You are currently level **{member_data.level}**, with **{member_data.xp}** XP.')
 
 bot.run("token")
 ```
@@ -58,28 +62,32 @@ bot.run("token")
 ### Playing Example ### 
 
 ```py
-from discordSuperUtils import MusicManager
+import discordSuperUtils
 from discord.ext import commands
 
-
 bot = commands.Bot(command_prefix='-')
-MusicManager = MusicManager(bot)
+MusicManager = discordSuperUtils.MusicManager(bot)
 
 
-@MusicManager.event
+@MusicManager.event()
+async def on_music_error(ctx, error):
+    raise error  # add your error handling here! Errors are listed in the documentation.
+
+
+@MusicManager.event()
 async def on_play(ctx, player):
-    await ctx.send(f"Now playing: {player.title}")
+    await ctx.send(f"Playing {player}")
+
 
 @bot.event
 async def on_ready():
     print('Music manager is ready.', bot.user)
 
 
-
 @bot.command()
 async def leave(ctx):
     if await MusicManager.leave(ctx):
-        await ctx.send("Left Voice Channel Lol Gang Shit")
+        await ctx.send("Left Voice Channel")
 
 
 @bot.command()
@@ -91,7 +99,7 @@ async def np(ctx):
 @bot.command()
 async def join(ctx):
     if await MusicManager.join(ctx):
-        await ctx.send("Joined Voice Channel Lol Gang Shit!")
+        await ctx.send("Joined Voice Channel")
 
 
 @bot.command()
@@ -107,14 +115,46 @@ async def play(ctx, *, query: str):
 async def volume(ctx, volume: int):
     await MusicManager.volume(ctx, volume)
 
+
 @bot.command()
 async def loop(ctx):
     is_loop = await MusicManager.loop(ctx)
     await ctx.send(f"Looping toggled to {is_loop}")
 
+
 @bot.command()
-async def stop(ctx):
-    ctx.voice_client.stop()
+async def queueloop(ctx):
+    is_loop = await MusicManager.queueloop(ctx)
+    await ctx.send(f"Queue looping toggled to {is_loop}")
+
+
+@bot.command()
+async def history(ctx):
+    embeds = discordSuperUtils.generate_embeds(await MusicManager.history(ctx),
+                                               "Song History",
+                                               "Shows all played songs",
+                                               25,
+                                               string_format="Title: {}")
+
+    page_manager = discordSuperUtils.PageManager(ctx, embeds, public=True)
+    await page_manager.run()
+
+
+@bot.command()
+async def skip(ctx, index: int = None):
+    await MusicManager.skip(ctx, index)
+
+
+@bot.command()
+async def queue(ctx):
+    embeds = discordSuperUtils.generate_embeds(MusicManager.get_queue(ctx),
+                                               "Queue",
+                                               f"Now Playing: {await MusicManager.now_playing(ctx)}",
+                                               25,
+                                               string_format="Title: {}")
+
+    page_manager = discordSuperUtils.PageManager(ctx, embeds, public=True)
+    await page_manager.run()
 
 
 bot.run("token")
@@ -124,11 +164,14 @@ bot.run("token")
 
 ```py
 import discordSuperUtils
+import pymongo
 import sqlite3
 
+mongo_database = discordSuperUtils.DatabaseManager(pymongo.MongoClient("connection string")["DATABASENAME"])
+sqlite_database = discordSuperUtils.DatabaseManager(sqlite3.connect("database"))
 
-database = discordSuperUtils.DatabaseManager(sqlite3.connect("database"))
-values = database.select(keys=['guild'], table_name='xp', checks=[{'guild': 1}], fetchall=True) 
+values = sqlite_database.insert({"guild": ..., "member": ...}, "table")
+print(values)
 ```
 
 ### Paginator Example ###  
@@ -158,42 +201,6 @@ async def paginator(ctx):
     ]
 
     await discordSuperUtils.PageManager(ctx, messages).run()
-
-
-bot.run("token")
-```
-
-### Reaction Manager Example ###
-
-```py
-import sqlite3
-import discord
-import discordSuperUtils
-from discord.ext import commands
-
-database = discordSuperUtils.DatabaseManager(sqlite3.connect("database"))
-bot = commands.Bot(command_prefix='-')
-ReactionManager = discordSuperUtils.ReactionManager(database, 'reaction_roles', bot)
-
-
-@ReactionManager.event()
-async def on_reaction_event(guild, channel, message, member, emoji):
-    """This event will be run if there isn't a role to add to the member."""
-
-    if ...:
-        print("Created ticket.")
-
-
-@bot.event
-async def on_ready():
-    print('Reaction manager is ready.', bot.user)
-
-
-@bot.command()
-async def reaction(ctx, message, emoji: str, remove_on_reaction, role: discord.Role = None):
-    message = await ctx.channel.fetch_message(message)
-
-    await ReactionManager.create_reaction(ctx.guild, message, role, emoji, remove_on_reaction)
 
 
 bot.run("token")
