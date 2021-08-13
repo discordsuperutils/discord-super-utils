@@ -22,6 +22,7 @@ Features
 - Modern Reaction Manager.
 - Modern Economy Manager.
 - Modern Image Manager (PIL).
+- Modern Invite Tracker.
 
 Examples
 --------------
