@@ -14,8 +14,9 @@ async def on_ready():
 @bot.event
 async def on_member_join(member):
     invite = await InviteTracker.get_invite(member)
-    channel = bot.get_channel(...)
     inviter = await InviteTracker.fetch_inviter(invite)
+
+    channel = bot.get_channel(...)
     await channel.send(f"{member.mention} was invited by {inviter.mention if inviter else None} with code {invite.code}")
 
 
