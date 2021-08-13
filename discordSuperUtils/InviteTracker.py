@@ -42,4 +42,3 @@ class InviteTracker:
         invite = self.check_invites(invite)
 
 # Started work on InviteTracker Class. I am tired, I'll finish tomorrow cause, I don't wanna mess up my sleep schedule.
-
