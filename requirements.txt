@@ -6,6 +6,5 @@ youtube_dl
 setuptools~=56.0.0
 requests~=2.25.1
 pymongo[srv]>=3.12.0
-discordSuperUtils~=0.1.2
 psycopg2~=2.9.1
 spotipy~=2.18.0
