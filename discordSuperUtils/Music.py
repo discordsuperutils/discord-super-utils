@@ -222,11 +222,11 @@ class MusicManager(EventManager):
             return False
         return True
 
-    async def create_player(self, query):
-
+    async def create_player(self, ctx, query):
         if re.match(self.yt_reg, query) or re.match(self.ytbe_reg, query) or re.match(self.sc_reg, query) or re.match(
                 self.sc2_reg, query):
             return await Player.make_player(query)
+
         elif re.match(self.spotify_reg, query):
             loop = asyncio.get_event_loop()
             spottype = await loop.run_in_executor(None, lambda: spotify.parse_spotify_url(query))
@@ -234,8 +234,10 @@ class MusicManager(EventManager):
                 data = await loop.run_in_executor(None, lambda: spotify.fetch_tracks(sp=self.sp, item_type=spottype[0],
                                                                                      url=query))
                 return [await Player.generate_player(f"{song['name']} {song['artist']}") for song in data]
+
             else:
-                raise PlaylistTooLarge("Spotify playlist too large!")
+                await self.call_event('on_music_error', ctx, PlaylistTooLarge("Spotify playlist too large!"))
+
         else:
             return await Player.make_player(query)
 

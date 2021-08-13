@@ -2,11 +2,11 @@ import discordSuperUtils
 from discord.ext import commands
 from discordSuperUtils import MusicManager
 
-client_id="579dde2c1fe64feca4f3bd22e9a92ef9"
-client_secret="876b40c7928e4d43bd07ae5f438794b6"
+client_id = ...
+client_secret = ...
 
 bot = commands.Bot(command_prefix='-')
-MusicManager = MusicManager(bot, spotify_support=True,client_id=client_id, client_secret=client_secret)
+MusicManager = MusicManager(bot, spotify_support=True, client_id=client_id, client_secret=client_secret)
 
 
 @MusicManager.event()
@@ -44,7 +44,7 @@ async def join(ctx):
 
 @bot.command()
 async def play(ctx, *, query: str):
-    player = await MusicManager.create_player(query)
+    player = await MusicManager.create_player(ctx, query)
     await MusicManager.queue_add(player=player, ctx=ctx)
 
     if not await MusicManager.play(ctx):
