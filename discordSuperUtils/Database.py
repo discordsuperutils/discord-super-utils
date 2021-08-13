@@ -156,7 +156,7 @@ class DatabaseManager:
 
                 query = query[:-4]
 
-            cursor.execute(query, list(data.values() + checks.values()))
+            cursor.execute(query, list(data.values()) + list(checks.values()))
         elif self.database_type == DatabaseTypes.MONGO:
             return self.database[table_name].update_one(checks, {"$set": data})
 
