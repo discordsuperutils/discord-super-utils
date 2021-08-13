@@ -3,7 +3,7 @@ import discord
 import discordSuperUtils
 from discord.ext import commands
 
-database = discordSuperUtils.DatabaseManager(sqlite3.connect("database"))
+database = discordSuperUtils.DatabaseManager.connect(sqlite3.connect("database"))
 bot = commands.Bot(command_prefix='-')
 ReactionManager = discordSuperUtils.ReactionManager(database, 'reaction_roles', bot)
 
