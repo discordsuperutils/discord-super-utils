@@ -21,21 +21,17 @@ class ReactionManager(EventManager):
     def format_data(cls, data):
         return {key: value for key, value in zip(reaction_keys, data)}
 
-    @classmethod
-    def checks(cls, **kwargs):
-        return [{key: value} for key, value in kwargs.items()]
-
     def __create_table(self, names, types, table_name):
         columns = [{'name': x, 'type': y} for x, y in zip(names, types)]
-        self.database.createtable(table_name, columns, True)
+        self.database.create_table(table_name, columns, True)
 
     async def __handle_reactions(self, payload):
         if payload.user_id == self.bot.user.id:
             return
 
-        database_checks = self.checks(guild=payload.guild_id,
-                                      message=payload.message_id,
-                                      emoji=payload.emoji.id if payload.emoji.id is not None else str(payload.emoji))
+        database_checks = {'guild': payload.guild_id,
+                           'message': payload.message_id,
+                           'emoji': payload.emoji.id if payload.emoji.id is not None else str(payload.emoji)}
 
         reaction_role_data = self.database.select(reaction_keys, self.table, database_checks)
 
@@ -61,13 +57,13 @@ class ReactionManager(EventManager):
                     await payload.member.remove_roles(role)
 
     async def create_reaction(self, guild, message, role, emoji, remove_on_reaction):
-        self.database.insertifnotexists(reaction_keys, [
+        self.database.insertifnotexists(dict(zip(reaction_keys, [
             guild.id,
             message.id,
             role.id if role is not None else role,
             emoji,
             remove_on_reaction
-        ], self.table, self.checks(guild=guild.id, message=message.id, emoji=emoji))
+        ])), self.table, {'guild': guild.id, 'message': message.id, 'emoji': emoji})
 
         if len(emoji) > 1:
             emoji = self.bot.get_emoji(emoji)
@@ -78,8 +74,8 @@ class ReactionManager(EventManager):
             raise EmojiError("Cannot add reaction to message.")
 
     def delete_reaction(self, guild, message, emoji):
-        self.database.delete(self.table, self.checks(guild=guild.id, message=message.id, emoji=emoji))
+        self.database.delete(self.table, {'guild': guild.id, 'message': message.id, 'emoji': emoji})
 
     def get_reactions(self, **kwargs):
-        reactions = self.database.select(reaction_keys, self.table, self.checks(**kwargs), True)
+        reactions = self.database.select(reaction_keys, self.table, kwargs, True)
         return [self.format_data(reaction) for reaction in reactions]

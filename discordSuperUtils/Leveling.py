@@ -31,15 +31,15 @@ class LevelingAccount:
 
     @property
     def xp(self):
-        return self.database.select(['xp'], self.table, self.__checks)[0]
+        return self.database.select(['xp'], self.table, self.__checks)["xp"]
 
     @property
     def level(self):
-        return self.database.select(['rank'], self.table, self.__checks)[0]
+        return self.database.select(['rank'], self.table, self.__checks)["rank"]
 
     @property
     def next_level(self):
-        return self.database.select(['level_up'], self.table, self.__checks)[0]
+        return self.database.select(['level_up'], self.table, self.__checks)["level_up"]
 
     @property
     def percentage_next_level(self):
@@ -51,15 +51,15 @@ class LevelingAccount:
 
     @xp.setter
     def xp(self, value):
-        self.database.update(['xp'], [value], self.table, self.__checks)
+        self.database.update({"xp": value}, self.table, self.__checks)
 
     @level.setter
     def level(self, value):
-        self.database.update(['rank'], [value], self.table, self.__checks)
+        self.database.update({"rank": value}, self.table, self.__checks)
 
     @next_level.setter
     def next_level(self, value):
-        self.database.update(['level_up'], [value], self.table, self.__checks)
+        self.database.update({"level_up": value}, self.table, self.__checks)
 
 
 class LevelingManager(EventManager):
@@ -74,11 +74,11 @@ class LevelingManager(EventManager):
 
         self.cooldown_members = {}
         self.bot.add_listener(self.__handle_experience, "on_message")
-        self.database.createtable(self.table, [{'name': key, 'type': 'INTEGER'} for key in database_keys], True)
+        self.database.create_table(self.table, [{'name': key, 'type': 'INTEGER'} for key in database_keys], True)
 
     @staticmethod
     def generate_checks(guild: int, member: int):
-        return [{'guild': guild}, {'member': member}]
+        return {'guild': guild, 'member': member}
 
     async def __handle_experience(self, message):
         if not message.guild or message.author.bot:
@@ -106,8 +106,8 @@ class LevelingManager(EventManager):
                 loop.create_task(self.call_event('on_level_up', message, member_account))
 
     def create_account(self, member):
-        self.database.insertifnotexists(database_keys, [member.guild.id, member.id, 1, 0, 50],
-                                        self.table, [{'guild': member.guild.id}, {'member': member.id}])
+        self.database.insertifnotexists(dict(zip(database_keys, [member.guild.id, member.id, 1, 0, 50])), self.table,
+                                        self.generate_checks(member.guild.id, member.id))
 
     def get_account(self, member):
         member_data = self.database.select([], self.table, self.generate_checks(member.guild.id, member.id), True)
@@ -119,7 +119,7 @@ class LevelingManager(EventManager):
 
     def get_leaderboard(self, guild):
         guild_info = self.database.select([], self.table, [{'guild': guild.id}], True)
-        members = [LevelingAccount(self.database, self.table, *member_info[:2], self.rank_multiplier)
+        members = [LevelingAccount(self.database, self.table, *member_info.values()[:2], self.rank_multiplier)
                    for member_info in guild_info]
 
         members.sort()
