@@ -6,10 +6,10 @@ database_keys = ['guild', 'member', 'currency', 'bank']
 
 
 class EconomyAccount:
-    def __init__(self, guild: int, member: int, database: DatabaseManager, table):
+    def __init__(self, guild: int, member: int, db: DatabaseManager, table):
         self.guild = guild
         self.member = member
-        self.database = database
+        self.database = db
         self.table = table
 
     def __str__(self):
@@ -49,14 +49,18 @@ class EconomyManager:
         self.database = database
         self.table = table
         self.bot = bot
-        self.database.createtable(self.table, [{'name': key, 'type': 'INTEGER'} for key in database_keys], True)
+        self.database.create_table(self.table, [{'name': key, 'type': 'INTEGER'} for key in database_keys], True)
 
     @staticmethod
     def generate_checks(guild: int, member: int):
         return [{'guild': guild}, {'member': member}]
 
     async def create_account(self, member: discord.Member):
-        self.database.insertifnotexists(database_keys, [member.guild.id, member.id, 0, 0],
+        self.database.insertifnotexists({"guild": member.guild.id,
+                                         "member": member.id,
+                                         "currency": 0,
+                                         "bank": 0
+                                         },
                                         self.table, self.generate_checks(member.guild.id, member.id))
 
     async def get_account(self, member: discord.Member):
@@ -69,7 +73,7 @@ class EconomyManager:
 
     async def get_leaderboard(self, guild):
         guild_info = self.database.select([], self.table, [{'guild': guild.id}], True)
-        members = [EconomyAccount(*member_info[:2], self.database, self.table) for member_info in guild_info]
+        members = [EconomyAccount(*member_info[:2], db=self.database, table=self.table) for member_info in guild_info]
 
         members.sort()
         return members
