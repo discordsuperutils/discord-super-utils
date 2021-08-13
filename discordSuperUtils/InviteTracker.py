@@ -46,14 +46,13 @@ class InviteTracker:
     async def get_invite(self, member: discord.Member):
         for inv in await member.guild.invites():
             for invite in self.cache[member.guild.id]:
-                if not invite.revoked:
-                    if invite.code == inv.code and inv.uses - invite.uses == 1:
-                        await self.__update_guild_cache(member.guild)
-                        return inv
+                if invite.revoked:
+                    self.cache[invite.guild.id].remove(invite)
+                    return
 
-                else:
-                    if invite in self.cache[invite.guild.id]:
-                        self.cache[invite.guild.id].remove(invite)
+                if invite.code == inv.code and inv.uses - invite.uses == 1:
+                    await self.__update_guild_cache(member.guild)
+                    return inv
 
     async def get_user_invites(self, member: discord.Member):
         """Returns a list of invite objects that the user created"""
