@@ -5,6 +5,7 @@ from .Paginator import PageManager, generate_embeds
 from .ReactionRoles import ReactionManager
 from .Economy import EconomyManager, EconomyAccount
 from .Imaging import ImageManager
+from .InviteTracker import InviteTracker
 
 __title__ = "discordSuperUtils"
 __version__ = "0.0.1"
