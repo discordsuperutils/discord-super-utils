@@ -241,8 +241,8 @@ class DatabaseManager:
     database MUST be of type sqlite3 or mongodb
     """
 
-    @classmethod
-    def connect(cls, database):
+    @staticmethod
+    def connect(database):
         if type(database) not in DATABASE_TYPES:
             raise UnsupportedDatabase(f"Database of type {type(database)} is not supported by the database manager.")
 
