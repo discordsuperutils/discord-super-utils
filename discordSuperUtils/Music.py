@@ -106,7 +106,7 @@ class Player(discord.PCMVolumeTransformer):
                                                **ffmpeg_options), data=player) for player in data['entries']]
 
         filename = data['url']
-        return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
+        return [cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)]
 
 
 class QueueManager:
