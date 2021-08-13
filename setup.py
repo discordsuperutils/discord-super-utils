@@ -15,7 +15,7 @@ setup(
   author = 'koyashie07 and adam7100',
   url = 'https://github.com/koyashie07/discord-super-utils',
   download_url = 'https://github.com/discordsuperutils/discord-super-utils/archive/refs/tags/v0.1.0.tar.gz',
-  keywords = ['discord', 'easy', 'discord.py', 'music', 'download', 'links', 'images', 'videos','audio', 'bot','paginator','economy','reaction','reaction roles'],
+  keywords = ['discord', 'easy', 'discord.py', 'music', 'download', 'links', 'images', 'videos','audio', 'bot','paginator','economy','reaction','reaction roles', 'database', 'database manager'],
   install_requires=[
           'youtube-dl',
           'discord.py'
