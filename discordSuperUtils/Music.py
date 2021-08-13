@@ -250,14 +250,14 @@ class MusicManager(EventManager):
             await self.call_event('on_music_error', ctx, QueueError("Failure when removing player from queue"))
 
     async def lyrics(self, ctx, query=None):
-        query = self.now_playing(ctx) if query is None else query
+        query = await self.now_playing(ctx) if query is None else query
         url = f"https://some-random-api.ml/lyrics?title={query}"
 
         async with aiohttp.ClientSession() as session:
             request = await session.get(url)
             request_json = await request.json()
 
-            return await request_json.get('lyrics', None)
+            return request_json.get('lyrics', None)
 
     async def play(self, ctx, player=None):
         if not await self.__check_connection(ctx):

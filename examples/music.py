@@ -80,6 +80,15 @@ async def history(ctx):
 async def skip(ctx, index: int = None):
     await MusicManager.skip(ctx, index)
 
+@bot.command()
+async def lyrics(ctx, query= None):
+    lyrics = await MusicManager.lyrics(ctx, query)
+
+    if lyrics:
+        await ctx.send(lyrics)
+    else:
+        await ctx.send("No lyrics found")
+
 
 @bot.command()
 async def queue(ctx):
