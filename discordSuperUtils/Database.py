@@ -134,7 +134,7 @@ class _SqlDatabase:
     @__with_cursor
     @__with_commit
     def create_table(self, cursor, table_name, columns=None, exists=False):
-        query = f'CREATE TABLE {"IF NOT EXISTS" if exists else ""} {table_name} ('
+        query = f'CREATE TABLE {"IF NOT EXISTS" if exists else ""} \"{table_name}\" ('
 
         for column in [] if columns is None else columns:
             query += f"\n\"{column['name']}\" {column['type']},"
