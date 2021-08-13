@@ -5,6 +5,8 @@ from .Base import EventManager
 from typing import Optional
 import asyncio
 from enum import Enum
+from spotdl.search import SpotifyClient 
+from spotdl.parsers import parse_query
 
 # should be .Base, koyashie use Base for testing
 
@@ -80,6 +82,13 @@ class Loops(Enum):
     LOOP = 1
     QUEUE_LOOP = 2
 
+# Initialize spotify client
+SpotifyClient.init(
+    client_id="5f573c9620494bae87890c0f08a60293",
+    client_secret="212476d9b0f3472eaa762d90b19b0ba8",
+    user_auth=False
+)
+
 
 class Player(discord.PCMVolumeTransformer):
     def __init__(self, source, *, data, volume=0.1):
@@ -95,18 +104,29 @@ class Player(discord.PCMVolumeTransformer):
 
     @classmethod
     async def make_player(cls, query: str):
-        data = await MusicManager.fetch_data(query)
+
+        if query.startswith("https://open.spotify.com/"):
+            data = await MusicManager.fetch_spotify_data(query)
+
+        elif query.startswith("http://youtube.com/"):
+            data = await MusicManager.fetch_youtube_data(query)
+        else:
+            data = None
+            
         if data is None:
             # await self.call_event('on_music_error', ctx, FetchFailed("Failed to fetch query data."))
             # doesnt inherit EventManager so cant call on_music_error event!
             return []
 
-        if 'entries' in data:
-            return [cls(discord.FFmpegPCMAudio(player['url'],
-                                               **ffmpeg_options), data=player) for player in data['entries']]
+        if type(data) is list:
+            return [cls(discord.FFmpegPCMAudio(d['url'], **ffmpeg_options), data=d) for d in data if d is not None]
+        elif type(data) is dict:
+            if 'entries' in data:
+                return [cls(discord.FFmpegPCMAudio(player['url'],
+                                                    **ffmpeg_options), data=player) for player in data['entries']]
 
-        filename = data['url']
-        return [cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)]
+            filename = data['url']
+            return [cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)]
 
 
 class QueueManager:
@@ -178,9 +198,32 @@ class MusicManager(EventManager):
             return
 
     @staticmethod
-    async def fetch_data(query: str):
+    async def fetch_youtube_data(query: str):
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, lambda: ytdl.extract_info(query, download=False))
+
+    @staticmethod
+    async def fetch_spotify_data(query: str):
+        loop = asyncio.get_event_loop()
+        
+        def extract_info(query):
+            song_list = parse_query(
+                [query],
+                "mp3",
+                False,
+                False,
+                1
+            )
+
+            if len(song_list) == 1:
+                return ytdl.extract_info(song_list[0].youtube_link, download=False)
+            else:
+                return [
+                    ytdl.extract_info(song.youtube_link, download=False)
+                    for song in song_list
+                ]
+
+        return await loop.run_in_executor(None, lambda: extract_info(query))
 
     @staticmethod
     async def create_player(query):
