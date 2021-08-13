@@ -72,7 +72,8 @@ class DatabaseManager:
     def size(self):
         if DATABASE_CONFIG[self.database_type]["SQL"]:
             return os.stat(self.path).st_size
-        elif self.database_type == DatabaseTypes.MONGO:
+
+        if self.database_type == DatabaseTypes.MONGO:
             return self.database.command('dbstats')['dataSize']
 
     @property
@@ -81,7 +82,8 @@ class DatabaseManager:
         if DATABASE_CONFIG[self.database_type]["SQL"]:
             cursor.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
             return [x[0] for x in cursor.fetchall()]
-        elif self.database_type == DatabaseTypes.MONGO:
+
+        if self.database_type == DatabaseTypes.MONGO:
             return self.database.list_collection_names()
 
     @property
@@ -90,7 +92,8 @@ class DatabaseManager:
         if DATABASE_CONFIG[self.database_type]["SQL"]:
             cursor.execute("PRAGMA database_list")
             return cursor.fetchall()[0][1]
-        elif self.database_type == DatabaseTypes.MONGO:
+
+        if self.database_type == DatabaseTypes.MONGO:
             return self.database.name
 
     @property
@@ -99,7 +102,8 @@ class DatabaseManager:
         if DATABASE_CONFIG[self.database_type]["SQL"]:
             cursor.execute("PRAGMA database_list")
             return cursor.fetchall()[0][2]
-        elif self.database_type == DatabaseTypes.MONGO:
+
+        if self.database_type == DatabaseTypes.MONGO:
             return None
 
     def insertifnotexists(self, data, table_name, checks):
@@ -114,7 +118,9 @@ class DatabaseManager:
         if DATABASE_CONFIG[self.database_type]["SQL"]:
             query = f"INSERT INTO {table_name} ({', '.join(data.keys())}) VALUES ({', '.join(['?'] * len(data.values()))})"
             cursor.execute(query, list(data.values()))
-        elif self.database_type == DatabaseTypes.MONGO:
+            return
+
+        if self.database_type == DatabaseTypes.MONGO:
             return self.database[table_name].insert_one(data)
 
     @__with_cursor
@@ -132,7 +138,9 @@ class DatabaseManager:
             query += "\n)"
 
             cursor.execute(query)
-        elif self.database_type == DatabaseTypes.MONGO:
+            return
+
+        if self.database_type == DatabaseTypes.MONGO:
             if exists and table_name in self.tables:
                 return
 
@@ -157,7 +165,9 @@ class DatabaseManager:
                 query = query[:-4]
 
             cursor.execute(query, list(data.values()) + list(checks.values()))
-        elif self.database_type == DatabaseTypes.MONGO:
+            return
+
+        if self.database_type == DatabaseTypes.MONGO:
             return self.database[table_name].update_one(checks, {"$set": data})
 
     def updateorinsert(self, data, table_name, checks, insert_data):
@@ -165,8 +175,8 @@ class DatabaseManager:
 
         if len(response) == 1:
             return self.update(data, table_name, checks)
-        else:
-            return self.insert(insert_data, table_name)
+
+        return self.insert(insert_data, table_name)
 
     @__with_cursor
     @__with_commit
@@ -205,7 +215,8 @@ class DatabaseManager:
             columns = [x[0] for x in cursor.description]
 
             return [dict(zip(columns, x)) for x in cursor.fetchall()] if fetchall else dict(zip(columns, cursor.fetchone()))
-        elif self.database_type == DatabaseTypes.MONGO:
+
+        if self.database_type == DatabaseTypes.MONGO:
             if fetchall:
                 fetch = list(self.database[table_name].find(checks))
                 result = []
