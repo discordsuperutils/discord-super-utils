@@ -1,4 +1,23 @@
 import asyncio
+import sqlite3
+
+import psycopg2.extensions
+import pymongo.database
+
+DATABASE_TYPES = {
+    pymongo.database.Database: None,  # mongo does not require any columns
+    sqlite3.Connection: {"snowflake": "INTEGER", "string": 'TEXT', "number": "INTEGER", "smallnumber": "INTEGER"},
+    psycopg2.extensions.connection: {"snowflake": "bigint", "string": 'character varying', "number": "integer", "smallnumber": "smallint"}
+}
+
+
+def generate_column_types(types, database_type):
+    database_type_configuration = DATABASE_TYPES.get(database_type)
+
+    if database_type_configuration is None:
+        return
+
+    return [database_type_configuration[x] for x in types]
 
 
 class EventManager:

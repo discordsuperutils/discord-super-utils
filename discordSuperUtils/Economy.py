@@ -1,12 +1,9 @@
-from .Database import DatabaseManager
 import discord
-
-
-database_keys = ['guild', 'member', 'currency', 'bank']
+from .Base import generate_column_types
 
 
 class EconomyAccount:
-    def __init__(self, guild: int, member: int, database: DatabaseManager, table):
+    def __init__(self, guild: int, member: int, database, table):
         self.guild = guild
         self.member = member
         self.database = database
@@ -45,11 +42,18 @@ class EconomyAccount:
 
 
 class EconomyManager:
-    def __init__(self, database: DatabaseManager, table, bot):
+    def __init__(self, database, table, bot):
         self.database = database
         self.table = table
         self.bot = bot
-        self.database.create_table(self.table, [{'name': key, 'type': 'INTEGER'} for key in database_keys], True)
+        self.keys = ['guild', 'member', 'currency', 'bank']
+
+        self.__create_table()
+
+    def __create_table(self):
+        types = generate_column_types(['snowflake', 'snowflake', 'snowflake', 'snowflake'], type(self.database.database))
+        columns = [{'name': x, 'type': y} for x, y in zip(self.keys, types)] if types else None
+        self.database.create_table(self.table, columns, True)
 
     @staticmethod
     def generate_checks(guild: int, member: int):

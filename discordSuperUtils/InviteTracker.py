@@ -28,89 +28,58 @@ class InviteUser:
 
     @property
     def users_invited(self):
-        amt = 0
-        for code in self.invite_list:
-            amt += int(code.uses)
-        return amt
+        return sum([int(code.uses) for code in self.invite_list])
 
 
 class InviteTracker:
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.cache = {}
-        self.bot.add_listener(self.setcache, 'on_ready')
-        self.bot.add_listener(self.remove_guildcache, 'on_guild_remove')
-        self.bot.add_listener(self.updateguildcache, 'on_guild_add')
-        self.bot.add_listener(self.updatecache, 'on_invite_create')
-        self.bot.add_listener(self.removecache, 'on_invite_delete')
 
-    @classmethod
-    async def get_code(cls, invite: discord.Invite):
-        for inv in await invite.guild.invites():
-            if inv.code == invite.code:
-                return invite
+        self.bot.loop.create_task(self.__initialize_cache())
 
-    @classmethod
-    async def check_invites(cls, invite: discord.Invite):
-        invite = await cls.get_code(invite)
-        for inv in await invite.guild.invites():
-            if invite.uses > inv.uses and inv.code == invite.code:
-                return invite
+        self.bot.add_listener(self.__cleanup_guild_cache, 'on_guild_remove')
+        self.bot.add_listener(self.__update_guild_cache, 'on_guild_add')
+        self.bot.add_listener(self.__track_invite, 'on_invite_create')
+        self.bot.add_listener(self.__cleanup_invite, 'on_invite_delete')
 
-    async def getinvite(self, member: discord.Member):
-        for invite in self.cache[member.guild.id].values():
-            for inv in await member.guild.invites():
-                if not invite.revoked:
-                    if invite.code == inv.code and inv.uses - invite.uses == 1:
-                        self.cache[member.guild.id][invite.code].uses += 1
-                        return inv
-                    else:
-                        return None
-                else:
-                    self.cache[member.guild.id].pop(invite.code)
-                    return None
+    async def get_invite(self, member: discord.Member):
+        for inv in await member.guild.invites():
+            for invite in self.cache[member.guild.id]:
+                if invite.revoked:
+                    self.cache[invite.guild.id].remove(invite)
+                    return
+
+                if invite.code == inv.code and inv.uses - invite.uses == 1:
+                    await self.__update_guild_cache(member.guild)
+                    return inv
 
     async def get_user_invites(self, member: discord.Member):
         """Returns a list of invite objects that the user created"""
-        invites = []
-        for invite in self.cache[member.guild.id].values():
-            if invite.inviter.id == member.id:
-                invites.append(invite)
-        return invites
+        return [invite for invite in self.cache[member.guild.id] if invite.inviter.id == member.id]
 
-    # Cache updates ---------------------------------------------
+    async def __initialize_cache(self):
+        await self.bot.wait_until_ready()
 
-    async def setcache(self):
-        data = {}
         for guild in self.bot.guilds:
-            for invite in await guild.invites():
-                data[invite.code] = invite
-            self.cache[guild.id] = data
+            self.cache[guild.id] = await guild.invites()
 
-    async def updateguildcache(self, guild: discord.Guild):
-        data = {}
-        for invite in await guild.invites():
-            data[invite.code] = invite
-        self.cache[guild.id] = data
+    async def __update_guild_cache(self, guild: discord.Guild):
+        self.cache[guild.id] = await guild.invites()
 
-    async def updatecache(self, invite: discord.Invite):
-        self.cache[invite.guild.id][invite.code] = invite
+    async def __track_invite(self, invite: discord.Invite):
+        self.cache[invite.guild.id].append(invite)
 
-    async def removecache(self, invite: discord.Invite):
-        self.cache[invite.guild.id].pop(invite.code)
+    async def __cleanup_invite(self, invite: discord.Invite):
+        if invite in self.cache[invite.guild.id]:
+            self.cache[invite.guild.id].remove(invite)
 
-    async def remove_guildcache(self, guild: discord.Guild):
+    async def __cleanup_guild_cache(self, guild: discord.Guild):
         self.cache.pop(guild.id)
 
-    # cache updates ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-    async def fetch_inviter(self, member: discord.Member):
-        """Can be called in on_member_join. Fetches the member object of the user that created the invite"""
-        invite = await self.getinvite(member)
-        return member.guild.get_member(invite.inviter.id)
+    async def fetch_inviter(self, invite: discord.Invite):
+        return await self.bot.fetch_user(invite.inviter.id)
 
     async def fetch_user_info(self, member: discord.Member):
         """Returns InviteUser Object"""
         return InviteUser(member, await self.get_user_invites(member))
-
-# Started work on InviteTracker Class. I am tired, I'll finish tomorrow cause, I don't wanna mess up my sleep schedule.

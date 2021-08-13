@@ -1,27 +1,28 @@
 import discord
-from discordSuperUtils import InviteTracker
+import discordSuperUtils
 from discord.ext import commands
 
-bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
-inv = InviteTracker(bot)
+bot = commands.Bot(command_prefix="-", intents=discord.Intents.all())
+InviteTracker = discordSuperUtils.InviteTracker(bot)
 
 
 @bot.event
 async def on_ready():
-    print(f"ready")
+    print('Invite tracker is ready.', bot.user)
 
 
 @bot.event
 async def on_member_join(member):
-    inviter = await inv.fetch_inviter(member)
-    channel = bot.get_channel(844031582305648701)
-    await channel.send(f"{member.mention} was invited by {inviter.mention}")
+    invite = await InviteTracker.get_invite(member)
+    inviter = await InviteTracker.fetch_inviter(invite)
+
+    channel = bot.get_channel(...)
+    await channel.send(f"{member.mention} was invited by {inviter.mention if inviter else None} with code {invite.code}")
 
 
 @bot.command()
 async def info(ctx, member: discord.Member = None):
     member = ctx.author if not member else member
-    data = await inv.fetch_user_info(member)
-    await ctx.send(data)
+    await ctx.send(await InviteTracker.fetch_user_info(member))
 
 bot.run("token")
