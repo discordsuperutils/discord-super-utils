@@ -12,7 +12,6 @@ class InviteTracker:
         self.bot.add_listener(self.updatecache, 'on_invite_create')
         self.bot.add_listener(self.removecache, 'on_invite_delete')
 
-
     @classmethod
     async def get_code(cls, invite: discord.Invite):
         for inv in await invite.guild.invites():
