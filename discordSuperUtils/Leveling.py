@@ -1,15 +1,11 @@
-from .Database import DatabaseManager
 import time
 import math
-from .Base import EventManager
+from .Base import EventManager, generate_column_types
 import asyncio
 
 
-database_keys = ['guild', 'member', 'rank', 'xp', 'level_up']
-
-
 class LevelingAccount:
-    def __init__(self, database: DatabaseManager, table, guild: int, member: int, rank_multiplier=1.5):
+    def __init__(self, database, table, guild: int, member: int, rank_multiplier=1.5):
         self.database = database
         self.table = table
         self.guild = guild
@@ -63,7 +59,7 @@ class LevelingAccount:
 
 
 class LevelingManager(EventManager):
-    def __init__(self, database: DatabaseManager, table, bot, xp_on_message=5, rank_multiplier=1.5, xp_cooldown=60):
+    def __init__(self, database, table, bot, xp_on_message=5, rank_multiplier=1.5, xp_cooldown=60):
         super().__init__()
         self.database = database
         self.table = table
@@ -71,10 +67,17 @@ class LevelingManager(EventManager):
         self.xp_on_message = xp_on_message
         self.rank_multiplier = rank_multiplier
         self.xp_cooldown = xp_cooldown
+        self.keys = ['guild', 'member', 'rank', 'xp', 'level_up']
+
+        self.__create_table()
 
         self.cooldown_members = {}
         self.bot.add_listener(self.__handle_experience, "on_message")
-        self.database.create_table(self.table, [{'name': key, 'type': 'INTEGER'} for key in database_keys], True)
+
+    def __create_table(self):
+        types = generate_column_types(['snowflake', 'snowflake', 'number', 'number', 'number'], type(self.database.database))
+        columns = [{'name': x, 'type': y} for x, y in zip(self.keys, types)] if types else None
+        self.database.create_table(self.table, columns, True)
 
     @staticmethod
     def generate_checks(guild: int, member: int):
@@ -106,7 +109,7 @@ class LevelingManager(EventManager):
                 loop.create_task(self.call_event('on_level_up', message, member_account))
 
     def create_account(self, member):
-        self.database.insertifnotexists(dict(zip(database_keys, [member.guild.id, member.id, 1, 0, 50])), self.table,
+        self.database.insertifnotexists(dict(zip(self.keys, [member.guild.id, member.id, 1, 0, 50])), self.table,
                                         self.generate_checks(member.guild.id, member.id))
 
     def get_account(self, member):

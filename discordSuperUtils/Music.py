@@ -214,7 +214,7 @@ class MusicManager(EventManager):
             request = await session.get(url)
             request_json = await request.json()
 
-            return await request_json.get('lyrics', None)
+            return request_json.get('lyrics', None)
 
     async def play(self, ctx, player=None):
         if not await self.__check_connection(ctx):

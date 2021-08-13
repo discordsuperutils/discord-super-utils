@@ -1,29 +1,30 @@
-from .Base import EventManager
-from .Database import DatabaseManager
+from .Base import EventManager, generate_column_types
 from .Paginator import EmojiError
 
-reaction_keys = ['guild', 'message', 'role', 'emoji', 'remove_on_reaction']
-reaction_types = ['INTEGER', 'INTEGER', 'INTEGER', 'TEXT', 'INTEGER']
+database_keys = ['guild', 'message', 'role', 'emoji', 'remove_on_reaction']
 
 
 class ReactionManager(EventManager):
-    def __init__(self, database: DatabaseManager, table, bot):
+    def __init__(self, database, table, bot):
         super().__init__()
         self.database = database
         self.table = table
         self.bot = bot
 
-        self.__create_table(reaction_keys, reaction_types, self.table)
+        self.__create_table()
+
         self.bot.add_listener(self.__handle_reactions, "on_raw_reaction_add")
         self.bot.add_listener(self.__handle_reactions, "on_raw_reaction_remove")
 
+    def __create_table(self):
+        types = generate_column_types(['snowflake', 'snowflake', 'snowflake', 'string', 'smallnumber'],
+                                      type(self.database.database))
+        columns = [{'name': x, 'type': y} for x, y in zip(database_keys, types)] if types else None
+        self.database.create_table(self.table, columns, True)
+
     @classmethod
     def format_data(cls, data):
-        return {key: value for key, value in zip(reaction_keys, data)}
-
-    def __create_table(self, names, types, table_name):
-        columns = [{'name': x, 'type': y} for x, y in zip(names, types)]
-        self.database.create_table(table_name, columns, True)
+        return {key: value for key, value in zip(database_keys, data)}
 
     async def __handle_reactions(self, payload):
         if payload.user_id == self.bot.user.id:
@@ -33,7 +34,7 @@ class ReactionManager(EventManager):
                            'message': payload.message_id,
                            'emoji': payload.emoji.id if payload.emoji.id is not None else str(payload.emoji)}
 
-        reaction_role_data = self.database.select(reaction_keys, self.table, database_checks)
+        reaction_role_data = self.database.select(database_keys, self.table, database_checks)
 
         if not reaction_role_data:
             return
@@ -57,7 +58,7 @@ class ReactionManager(EventManager):
                     await payload.member.remove_roles(role)
 
     async def create_reaction(self, guild, message, role, emoji, remove_on_reaction):
-        self.database.insertifnotexists(dict(zip(reaction_keys, [
+        self.database.insertifnotexists(dict(zip(database_keys, [
             guild.id,
             message.id,
             role.id if role is not None else role,
@@ -77,5 +78,5 @@ class ReactionManager(EventManager):
         self.database.delete(self.table, {'guild': guild.id, 'message': message.id, 'emoji': emoji})
 
     def get_reactions(self, **kwargs):
-        reactions = self.database.select(reaction_keys, self.table, kwargs, True)
+        reactions = self.database.select(database_keys, self.table, kwargs, True)
         return [self.format_data(reaction) for reaction in reactions]
