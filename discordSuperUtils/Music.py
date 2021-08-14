@@ -214,20 +214,17 @@ class MusicManager(EventManager):
         except youtube_dl.utils.DownloadError:
             return None
 
-    async def create_player(self, ctx, query):
+    async def create_player(self, query):
         if re.match(self.spotify_reg, query) and self.spotify_support:
             loop = asyncio.get_event_loop()
-            spottype = await loop.run_in_executor(None, lambda: spotify.parse_spotify_url(query))
+            url_type = await loop.run_in_executor(None, lambda: spotify.parse_spotify_url(query))
 
-            if spottype[0] == 'playlist':
-                data = await loop.run_in_executor(None, lambda: spotify.fetch_tracks(sp=self.sp,
-                                                                                     item_type=spottype[0],
-                                                                                     url=query))
+            data = await loop.run_in_executor(None, lambda: spotify.fetch_tracks(sp=self.sp,
+                                                                                 item_type=url_type[0],
+                                                                                 url=query))
 
-                return list(filter(lambda a: a is not None,
-                                   [await Player.generate_player(f"{song['name']} {song['artist']}") for song in data]))
-
-            await self.call_event('on_music_error', ctx, PlaylistTooLarge("Spotify playlist too large!"))
+            return list(filter(lambda a: a is not None,
+                               [await Player.generate_player(f"{song['name']} {song['artist']}") for song in data]))
 
         else:
             return await Player.make_player(query)
