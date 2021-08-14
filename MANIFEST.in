@@ -1,1 +1,4 @@
-global-include *db *py
+include README.md
+include LICENSE
+include requirements.txt
+include discordSuperUtils/*

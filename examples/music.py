@@ -6,7 +6,7 @@ client_id = ...
 client_secret = ...
 
 bot = commands.Bot(command_prefix='-')
-MusicManager = MusicManager(bot, spotify_support=True, client_id=client_id, client_secret=client_secret)
+MusicManager = MusicManager(bot, client_id=client_id, client_secret=client_secret)
 
 
 @MusicManager.event()
@@ -45,10 +45,14 @@ async def join(ctx):
 @bot.command()
 async def play(ctx, *, query: str):
     player = await MusicManager.create_player(ctx, query)
-    await MusicManager.queue_add(player=player, ctx=ctx)
+    if player:
+        await MusicManager.queue_add(player=player, ctx=ctx)
 
-    if not await MusicManager.play(ctx):
-        await ctx.send("Added to queue")
+        if not await MusicManager.play(ctx):
+            await ctx.send("Added to queue")
+
+    else:
+        await ctx.send("Query not found.")
 
 
 @bot.command()
@@ -87,7 +91,7 @@ async def skip(ctx, index: int = None):
 
 @bot.command()
 async def queue(ctx):
-    embeds = discordSuperUtils.generate_embeds(MusicManager.get_queue(ctx),
+    embeds = discordSuperUtils.generate_embeds(await MusicManager.get_queue(ctx),
                                                "Queue",
                                                f"Now Playing: {await MusicManager.now_playing(ctx)}",
                                                25,

@@ -8,3 +8,4 @@ requests~=2.25.1
 pymongo[srv]>=3.12.0
 psycopg2~=2.9.1
 spotipy~=2.18.0
+spotify_dl

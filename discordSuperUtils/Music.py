@@ -122,7 +122,7 @@ class Player(discord.PCMVolumeTransformer):
         if data is None:
             # await self.call_event('on_music_error', ctx, FetchFailed("Failed to fetch query data."))
             # doesnt inherit EventManager so cant call on_music_error event!
-            return []
+            return None
 
         if 'entries' in data:
             data = data['entries'][0]
@@ -150,21 +150,17 @@ class QueueManager:
 
 
 class MusicManager(EventManager):
-    def __init__(self, bot, spotify_support=False, **kwargs):
+    def __init__(self, bot, spotify_support=True, **kwargs):
         super().__init__()
         self.bot = bot
         self.queue = {}
         self.client_id = kwargs.get('client_id')
         self.client_secret = kwargs.get('client_secret')
         self.spotify_reg = "^https://open.spotify.com/"
-        self.yt_reg = "^https://youtu.be/"
-        self.ytbe_reg = "^https://www.youtube.com/watch"
-        self.sc_reg = "^https://soundcloud.com/"
-        self.sc2_reg = "^https://soundcloud.app.goo.gl/"
+        self.spotify_support = spotify_support
         if spotify_support:
-            self.sp = spotipy.Spotify(auth_manager=
-                                      SpotifyClientCredentials(client_id=self.client_id,
-                                                               client_secret=self.client_secret))
+            self.sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=self.client_id,
+                                                                            client_secret=self.client_secret))
 
     async def __check_connection(self, ctx, check_playing: bool = False, check_queue: bool = False) -> Optional[bool]:
         if not ctx.voice_client or not ctx.voice_client.is_connected():
@@ -212,10 +208,13 @@ class MusicManager(EventManager):
 
     @staticmethod
     async def fetch_data(query: str):
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, lambda: ytdl.extract_info(query, download=False))
+        try:
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(None, lambda: ytdl.extract_info(query, download=False))
+        except youtube_dl.utils.DownloadError:
+            return None
 
-    async def check_amount(self, url):
+    def check_amount(self, url):
         items = self.sp.playlist(playlist_id=url)
         items = items['tracks']['items']
         if len(items) > 50:
@@ -223,17 +222,17 @@ class MusicManager(EventManager):
         return True
 
     async def create_player(self, ctx, query):
-        if re.match(self.yt_reg, query) or re.match(self.ytbe_reg, query) or re.match(self.sc_reg, query) or re.match(
-                self.sc2_reg, query):
-            return await Player.make_player(query)
-
-        if re.match(self.spotify_reg, query):
+        if re.match(self.spotify_reg, query) and self.spotify_support:
             loop = asyncio.get_event_loop()
             spottype = await loop.run_in_executor(None, lambda: spotify.parse_spotify_url(query))
-            if spottype[0] == 'playlist' and await self.check_amount(query):
-                data = await loop.run_in_executor(None, lambda: spotify.fetch_tracks(sp=self.sp, item_type=spottype[0],
+
+            if spottype[0] == 'playlist':
+                data = await loop.run_in_executor(None, lambda: spotify.fetch_tracks(sp=self.sp,
+                                                                                     item_type=spottype[0],
                                                                                      url=query))
-                return [await Player.generate_player(f"{song['name']} {song['artist']}") for song in data]
+
+                return list(filter(lambda a: a is not None,
+                                   [await Player.generate_player(f"{song['name']} {song['artist']}") for song in data]))
 
             await self.call_event('on_music_error', ctx, PlaylistTooLarge("Spotify playlist too large!"))
 
@@ -242,6 +241,9 @@ class MusicManager(EventManager):
 
     async def queue_add(self, player, ctx):
         """Adds specified player object to queue"""
+
+        if not await self.__check_connection(ctx):
+            return
 
         if ctx.guild.id in self.queue:
             for song in player:
@@ -321,7 +323,7 @@ class MusicManager(EventManager):
                 removed_songs = self.queue[ctx.guild.id].queue[:skip_index]
 
                 self.queue[ctx.guild.id].queue = self.queue[ctx.guild.id].queue[skip_index:]
-                if self.queue[ctx.guild.id].queue_loop:
+                if self.queue[ctx.guild.id].loop == Loops.QUEUE_LOOP:
                     self.queue[ctx.guild.id].queue += removed_songs
 
             player = self.queue[ctx.guild.id].queue[0]
@@ -392,5 +394,8 @@ class MusicManager(EventManager):
         self.queue[ctx.guild.id].loop = Loops.LOOP if self.queue[ctx.guild.id].loop != Loops.LOOP else Loops.NO_LOOP
         return self.queue[ctx.guild.id].loop == Loops.LOOP
 
-    def get_queue(self, ctx):
+    async def get_queue(self, ctx):
+        if not await self.__check_connection(ctx, check_queue=True):
+            return
+
         return self.queue[ctx.guild.id].queue
