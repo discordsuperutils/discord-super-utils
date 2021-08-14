@@ -15,6 +15,7 @@
 Features
 -------------
 
+- Very easy to use and user friendly.
 - Modern Leveling Manager.
 - Modern Music/Audio playing manager.
 - Modern Database manager (SQLite, MongoDB, PostgreSQL).
