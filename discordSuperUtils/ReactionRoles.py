@@ -1,70 +1,92 @@
-from .Base import EventManager, generate_column_types
+from .Base import EventManager, generate_column_types, DatabaseNotConnected
 from .Paginator import EmojiError
 
 database_keys = ['guild', 'message', 'role', 'emoji', 'remove_on_reaction']
 
 
 class ReactionManager(EventManager):
-    def __init__(self, database, table, bot):
+    def __init__(self, bot):
         super().__init__()
-        self.database = database
-        self.table = table
+        self.database = None
+        self.table = None
         self.bot = bot
 
-        self.__create_table()
+    def __check_database(self):
+        if not self.database:
+            raise DatabaseNotConnected(f"Database not connected."
+                                       f" Connect this manager to a database using {self.__class__.__name__}")
+
+    async def connect_to_database(self, database, table):
+        types = generate_column_types(['snowflake', 'snowflake', 'snowflake', 'string', 'smallnumber'],
+                                      type(database.database))
+
+        await database.create_table(table, dict(zip(database_keys, types)) if types else None, True)
+
+        self.database = database
+        self.table = table
 
         self.bot.add_listener(self.__handle_reactions, "on_raw_reaction_add")
         self.bot.add_listener(self.__handle_reactions, "on_raw_reaction_remove")
-
-    def __create_table(self):
-        types = generate_column_types(['snowflake', 'snowflake', 'snowflake', 'string', 'smallnumber'],
-                                      type(self.database.database))
-        columns = [{'name': x, 'type': y} for x, y in zip(database_keys, types)] if types else None
-        self.database.create_table(self.table, columns, True)
 
     @classmethod
     def format_data(cls, data):
         return {key: value for key, value in zip(database_keys, data)}
 
+    @staticmethod
+    def get_emoji_sql(emoji):
+        if not emoji.is_custom_emoji():
+            return str(emoji)
+
+        emoji_string = f"<:{emoji.name}:{emoji.id}>"
+        if emoji.animated:
+            emoji_string = emoji_string[:1] + 'a' + emoji_string[1:]
+
+        return emoji_string
+
     async def __handle_reactions(self, payload):
+        self.__check_database()
+
         if payload.user_id == self.bot.user.id:
             return
 
         database_checks = {'guild': payload.guild_id,
                            'message': payload.message_id,
-                           'emoji': payload.emoji.id if payload.emoji.id is not None else str(payload.emoji)}
+                           'emoji': self.get_emoji_sql(payload.emoji)}
 
-        reaction_role_data = self.database.select(database_keys, self.table, database_checks)
+        reaction_role_data = await self.database.select(self.table, database_keys, database_checks)
 
         if not reaction_role_data:
             return
 
-        formatted_data = self.format_data(reaction_role_data)
-
         guild = self.bot.get_guild(payload.guild_id)
-        role = guild.get_role(formatted_data["role"])
+        role = guild.get_role(reaction_role_data["role"])
         channel = guild.get_channel(payload.channel_id)
         message = await channel.fetch_message(payload.message_id)
-        emoji = str(payload.emoji) if payload.emoji.id is None else str(payload.emoji.id)
+        emoji = self.get_emoji_sql(payload.emoji)
 
-        if emoji == formatted_data["emoji"]:
+        if emoji == reaction_role_data["emoji"]:
+            member = payload.member if payload.member else guild.get_member(payload.user_id)
+
             if role is None:
-                await self.call_event('on_reaction_event', guild, channel, message, payload.member, emoji)
+                await self.call_event('on_reaction_event', guild, channel, message, member, emoji)
 
             else:
-                if role not in payload.member.roles:
-                    await payload.member.add_roles(role)
-                elif formatted_data['remove_on_reaction'] == 1:
-                    await payload.member.remove_roles(role)
+                if role not in member.roles:
+                    await member.add_roles(role)
+                elif reaction_role_data['remove_on_reaction'] == 1:
+                    await member.remove_roles(role)
 
-    async def create_reaction(self, guild, message, role, emoji, remove_on_reaction):
-        self.database.insertifnotexists(dict(zip(database_keys, [
-            guild.id,
-            message.id,
-            role.id if role is not None else role,
-            emoji,
-            remove_on_reaction
-        ])), self.table, {'guild': guild.id, 'message': message.id, 'emoji': emoji})
+    async def create_reaction(self, guild, message, role, emoji, remove_on_reaction: int):
+        self.__check_database()
+
+        await self.database.insertifnotexists(self.table,
+                                              dict(zip(database_keys, [
+                                                  guild.id,
+                                                  message.id,
+                                                  role.id if role is not None else role,
+                                                  emoji,
+                                                  int(remove_on_reaction)
+                                              ])), {'guild': guild.id, 'message': message.id, 'emoji': emoji})
 
         if len(emoji) > 1:
             emoji = self.bot.get_emoji(emoji)
@@ -74,9 +96,8 @@ class ReactionManager(EventManager):
         except Exception:
             raise EmojiError("Cannot add reaction to message.")
 
-    def delete_reaction(self, guild, message, emoji):
-        self.database.delete(self.table, {'guild': guild.id, 'message': message.id, 'emoji': emoji})
+    async def delete_reaction(self, guild, message, emoji):
+        await self.database.delete(self.table, {'guild': guild.id, 'message': message.id, 'emoji': emoji})
 
-    def get_reactions(self, **kwargs):
-        reactions = self.database.select(database_keys, self.table, kwargs, True)
-        return [self.format_data(reaction) for reaction in reactions]
+    async def get_reactions(self, guild):
+        return await self.database.select(self.table, database_keys, {'guild': guild.id}, True)

@@ -1,5 +1,6 @@
 import discord
-from .Base import generate_column_types
+from .Base import generate_column_types, DatabaseNotConnected
+import asyncio
 
 
 class EconomyAccount:
@@ -12,72 +13,91 @@ class EconomyAccount:
     def __str__(self):
         return f"<Account MEMBER={self.member}, GUILD={self.guild}>"
 
-    def __repr__(self):
-        return f"<Account GUILD={self.guild}, MEMBER={self.member}, CURRENCY={self.currency}, BANK={self.bank}>"
-
     def __lt__(self, other):
-        return self.net < other.net
+        loop = asyncio.get_event_loop()
+
+        current_net = loop.run_until_complete(self.net())  # make another way
+        other_net = loop.run_until_complete(other.net())
+
+        return current_net < other_net
 
     @property
     def __checks(self):
         return EconomyManager.generate_checks(self.guild, self.member)
 
-    @property
-    def currency(self):
-        return self.database.select(['currency'], self.table, self.__checks)["currency"]
+    async def currency(self):
+        currency_data = await self.database.select(self.table, ['currency'], self.__checks)
+        return currency_data["currency"]
 
-    @property
-    def bank(self):
-        return self.database.select(['bank'], self.table, self.__checks)["bank"]
+    async def bank(self):
+        bank_data = await self.database.select(self.table, ['bank'], self.__checks)
+        return bank_data["bank"]
 
-    @property
-    def net(self):
-        return self.bank + self.currency
+    async def net(self):
+        return await self.bank() + await self.currency()
 
-    def change_currency(self, amount: int):
-        self.database.update({'currency': self.currency + amount}, self.table, self.__checks)
+    async def change_currency(self, amount: int):
+        currency = await self.currency()
+        await self.database.update(self.table, {'currency': currency + amount}, self.__checks)
 
-    def change_bank(self, amount: int):
-        self.database.update({'bank': self.bank + amount}, self.table, self.__checks)
+    async def change_bank(self, amount: int):
+        bank_amount = await self.bank()
+        await self.database.update(self.table, {'bank': bank_amount + amount}, self.__checks)
 
 
 class EconomyManager:
-    def __init__(self, database, table, bot):
-        self.database = database
-        self.table = table
+    def __init__(self, bot):
+        self.database = None
+        self.table = None
+
         self.bot = bot
         self.keys = ['guild', 'member', 'currency', 'bank']
 
-        self.__create_table()
+    def __check_database(self):
+        if not self.database:
+            raise DatabaseNotConnected(f"Database not connected."
+                                       f" Connect this manager to a database using {self.__class__.__name__}")
 
-    def __create_table(self):
-        types = generate_column_types(['snowflake', 'snowflake', 'snowflake', 'snowflake'], type(self.database.database))
-        columns = [{'name': x, 'type': y} for x, y in zip(self.keys, types)] if types else None
-        self.database.create_table(self.table, columns, True)
+    async def connect_to_database(self, database, table):
+        types = generate_column_types(['snowflake', 'snowflake', 'snowflake', 'snowflake'],
+                                      type(database.database))
+
+        await database.create_table(table, dict(zip(self.keys, types)) if types else None, True)
+
+        self.database = database
+        self.table = table
 
     @staticmethod
     def generate_checks(guild: int, member: int):
         return {'guild': guild, 'member': member}
 
-    def create_account(self, member: discord.Member):
-        self.database.insertifnotexists({"guild": member.guild.id,
-                                         "member": member.id,
-                                         "currency": 0,
-                                         "bank": 0
-                                         },
-                                        self.table, self.generate_checks(member.guild.id, member.id))
+    async def create_account(self, member: discord.Member):
+        self.__check_database()
 
-    def get_account(self, member: discord.Member):
-        member_data = self.database.select([], self.table, self.generate_checks(member.guild.id, member.id), True)
+        await self.database.insertifnotexists(self.table,
+                                              {"guild": member.guild.id,
+                                               "member": member.id,
+                                               "currency": 0,
+                                               "bank": 0
+                                               },
+                                              self.generate_checks(member.guild.id, member.id))
+
+    async def get_account(self, member: discord.Member):
+        self.__check_database()
+
+        member_data = await self.database.select(self.table, [], self.generate_checks(member.guild.id, member.id), True)
 
         if member_data:
             return EconomyAccount(member.guild.id, member.id, self.database, self.table)
 
         return None
 
-    def get_leaderboard(self, guild):
-        guild_info = self.database.select([], self.table, {'guild': guild.id}, True)
-        members = [EconomyAccount(*list(member_info.values())[:2],
+    async def get_leaderboard(self, guild):
+        self.__check_database()
+
+        guild_info = await self.database.select(self.table, [], {'guild': guild.id}, True)
+        members = [EconomyAccount(member_info['guild'],
+                                  member_info['member'],
                                   database=self.database,
                                   table=self.table) for member_info in guild_info]
 

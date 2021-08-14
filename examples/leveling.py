@@ -1,15 +1,15 @@
 import discordSuperUtils
-import sqlite3
 from discord.ext import commands
 
-
-database = discordSuperUtils.DatabaseManager.connect(sqlite3.connect("database"))
 bot = commands.Bot(command_prefix='-')
-LevelingManager = discordSuperUtils.LevelingManager(database, 'xp', bot)
+LevelingManager = discordSuperUtils.LevelingManager(bot)
 
 
 @bot.event
 async def on_ready():
+    database = discordSuperUtils.DatabaseManager.connect(...)
+    await LevelingManager.connect_to_database(database, "xp")
+
     print('Leveling manager is ready.', bot.user)
 
 
@@ -20,14 +20,14 @@ async def on_level_up(message, member_data):
 
 @bot.command()
 async def rank(ctx):
-    member_data = LevelingManager.get_account(ctx.author)
-    await ctx.send(f'You are currently level **{member_data.level}**, with **{member_data.xp}** XP.')
+    member_data = await LevelingManager.get_account(ctx.author)
+    await ctx.send(f'You are currently level **{await member_data.level()}**, with **{await member_data.xp()}** XP.')
 
 
 @bot.command()
 async def leaderboard(ctx):
-    guild_leaderboard = LevelingManager.get_leaderboard(ctx.guild)
-    formatted_leaderboard = [f"Member: {x.member}, XP: {x.xp}" for x in guild_leaderboard]
+    guild_leaderboard = await LevelingManager.get_leaderboard(ctx.guild)
+    formatted_leaderboard = [f"Member: {x.member}, XP: {await x.xp()}" for x in guild_leaderboard]
 
     await discordSuperUtils.PageManager(ctx, discordSuperUtils.generate_embeds(
         formatted_leaderboard,

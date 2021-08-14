@@ -1,11 +1,10 @@
-import sqlite3
 import discord
+
 import discordSuperUtils
 from discord.ext import commands
 
-database = discordSuperUtils.DatabaseManager.connect(sqlite3.connect("database"))
-bot = commands.Bot(command_prefix='-')
-ReactionManager = discordSuperUtils.ReactionManager(database, 'reaction_roles', bot)
+bot = commands.Bot(command_prefix='-', intents=discord.Intents.all())
+ReactionManager = discordSuperUtils.ReactionManager(bot)
 
 
 @ReactionManager.event()
@@ -18,6 +17,9 @@ async def on_reaction_event(guild, channel, message, member, emoji):
 
 @bot.event
 async def on_ready():
+    database = discordSuperUtils.DatabaseManager.connect(...)
+    await ReactionManager.connect_to_database(database, "reaction_roles")
+
     print('Reaction manager is ready.', bot.user)
 
 

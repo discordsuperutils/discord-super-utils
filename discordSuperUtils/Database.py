@@ -1,7 +1,14 @@
-import os
-import pymongo.database
-import sqlite3
-import psycopg2.extensions
+import aiopg
+import aiosqlite
+from motor import motor_asyncio
+import asyncio
+
+asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+
+async def create_postgre(connection_string):
+    pool = await aiopg.create_pool(connection_string)
+    return await pool.acquire()
 
 
 class UnsupportedDatabase(Exception):
@@ -9,62 +16,56 @@ class UnsupportedDatabase(Exception):
 
 
 class _MongoDatabase:
-    def __init__(self, database: pymongo.database.Database):
+    def __init__(self, database):
         self.database = database
 
     def __str__(self):
-        return f"<DATABASE '{self.name}'>"
-
-    def __repr__(self):
-        return f"<DATABASE {self.name}, SIZE={self.size}, TABLES={', '.join(self.tables)}>"
-
-    @property
-    def size(self):
-        return self.database.command('dbstats')['dataSize']
-
-    @property
-    def tables(self):
-        return self.database.list_collection_names()
+        return f"<{self.__class__.__name__} '{self.name}'>"
 
     @property
     def name(self):
         return self.database.name
 
-    def insertifnotexists(self, data, table_name, checks):
-        response = self.select([], table_name, checks, True)
+    async def close(self):
+        self.database.client.close()
+
+    async def insertifnotexists(self, table_name, data, checks):
+        response = await self.select(table_name, [], checks, True)
 
         if not response:
-            return self.insert(data, table_name)
+            return await self.insert(table_name, data)
 
-    def insert(self, data, table_name):
-        return self.database[table_name].insert_one(data)
+    async def insert(self, table_name, data):
+        return await self.database[table_name].insert_one(data)
 
-    def create_table(self, table_name, columns=None, exists=False):
-        if exists and table_name in self.tables:
+    async def create_table(self, table_name, columns=None, exists=False):
+        if exists and table_name in await self.database.list_collection_names():
             return
 
-        return self.database.create_collection(table_name)
+        return await self.database.create_collection(table_name)
 
-    def update(self, data, table_name, checks):
-        return self.database[table_name].update_one(checks, {"$set": data})
+    async def update(self, table_name, data, checks):
+        return await self.database[table_name].update_one(checks, {"$set": data})
 
-    def updateorinsert(self, data, table_name, checks, insert_data):
-        response = self.select([], table_name, checks, True)
+    async def updateorinsert(self, table_name, data, checks, insert_data):
+        response = await self.select(table_name, [], checks, True)
 
         if len(response) == 1:
-            return self.update(data, table_name, checks)
+            return await self.update(table_name, data, checks)
 
-        return self.insert(insert_data, table_name)
+        return await self.insert(table_name, insert_data)
 
-    def delete(self, table_name, checks=None):
-        return self.database[table_name].delete_one({} if checks is None else checks)
+    async def delete(self, table_name, checks=None):
+        return await self.database[table_name].delete_one({} if checks is None else checks)
 
-    def select(self, keys, table_name, checks, fetchall=False):
+    async def select(self, table_name, keys, checks=None, fetchall=False):
+        checks = {} if checks is None else checks
+
         if fetchall:
-            fetch = list(self.database[table_name].find(checks))
+            fetch = self.database[table_name].find(checks)
             result = []
 
-            for doc in fetch:
+            async for doc in fetch:
                 current_doc = {}
 
                 for key, value in doc.items():
@@ -73,7 +74,7 @@ class _MongoDatabase:
 
                 result.append(current_doc)
         else:
-            fetch = self.database[table_name].find_one(checks)
+            fetch = await self.database[table_name].find_one(checks)
             result = {}
 
             if fetch is not None:
@@ -88,22 +89,28 @@ class _MongoDatabase:
 
 class _SqlDatabase:
     def __str__(self):
-        return f"<SQL DATABASE>"
+        return f"<{self.__class__.__name__}>"
 
-    def __with_commit(func):
-        def inner(self, *args, **kwargs):
-            resp = func(self, *args, **kwargs)
-            self.commit()
+    def with_commit(func):
+        async def inner(self, *args, **kwargs):
+            resp = await func(self, *args, **kwargs)
+            if self.commit_needed:
+                await self.commit()
 
             return resp
 
         return inner
 
-    def __with_cursor(func):
-        def inner(self, *args, **kwargs):
-            cursor = self.database.cursor()
-            resp = func(self, cursor, *args, **kwargs)
-            cursor.close()
+    def with_cursor(func):
+        async def inner(self, *args, **kwargs):
+            if self.cursor_context:
+                async with self.database.cursor() as cursor:
+                    resp = await func(self, cursor, *args, **kwargs)
+
+            else:
+                cursor = await self.database.cursor()
+                resp = await func(self, cursor, *args, **kwargs)
+                await cursor.close()
 
             return resp
 
@@ -112,40 +119,42 @@ class _SqlDatabase:
     def __init__(self, database):
         self.database = database
         self.place_holder = DATABASE_TYPES[type(database)]["placeholder"]
+        self.cursor_context = DATABASE_TYPES[type(database)]['cursorcontext']
+        self.commit_needed = DATABASE_TYPES[type(database)]['commit']
 
-    def commit(self):
-        self.database.commit()
+    async def commit(self):
+        await self.database.commit()
 
-    def close(self):
-        self.database.close()
+    async def close(self):
+        await self.database.close()
 
-    def insertifnotexists(self, data, table_name, checks):
-        response = self.select([], table_name, checks, True)
+    async def insertifnotexists(self, table_name, data, checks):
+        response = await self.select(table_name, [], checks, True)
 
         if not response:
-            return self.insert(data, table_name)
+            return await self.insert(table_name, data)
 
-    @__with_cursor
-    @__with_commit
-    def insert(self, cursor, data, table_name):
+    @with_cursor
+    @with_commit
+    async def insert(self, cursor, table_name, data):
         query = f"INSERT INTO {table_name} ({', '.join(data.keys())}) VALUES ({', '.join([self.place_holder] * len(data.values()))})"
-        cursor.execute(query, list(data.values()))
+        await cursor.execute(query, list(data.values()))
 
-    @__with_cursor
-    @__with_commit
-    def create_table(self, cursor, table_name, columns=None, exists=False):
+    @with_cursor
+    @with_commit
+    async def create_table(self, cursor, table_name, columns=None, exists=False):
         query = f'CREATE TABLE {"IF NOT EXISTS" if exists else ""} \"{table_name}\" ('
 
         for column in [] if columns is None else columns:
-            query += f"\n\"{column['name']}\" {column['type']},"
+            query += f"\n\"{column}\" {columns[column]},"
         query = query[:-1]
 
         query += "\n);"
-        cursor.execute(query)
+        await cursor.execute(query)
 
-    @__with_cursor
-    @__with_commit
-    def update(self, cursor, data, table_name, checks):
+    @with_cursor
+    @with_commit
+    async def update(self, cursor, table_name, data, checks):
         query = f"UPDATE {table_name} SET "
 
         if data:
@@ -154,25 +163,25 @@ class _SqlDatabase:
             query = query[:-2]
 
         if checks:
-            query += "WHERE "
+            query += " WHERE "
             for check in checks:
                 query += f"{check} = {self.place_holder} AND "
 
             query = query[:-4]
 
-        cursor.execute(query, list(data.values()) + list(checks.values()))
+        await cursor.execute(query, list(data.values()) + list(checks.values()))
 
-    def updateorinsert(self, data, table_name, checks, insert_data):
-        response = self.select([], table_name, checks, True)
+    async def updateorinsert(self, table_name, data, checks, insert_data):
+        response = await self.select(table_name, [], checks, True)
 
         if len(response) == 1:
-            return self.update(data, table_name, checks)
+            return await self.update(table_name, data, checks)
 
-        return self.insert(insert_data, table_name)
+        return await self.insert(table_name, insert_data)
 
-    @__with_cursor
-    @__with_commit
-    def delete(self, cursor, table_name, checks=None):
+    @with_cursor
+    @with_commit
+    async def delete(self, cursor, table_name, checks=None):
         checks = {} if checks is None else checks
 
         query = f"DELETE FROM {table_name} "
@@ -185,10 +194,12 @@ class _SqlDatabase:
             query = query[:-4]
 
         values = [list(x.values())[0] for x in checks]
-        cursor.execute(query, values)
+        await cursor.execute(query, values)
 
-    @__with_cursor
-    def select(self, cursor, keys, table_name, checks, fetchall=False):
+    @with_cursor
+    async def select(self, cursor, table_name, keys, checks=None, fetchall=False):
+        checks = {} if checks is None else checks
+
         keys = '*' if not keys else keys
         query = f"SELECT {','.join(keys)} FROM {table_name} "
 
@@ -199,16 +210,20 @@ class _SqlDatabase:
 
             query = query[:-4]
 
-        cursor.execute(query, list(checks.values()))
+        await cursor.execute(query, list(checks.values()))
         columns = [x[0] for x in cursor.description]
 
-        return [dict(zip(columns, x)) for x in cursor.fetchall()] if fetchall else dict(zip(columns, cursor.fetchone()))
+        result = await cursor.fetchall() if fetchall else await cursor.fetchone()
+        if not result:
+            return result
+
+        return [dict(zip(columns, x)) for x in result] if fetchall else dict(zip(columns, result))
 
 
 DATABASE_TYPES = {
-    pymongo.database.Database: {"class": _MongoDatabase, "placeholder": None},
-    sqlite3.Connection: {"class": _SqlDatabase, "placeholder": '?'},
-    psycopg2.extensions.connection: {"class": _SqlDatabase, "placeholder": '%s'}
+    motor_asyncio.AsyncIOMotorDatabase: {"class": _MongoDatabase, "placeholder": None},
+    aiosqlite.core.Connection: {"class": _SqlDatabase, "placeholder": '?', 'cursorcontext': True, 'commit': True},
+    aiopg.connection.Connection: {"class": _SqlDatabase, "placeholder": '%s', 'cursorcontext': True, 'commit': False}
 }
 
 

@@ -1,14 +1,18 @@
 import asyncio
-import sqlite3
 
-import psycopg2.extensions
-import pymongo.database
+import aiopg
+import aiosqlite
+from motor import motor_asyncio
 
 DATABASE_TYPES = {
-    pymongo.database.Database: None,  # mongo does not require any columns
-    sqlite3.Connection: {"snowflake": "INTEGER", "string": 'TEXT', "number": "INTEGER", "smallnumber": "INTEGER"},
-    psycopg2.extensions.connection: {"snowflake": "bigint", "string": 'character varying', "number": "integer", "smallnumber": "smallint"}
+    motor_asyncio.AsyncIOMotorDatabase: None,  # mongo does not require any columns
+    aiosqlite.core.Connection: {"snowflake": "INTEGER", "string": 'TEXT', "number": "INTEGER", "smallnumber": "INTEGER"},
+    aiopg.connection.Connection: {"snowflake": "bigint", "string": 'character varying', "number": "integer", "smallnumber": "smallint"}
 }
+
+
+class DatabaseNotConnected(Exception):
+    """Raises an error when the user tries to use a method of a manager without a database connected to it."""
 
 
 def generate_column_types(types, database_type):
