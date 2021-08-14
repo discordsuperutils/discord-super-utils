@@ -169,7 +169,7 @@ async def queue(ctx):
 
 bot.run("token")
 ```
-![MusicManager Example](https://media.giphy.com/media/6pe8mSe268oVgExgee/giphy.gif)
+![MusicManager Example](https://media.giphy.com/media/SF6K0zIVHl6RCQ0Aqk/giphy.gif)
 
 ### Database Example ###
 
