@@ -17,7 +17,7 @@ Features
 
 - Modern Leveling Manager.
 - Modern Music/Audio playing manager.
-- Modern Database manager (SQLite, MongoDB (More coming soon!)).
+- Modern Database manager (SQLite, MongoDB, PostgreSQL).
 - Modern Paginator.
 - Modern Reaction Manager.
 - Modern Economy Manager.
