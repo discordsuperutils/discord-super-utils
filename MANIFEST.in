@@ -1,1 +1,1 @@
-global-include *db *py *png *jpg *jpeg *ttf
+global-include *db *py *png *jpg *jpeg *ttf *txt
