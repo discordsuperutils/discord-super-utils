@@ -15,6 +15,7 @@
 Features
 -------------
 
+- Very easy to use and user friendly.
 - Modern Leveling Manager.
 - Modern Music/Audio playing manager.
 - Modern Database manager (SQLite, MongoDB, PostgreSQL).
@@ -169,6 +170,7 @@ async def queue(ctx):
 
 bot.run("token")
 ```
+![MusicManager Example](https://media.giphy.com/media/SF6K0zIVHl6RCQ0Aqk/giphy.gif)
 
 ### Database Example ###
 
