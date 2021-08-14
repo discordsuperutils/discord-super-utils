@@ -214,13 +214,6 @@ class MusicManager(EventManager):
         except youtube_dl.utils.DownloadError:
             return None
 
-    def check_amount(self, url):
-        items = self.sp.playlist(playlist_id=url)
-        items = items['tracks']['items']
-        if len(items) > 50:
-            return False
-        return True
-
     async def create_player(self, ctx, query):
         if re.match(self.spotify_reg, query) and self.spotify_support:
             loop = asyncio.get_event_loop()
