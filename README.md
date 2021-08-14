@@ -18,7 +18,7 @@ Features
 - Very easy to use and user friendly.
 - Modern Leveling Manager.
 - Modern Music/Audio playing manager.
-- Modern Database manager (SQLite, MongoDB, PostgreSQL).
+- Modern Async Database Manager (SQLite, MongoDB, PostgreSQL).
 - Modern Paginator.
 - Modern Reaction Manager.
 - Modern Economy Manager.
@@ -219,6 +219,12 @@ bot.run("token")
 ```
 
 More examples are listed in the examples folder.
+
+Known Issues
+--------------
+
+- Removing an animated emoji wont be recognized as a reaction role, as it shows up as not animated for some reason, breaking the reaction matcher.
+- Spotify queueing is very slow. 
 
 Support
 --------------
