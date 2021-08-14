@@ -10,6 +10,8 @@
 
 <p align="center">
    A modern python module including many useful features that make discord bot programming extremely easy.
+   <br></br>
+   <b>The documentation is not done. if you have any questions, feel free to ask them in our <a href="https://discord.gg/zhwcpTBBeC">discord server.</a></b>
 </p>
 
 Features
