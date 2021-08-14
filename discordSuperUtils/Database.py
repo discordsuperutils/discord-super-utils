@@ -230,7 +230,7 @@ DATABASE_TYPES = {
 class DatabaseManager:
     """
     A database class for easier access
-    database MUST be of type sqlite3 or mongodb
+    database MUST be of type sqlite3, mongodb or postgresql
     """
 
     @staticmethod
