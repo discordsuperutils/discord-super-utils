@@ -8,6 +8,6 @@ from .Imaging import ImageManager
 from .InviteTracker import InviteTracker
 
 __title__ = "discordSuperUtils"
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 __author__ = "Koyashie07 & Adam7100"
 __license__ = "MIT"
