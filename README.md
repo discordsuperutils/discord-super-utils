@@ -10,6 +10,8 @@
 
 <p align="center">
    A modern python module including many useful features that make discord bot programming extremely easy.
+   <br></br>
+   <b>The documentation is not done. if you have any questions, feel free to ask them in our <a href="https://discord.gg/zhwcpTBBeC">discord server.</a></b>
 </p>
 
 Features
@@ -41,17 +43,17 @@ Examples
 
 ```py
 import discordSuperUtils
-import sqlite3
 from discord.ext import commands
 
-
-database = discordSuperUtils.DatabaseManager(sqlite3.connect("database"))
 bot = commands.Bot(command_prefix='-')
-LevelingManager = discordSuperUtils.LevelingManager(database, 'xp', bot)
+LevelingManager = discordSuperUtils.LevelingManager(bot)
 
 
 @bot.event
 async def on_ready():
+    database = discordSuperUtils.DatabaseManager.connect(...)
+    await LevelingManager.connect_to_database(database, "xp")
+
     print('Leveling manager is ready.', bot.user)
 
 
@@ -62,8 +64,22 @@ async def on_level_up(message, member_data):
 
 @bot.command()
 async def rank(ctx):
-    member_data = LevelingManager.get_account(ctx.author)
-    await ctx.send(f'You are currently level **{member_data.level}**, with **{member_data.xp}** XP.')
+    member_data = await LevelingManager.get_account(ctx.author)
+    await ctx.send(f'You are currently level **{await member_data.level()}**, with **{await member_data.xp()}** XP.')
+
+
+@bot.command()
+async def leaderboard(ctx):
+    guild_leaderboard = await LevelingManager.get_leaderboard(ctx.guild)
+    formatted_leaderboard = [f"Member: {x.member}, XP: {await x.xp()}" for x in guild_leaderboard]
+
+    await discordSuperUtils.PageManager(ctx, discordSuperUtils.generate_embeds(
+        formatted_leaderboard,
+        title="Leveling Leaderboard",
+        fields=25,
+        description=f"Leaderboard of {ctx.guild}"
+    )).run()
+
 
 bot.run("token")
 ```
@@ -75,9 +91,13 @@ bot.run("token")
 ```py
 import discordSuperUtils
 from discord.ext import commands
+from discordSuperUtils import MusicManager
+
+client_id = ...
+client_secret = ...
 
 bot = commands.Bot(command_prefix='-')
-MusicManager = discordSuperUtils.MusicManager(bot)
+MusicManager = MusicManager(bot, client_id=client_id, client_secret=client_secret)
 
 
 @MusicManager.event()
@@ -116,10 +136,14 @@ async def join(ctx):
 @bot.command()
 async def play(ctx, *, query: str):
     player = await MusicManager.create_player(query)
-    await MusicManager.queue_add(player=player, ctx=ctx)
+    if player:
+        await MusicManager.queue_add(player=player, ctx=ctx)
 
-    if not await MusicManager.play(ctx):
-        await ctx.send("Added to queue")
+        if not await MusicManager.play(ctx):
+            await ctx.send("Added to queue")
+
+    else:
+        await ctx.send("Query not found.")
 
 
 @bot.command()
@@ -158,7 +182,7 @@ async def skip(ctx, index: int = None):
 
 @bot.command()
 async def queue(ctx):
-    embeds = discordSuperUtils.generate_embeds(MusicManager.get_queue(ctx),
+    embeds = discordSuperUtils.generate_embeds(await MusicManager.get_queue(ctx),
                                                "Queue",
                                                f"Now Playing: {await MusicManager.now_playing(ctx)}",
                                                25,
@@ -176,14 +200,30 @@ bot.run("token")
 
 ```py
 import discordSuperUtils
-import pymongo
-import sqlite3
+import aiosqlite
+from motor import motor_asyncio
+import asyncio
 
-mongo_database = discordSuperUtils.DatabaseManager(pymongo.MongoClient("connection string")["DATABASENAME"])
-sqlite_database = discordSuperUtils.DatabaseManager(sqlite3.connect("database"))
 
-values = sqlite_database.insert({"guild": ..., "member": ...}, "table")
-print(values)
+async def database_test():
+    mongo_database = discordSuperUtils.DatabaseManager.connect(motor_asyncio.AsyncIOMotorClient("con-string")['name'])
+    # Replace 'con-string' by the MongoDB connection string and 'name' by the database name you want to use.
+
+    postgre_database = discordSuperUtils.DatabaseManager.connect(await discordSuperUtils.create_postgre("con-string"))
+    # Replace 'con-string' by the PostrgeSQL connection string.
+    # PostgreSQL connection string example:
+    # "dbname=name user=postgres password=xxx host=host" host is not required.
+
+    sqlite_database = discordSuperUtils.DatabaseManager.connect(await aiosqlite.connect('path'))
+    # Replace 'path' by the SQLite database path. (must be on your computer)
+
+    await sqlite_database.insert('economy', {'guild': ..., 'member': ..., 'currency': ..., 'bank': ...})
+
+    await sqlite_database.close()  # not required.
+
+
+loop = asyncio.get_event_loop()
+loop.run_until_complete(database_test())
 ```
 
 ### Paginator Example ###  
