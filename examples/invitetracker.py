@@ -25,4 +25,5 @@ async def info(ctx, member: discord.Member = None):
     member = ctx.author if not member else member
     await ctx.send(await InviteTracker.fetch_user_info(member))
 
+
 bot.run("token")

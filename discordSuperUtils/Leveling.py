@@ -1,7 +1,6 @@
 import time
 import math
 from .Base import EventManager, generate_column_types, DatabaseNotConnected
-import asyncio
 
 
 class LevelingAccount:
@@ -15,13 +14,8 @@ class LevelingAccount:
     def __str__(self):
         return f"<Account MEMBER={self.member}, GUILD={self.guild}>"
 
-    def __lt__(self, other):
-        loop = asyncio.get_event_loop()
-
-        current_xp = loop.run_until_complete(self.xp())  # make another way
-        other_xp = loop.run_until_complete(other.xp())
-
-        return current_xp < other_xp
+    async def compare(self, other):
+        return await self.xp() < other.xp()
 
     @property
     def __checks(self):
@@ -138,12 +132,12 @@ class LevelingManager(EventManager):
         self.__check_database()
 
         guild_info = await self.database.select(self.table, [], {'guild': guild.id}, True)
+
         members = [LevelingAccount(self.database,
                                    self.table,
                                    member_info['guild'],
                                    member_info['member'],
                                    rank_multiplier=self.rank_multiplier)
-                   for member_info in guild_info]
+                   for member_info in sorted(guild_info, key=lambda x: x["xp"], reverse=True)]
 
-        members.sort()
         return members

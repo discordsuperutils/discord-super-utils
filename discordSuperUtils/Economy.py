@@ -1,6 +1,5 @@
 import discord
 from .Base import generate_column_types, DatabaseNotConnected
-import asyncio
 
 
 class EconomyAccount:
@@ -12,14 +11,6 @@ class EconomyAccount:
 
     def __str__(self):
         return f"<Account MEMBER={self.member}, GUILD={self.guild}>"
-
-    def __lt__(self, other):
-        loop = asyncio.get_event_loop()
-
-        current_net = loop.run_until_complete(self.net())  # make another way
-        other_net = loop.run_until_complete(other.net())
-
-        return current_net < other_net
 
     @property
     def __checks(self):
@@ -99,7 +90,8 @@ class EconomyManager:
         members = [EconomyAccount(member_info['guild'],
                                   member_info['member'],
                                   database=self.database,
-                                  table=self.table) for member_info in guild_info]
+                                  table=self.table) for member_info in sorted(guild_info,
+                                                                              key=lambda x: x["bank"] + x["currency"],
+                                                                              reverse=True)]
 
-        members.sort()
         return members
