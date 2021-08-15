@@ -44,7 +44,9 @@ async def join(ctx):
 
 @bot.command()
 async def play(ctx, *, query: str):
-    player = await MusicManager.create_player(query)
+    async with ctx.typing():
+        player = await MusicManager.create_player(query)
+
     if player:
         await MusicManager.queue_add(player=player, ctx=ctx)
 

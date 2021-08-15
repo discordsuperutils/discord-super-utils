@@ -226,8 +226,7 @@ class MusicManager(EventManager):
             return list(filter(lambda a: a is not None,
                                [await Player.generate_player(f"{song['name']} {song['artist']}") for song in data]))
 
-        else:
-            return await Player.make_player(query)
+        return await Player.make_player(query)
 
     async def queue_add(self, player, ctx):
         """Adds specified player object to queue"""
