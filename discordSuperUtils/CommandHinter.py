@@ -37,7 +37,7 @@ class CommandHinter:
                 command_similarity[SequenceMatcher(None, command, command_used).ratio()] = command
 
             generated_message = self.generate_function(command_used,
-                                                       [x[1] for x in reversed(sorted(command_similarity.items()))])
+                                                       [x[1] for x in sorted(command_similarity.items(), reverse=True)])
 
             if isinstance(generated_message, discord.Embed):
                 await ctx.send(embed=generated_message)
