@@ -8,8 +8,8 @@ from motor import motor_asyncio
 COLUMN_TYPES = {
     motor_asyncio.AsyncIOMotorDatabase: None,  # mongo does not require any columns
     aiosqlite.core.Connection: {"snowflake": "INTEGER", "string": 'TEXT', "number": "INTEGER", "smallnumber": "INTEGER"},
-    aiopg.connection.Connection: {"snowflake": "bigint", "string": 'character varying', "number": "integer", "smallnumber": "smallint"},
-    aiomysql.connection.Connection: {"snowflake": "BIGINT", "string": 'TEXT', "number": "INT", "smallnumber": "SMALLINT"}
+    aiopg.pool.Pool: {"snowflake": "bigint", "string": 'character varying', "number": "integer", "smallnumber": "smallint"},
+    aiomysql.pool.Pool: {"snowflake": "BIGINT", "string": 'TEXT', "number": "INT", "smallnumber": "SMALLINT"}
 }
 
 

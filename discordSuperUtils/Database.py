@@ -7,9 +7,10 @@ import aiomysql
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
-async def create_postgre(connection_string):
-    pool = await aiopg.create_pool(connection_string)
-    return await pool.acquire()
+async def create_mysql(host, port, user, password, dbname):
+    # Created this function to make sure the user has autocommit enabled.
+    # we must make sure autocommit is enabled because manual commits are not working on aiomysql :)
+    return await aiomysql.create_pool(host=host, port=port, user=user, password=password, db=dbname, autocommit=True)
 
 
 class UnsupportedDatabase(Exception):
@@ -104,14 +105,19 @@ class _SqlDatabase:
 
     def with_cursor(func):
         async def inner(self, *args, **kwargs):
+            database = await self.database.acquire() if self.pool else self.database
+
             if self.cursor_context:
-                async with self.database.cursor() as cursor:
+                async with database.cursor() as cursor:
                     resp = await func(self, cursor, *args, **kwargs)
 
             else:
-                cursor = await self.database.cursor()
+                cursor = await database.cursor()
                 resp = await func(self, cursor, *args, **kwargs)
                 await cursor.close()
+
+            if self.pool:
+                self.database.release(database)
 
             return resp
 
@@ -123,9 +129,11 @@ class _SqlDatabase:
         self.cursor_context = DATABASE_TYPES[type(database)]['cursorcontext']
         self.commit_needed = DATABASE_TYPES[type(database)]['commit']
         self.quote = DATABASE_TYPES[type(database)]['quotes']
+        self.pool = DATABASE_TYPES[type(database)]['pool']
 
     async def commit(self):
-        await self.database.commit()
+        if not self.pool:
+            await self.database.commit()
 
     async def close(self):
         await self.database.close()
@@ -140,7 +148,6 @@ class _SqlDatabase:
     @with_commit
     async def insert(self, cursor, table_name, data):
         query = f"INSERT INTO {table_name} ({', '.join(data.keys())}) VALUES ({', '.join([self.place_holder] * len(data.values()))})"
-        print(query, list(data.values()))
         await cursor.execute(query, list(data.values()))
 
     @with_cursor
@@ -153,7 +160,6 @@ class _SqlDatabase:
         query = query[:-1]
 
         query += "\n);"
-        print(query)
         await cursor.execute(query)
 
     @with_cursor
@@ -226,9 +232,12 @@ class _SqlDatabase:
 
 DATABASE_TYPES = {
     motor_asyncio.AsyncIOMotorDatabase: {"class": _MongoDatabase, "placeholder": None},
-    aiosqlite.core.Connection: {"class": _SqlDatabase, "placeholder": '?', 'cursorcontext': True, 'commit': True, 'quotes': '"'},
-    aiopg.connection.Connection: {"class": _SqlDatabase, "placeholder": '%s', 'cursorcontext': True, 'commit': False, 'quotes': '"'},
-    aiomysql.connection.Connection: {"class": _SqlDatabase, "placeholder": '%s', 'cursorcontext': True, 'commit': True, 'quotes': '`'}
+    aiosqlite.core.Connection: {"class": _SqlDatabase, "placeholder": '?', 'cursorcontext': True, 'commit': True,
+                                'quotes': '"', 'pool': False},
+    aiopg.pool.Pool: {"class": _SqlDatabase, "placeholder": '%s', 'cursorcontext': True, 'commit': True, 'quotes': '"',
+                      'pool': True},
+    aiomysql.pool.Pool: {"class": _SqlDatabase, "placeholder": '%s', 'cursorcontext': True, 'commit': False,
+                         'quotes': '`', 'pool': True}
 }
 
 

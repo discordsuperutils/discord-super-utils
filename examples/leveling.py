@@ -26,7 +26,12 @@ async def on_level_up(message, member_data, roles):
 @bot.command()
 async def rank(ctx):
     member_data = await LevelingManager.get_account(ctx.author)
-    await ctx.send(f'You are currently level **{await member_data.level()}**, with **{await member_data.xp()}** XP.')
+
+    if member_data:
+        await ctx.send(
+            f'You are currently level **{await member_data.level()}**, with **{await member_data.xp()}** XP.')
+    else:
+        await ctx.send(f"I am still creating your account! please wait a few seconds.")
 
 
 @bot.command()

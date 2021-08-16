@@ -1,5 +1,5 @@
 from .Leveling import LevelingManager, RoleManager
-from .Database import DatabaseManager, create_postgre
+from .Database import DatabaseManager, create_mysql
 from .Music import *
 from .Paginator import PageManager, generate_embeds
 from .ReactionRoles import ReactionManager
