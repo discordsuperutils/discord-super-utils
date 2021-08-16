@@ -11,3 +11,5 @@ spotify_dl
 aiosqlite>=0.17.0
 motor>=2.5.0
 aiopg>=1.3.1
+discordSuperUtils~=0.1.3
+aiomysql~=0.0.21

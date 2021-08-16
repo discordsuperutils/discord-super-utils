@@ -2,6 +2,7 @@ import aiopg
 import aiosqlite
 from motor import motor_asyncio
 import asyncio
+import aiomysql
 
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
@@ -121,6 +122,7 @@ class _SqlDatabase:
         self.place_holder = DATABASE_TYPES[type(database)]["placeholder"]
         self.cursor_context = DATABASE_TYPES[type(database)]['cursorcontext']
         self.commit_needed = DATABASE_TYPES[type(database)]['commit']
+        self.quote = DATABASE_TYPES[type(database)]['quotes']
 
     async def commit(self):
         await self.database.commit()
@@ -138,18 +140,20 @@ class _SqlDatabase:
     @with_commit
     async def insert(self, cursor, table_name, data):
         query = f"INSERT INTO {table_name} ({', '.join(data.keys())}) VALUES ({', '.join([self.place_holder] * len(data.values()))})"
+        print(query, list(data.values()))
         await cursor.execute(query, list(data.values()))
 
     @with_cursor
     @with_commit
     async def create_table(self, cursor, table_name, columns=None, exists=False):
-        query = f'CREATE TABLE {"IF NOT EXISTS" if exists else ""} \"{table_name}\" ('
+        query = f'CREATE TABLE {"IF NOT EXISTS" if exists else ""} {self.quote}{table_name}{self.quote} ('
 
         for column in [] if columns is None else columns:
-            query += f"\n\"{column}\" {columns[column]},"
+            query += f"\n{self.quote}{column}{self.quote} {columns[column]},"
         query = query[:-1]
 
         query += "\n);"
+        print(query)
         await cursor.execute(query)
 
     @with_cursor
@@ -222,8 +226,9 @@ class _SqlDatabase:
 
 DATABASE_TYPES = {
     motor_asyncio.AsyncIOMotorDatabase: {"class": _MongoDatabase, "placeholder": None},
-    aiosqlite.core.Connection: {"class": _SqlDatabase, "placeholder": '?', 'cursorcontext': True, 'commit': True},
-    aiopg.connection.Connection: {"class": _SqlDatabase, "placeholder": '%s', 'cursorcontext': True, 'commit': False}
+    aiosqlite.core.Connection: {"class": _SqlDatabase, "placeholder": '?', 'cursorcontext': True, 'commit': True, 'quotes': '"'},
+    aiopg.connection.Connection: {"class": _SqlDatabase, "placeholder": '%s', 'cursorcontext': True, 'commit': False, 'quotes': '"'},
+    aiomysql.connection.Connection: {"class": _SqlDatabase, "placeholder": '%s', 'cursorcontext': True, 'commit': True, 'quotes': '`'}
 }
 
 

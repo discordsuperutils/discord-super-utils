@@ -1,5 +1,6 @@
 import asyncio
 
+import aiomysql
 import aiopg
 import aiosqlite
 from motor import motor_asyncio
@@ -7,7 +8,8 @@ from motor import motor_asyncio
 DATABASE_TYPES = {
     motor_asyncio.AsyncIOMotorDatabase: None,  # mongo does not require any columns
     aiosqlite.core.Connection: {"snowflake": "INTEGER", "string": 'TEXT', "number": "INTEGER", "smallnumber": "INTEGER"},
-    aiopg.connection.Connection: {"snowflake": "bigint", "string": 'character varying', "number": "integer", "smallnumber": "smallint"}
+    aiopg.connection.Connection: {"snowflake": "bigint", "string": 'character varying', "number": "integer", "smallnumber": "smallint"},
+    aiomysql.connection.Connection: {"snowflake": "BIGINT", "string": 'TEXT', "number": "INT", "smallnumber": "SMALLINT"}
 }
 
 
