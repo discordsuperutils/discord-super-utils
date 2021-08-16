@@ -1,4 +1,4 @@
-from .Leveling import LevelingManager
+from .Leveling import LevelingManager, RoleManager
 from .Database import DatabaseManager, create_postgre
 from .Music import *
 from .Paginator import PageManager, generate_embeds
