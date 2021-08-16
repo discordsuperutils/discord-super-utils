@@ -1,7 +1,6 @@
 import time
 import math
-from .Base import EventManager, generate_column_types, DatabaseNotConnected
-import asyncio
+from .Base import DatabaseChecker
 
 
 class LevelingAccount:
@@ -15,13 +14,8 @@ class LevelingAccount:
     def __str__(self):
         return f"<Account MEMBER={self.member}, GUILD={self.guild}>"
 
-    def __lt__(self, other):
-        loop = asyncio.get_event_loop()
-
-        current_xp = loop.run_until_complete(self.xp())  # make another way
-        other_xp = loop.run_until_complete(other.xp())
-
-        return current_xp < other_xp
+    async def compare(self, other):
+        return await self.xp() < other.xp()
 
     @property
     def __checks(self):
@@ -60,40 +54,68 @@ class LevelingAccount:
         await self.database.update(self.table, {"level_up": value}, self.__checks)
 
 
-class LevelingManager(EventManager):
-    def __init__(self, bot, xp_on_message=5, rank_multiplier=1.5, xp_cooldown=60):
-        super().__init__()
-        self.database = None
-        self.table = None
+class RoleManager(DatabaseChecker):
+    def __init__(self, interval=5):
+        super().__init__(['guild', 'interval', 'roles'], ['snowflake', 'smallnumber', 'string'])
+        self.interval = interval
+
+    async def get_roles(self, guild):
+        self._check_database()
+
+        role_data = await self.database.select(self.table, ['interval', 'roles'], {'guild': guild.id})
+
+        roles = role_data["roles"]
+        if isinstance(roles, str):
+            role_data["roles"] = [int(role) for role in roles.split('\0') if role]
+
+        return role_data
+
+    async def set_roles(self, guild, data_to_set):
+        self._check_database()
+
+        default_values = {'guild': guild.id, 'interval': self.interval, 'roles': ''}
+
+        if 'roles' in data_to_set:
+            roles = data_to_set["roles"]
+            if not isinstance(roles, (list, tuple)):
+                raise TypeError("Roles must be of type list.")
+
+            data_to_set["roles"] = '\0'.join(str(role.id) for role in roles)
+            print(data_to_set["roles"])
+
+        if 'interval' in data_to_set:
+            if not isinstance(data_to_set["interval"], int):
+                raise TypeError("Interval must be of type int.")
+
+        await self.database.updateorinsert(self.table,
+                                           data_to_set,
+                                           {'guild': guild.id},
+                                           dict(data_to_set, **default_values))
+
+
+class LevelingManager(DatabaseChecker):
+    def __init__(self, bot, role_manager=None, xp_on_message=5, rank_multiplier=1.5, xp_cooldown=60):
+        super().__init__(['guild', 'member', 'rank', 'xp', 'level_up'],
+                         ['snowflake', 'snowflake', 'number', 'number', 'number'])
+
         self.bot = bot
         self.xp_on_message = xp_on_message
         self.rank_multiplier = rank_multiplier
         self.xp_cooldown = xp_cooldown
-        self.keys = ['guild', 'member', 'rank', 'xp', 'level_up']
+        self.role_manager = role_manager
 
         self.cooldown_members = {}
+        self.add_event(self.on_database_connect)
 
-    def __check_database(self):
-        if not self.database:
-            raise DatabaseNotConnected(f"Database not connected."
-                                       f" Connect this manager to a database using {self.__class__.__name__}")
-
-    async def connect_to_database(self, database, table):
-        types = generate_column_types(['snowflake', 'snowflake', 'number', 'number', 'number'],
-                                      type(database.database))
-
-        await database.create_table(table, dict(zip(self.keys, types)) if types else None, True)
-
-        self.database = database
-        self.table = table
-        self.bot.add_listener(self.__handle_experience, "on_message")
+    async def on_database_connect(self):
+        self.bot.add_listener(self.__handle_experience, 'on_message')
 
     @staticmethod
     def generate_checks(guild: int, member: int):
         return {'guild': guild, 'member': member}
 
     async def __handle_experience(self, message):
-        self.__check_database()
+        self._check_database()
 
         if not message.guild or message.author.bot:
             return
@@ -110,22 +132,34 @@ class LevelingManager(EventManager):
 
             leveled_up = False
             while await member_account.xp() >= await member_account.next_level():
-                await member_account.set_xp(await member_account.next_level() * member_account.rank_multiplier)
+                await member_account.set_next_level(await member_account.next_level() * member_account.rank_multiplier)
                 await member_account.set_level(await member_account.level() + 1)
                 leveled_up = True
 
             if leveled_up:
-                await self.call_event('on_level_up', message, member_account)
+                roles = []
+                if self.role_manager:
+                    role_data = await self.role_manager.get_roles(message.guild)
+
+                    member_level = await member_account.level()
+                    if member_level % role_data["interval"] == 0 and member_level // role_data["interval"] <= len(role_data["roles"]):
+                        roles = [message.guild.get_role(role_id) for role_id in role_data["roles"][:await member_account.level() // role_data["interval"]]]
+                        roles.reverse()
+
+                await self.call_event('on_level_up', message, member_account, roles)
+
+                if roles:
+                    await message.author.add_roles(*roles)
 
     async def create_account(self, member):
-        self.__check_database()
+        self._check_database()
 
         await self.database.insertifnotexists(self.table,
-                                              dict(zip(self.keys, [member.guild.id, member.id, 1, 0, 50])),
+                                              dict(zip(self.column_names, [member.guild.id, member.id, 1, 0, 50])),
                                               self.generate_checks(member.guild.id, member.id))
 
     async def get_account(self, member):
-        self.__check_database()
+        self._check_database()
 
         member_data = await self.database.select(self.table, [], self.generate_checks(member.guild.id, member.id), True)
 
@@ -135,15 +169,15 @@ class LevelingManager(EventManager):
         return None
 
     async def get_leaderboard(self, guild):
-        self.__check_database()
+        self._check_database()
 
         guild_info = await self.database.select(self.table, [], {'guild': guild.id}, True)
+
         members = [LevelingAccount(self.database,
                                    self.table,
                                    member_info['guild'],
                                    member_info['member'],
                                    rank_multiplier=self.rank_multiplier)
-                   for member_info in guild_info]
+                   for member_info in sorted(guild_info, key=lambda x: x["xp"], reverse=True)]
 
-        members.sort()
         return members

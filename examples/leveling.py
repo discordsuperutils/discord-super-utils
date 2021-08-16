@@ -1,27 +1,37 @@
+import discord
+
 import discordSuperUtils
 from discord.ext import commands
 
 bot = commands.Bot(command_prefix='-')
-LevelingManager = discordSuperUtils.LevelingManager(bot)
+RoleManager = discordSuperUtils.RoleManager()
+LevelingManager = discordSuperUtils.LevelingManager(bot, RoleManager)
 
 
 @bot.event
 async def on_ready():
     database = discordSuperUtils.DatabaseManager.connect(...)
+    await RoleManager.connect_to_database(database, "xp_roles")
     await LevelingManager.connect_to_database(database, "xp")
 
     print('Leveling manager is ready.', bot.user)
 
 
 @LevelingManager.event()
-async def on_level_up(message, member_data):
-    await message.reply(f"You are now level {member_data.level}")
+async def on_level_up(message, member_data, roles):
+    await message.reply(f"You are now level {await member_data.level()}" + (f", you have received the {roles[0]}"
+                                                                            f" role." if roles else ""))
 
 
 @bot.command()
 async def rank(ctx):
     member_data = await LevelingManager.get_account(ctx.author)
     await ctx.send(f'You are currently level **{await member_data.level()}**, with **{await member_data.xp()}** XP.')
+
+
+@bot.command()
+async def set_roles(ctx, *roles: discord.Role):
+    await RoleManager.set_roles(ctx.guild, {"roles": roles})
 
 
 @bot.command()

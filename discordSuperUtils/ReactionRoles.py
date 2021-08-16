@@ -1,36 +1,18 @@
-from .Base import EventManager, generate_column_types, DatabaseNotConnected
+from .Base import DatabaseChecker
 from .Paginator import EmojiError
 
-database_keys = ['guild', 'message', 'role', 'emoji', 'remove_on_reaction']
 
-
-class ReactionManager(EventManager):
+class ReactionManager(DatabaseChecker):
     def __init__(self, bot):
-        super().__init__()
-        self.database = None
-        self.table = None
+        super().__init__(['guild', 'message', 'role', 'emoji', 'remove_on_reaction'],
+                         ['snowflake', 'snowflake', 'snowflake', 'string', 'smallnumber'])
+
         self.bot = bot
+        self.add_event(self.on_database_connect)
 
-    def __check_database(self):
-        if not self.database:
-            raise DatabaseNotConnected(f"Database not connected."
-                                       f" Connect this manager to a database using {self.__class__.__name__}")
-
-    async def connect_to_database(self, database, table):
-        types = generate_column_types(['snowflake', 'snowflake', 'snowflake', 'string', 'smallnumber'],
-                                      type(database.database))
-
-        await database.create_table(table, dict(zip(database_keys, types)) if types else None, True)
-
-        self.database = database
-        self.table = table
-
+    async def on_database_connect(self):
         self.bot.add_listener(self.__handle_reactions, "on_raw_reaction_add")
         self.bot.add_listener(self.__handle_reactions, "on_raw_reaction_remove")
-
-    @classmethod
-    def format_data(cls, data):
-        return {key: value for key, value in zip(database_keys, data)}
 
     @staticmethod
     def get_emoji_sql(emoji):
@@ -44,7 +26,7 @@ class ReactionManager(EventManager):
         return emoji_string
 
     async def __handle_reactions(self, payload):
-        self.__check_database()
+        self._check_database()
 
         if payload.user_id == self.bot.user.id:
             return
@@ -53,7 +35,7 @@ class ReactionManager(EventManager):
                            'message': payload.message_id,
                            'emoji': self.get_emoji_sql(payload.emoji)}
 
-        reaction_role_data = await self.database.select(self.table, database_keys, database_checks)
+        reaction_role_data = await self.database.select(self.table, self.column_names, database_checks)
 
         if not reaction_role_data:
             return
@@ -77,10 +59,10 @@ class ReactionManager(EventManager):
                     await member.remove_roles(role)
 
     async def create_reaction(self, guild, message, role, emoji, remove_on_reaction: int):
-        self.__check_database()
+        self._check_database()
 
         await self.database.insertifnotexists(self.table,
-                                              dict(zip(database_keys, [
+                                              dict(zip(self.column_names, [
                                                   guild.id,
                                                   message.id,
                                                   role.id if role is not None else role,
@@ -99,5 +81,5 @@ class ReactionManager(EventManager):
     async def delete_reaction(self, guild, message, emoji):
         await self.database.delete(self.table, {'guild': guild.id, 'message': message.id, 'emoji': emoji})
 
-    async def get_reactions(self, guild):
-        return await self.database.select(self.table, database_keys, {'guild': guild.id}, True)
+    async def get_reactions(self, guild=None):
+        return await self.database.select(self.table, [], {'guild': guild.id} if guild else {}, True)

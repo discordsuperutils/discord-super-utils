@@ -4,6 +4,8 @@
   <a href="#"><img src="https://img.shields.io/codefactor/grade/github/discordsuperutils/discord-super-utils?style=flat-square" /></a>
   <a href="https://discord.gg/zhwcpTBBeC"><img src="https://img.shields.io/discord/863388828734586880?logo=discord&color=blue&style=flat-square" /></a>
   <a href="https://pepy.tech/project/discordsuperutils"><img src="https://img.shields.io/pypi/dm/discordSuperUtils?color=green&style=flat-square" /></a>
+  <a href="https://pypi.org/project/discordSuperUtils/"><img src="https://img.shields.io/pypi/v/discordSuperUtils?style=flat-square" /></a>
+  <a href=""><img src="https://img.shields.io/pypi/l/discordSuperUtils?style=flat-square" /></a>
   <br></br>
   <a href="https://discord-super-utils.gitbook.io/discord-super-utils/">Documentation</a>
 </p>
