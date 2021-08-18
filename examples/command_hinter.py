@@ -19,7 +19,7 @@ def generate_embed(invalid_command: str, suggestions: List[str]) -> discord.Embe
 
 
 bot = commands.Bot(command_prefix="-")
-InviteTracker = discordSuperUtils.CommandHinter(bot, generate_embed)
+discordSuperUtils.CommandHinter(bot, generate_embed)
 
 
 @bot.event

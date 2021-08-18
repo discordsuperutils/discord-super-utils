@@ -3,8 +3,10 @@ import aiosqlite
 from motor import motor_asyncio
 import asyncio
 import aiomysql
+import sys
 
-asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+if sys.version_info >= (3, 8) and sys.platform.lower().startswith("win"):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
 async def create_mysql(host, port, user, password, dbname):
