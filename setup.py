@@ -7,14 +7,14 @@ README = f.read()
 setup(
   name = 'discordSuperUtils',
   packages = ['discordSuperUtils'],
-  version = '0.1.4',
+  version = '0.1.5',
   license='MIT',
   description = 'Discord Bot Development made easy!',
   long_description=README,
   long_description_content_type="text/markdown",
   author = 'koyashie07 and adam7100',
   url = 'https://github.com/koyashie07/discord-super-utils',
-  download_url = 'https://github.com/discordsuperutils/discord-super-utils/archive/refs/tags/v0.1.4.tar.gz',
+  download_url = 'https://github.com/discordsuperutils/discord-super-utils/archive/refs/tags/v0.1.5.tar.gz',
   keywords = ['discord', 'easy', 'discord.py', 'music', 'download', 'links', 'images', 'videos','audio', 'bot','paginator','economy','reaction','reaction roles', 'database', 'database manager'],
   install_requires=[
           'youtube-dl',
