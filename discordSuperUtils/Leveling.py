@@ -81,7 +81,6 @@ class RoleManager(DatabaseChecker):
                 raise TypeError("Roles must be of type list.")
 
             data_to_set["roles"] = '\0'.join(str(role.id) for role in roles)
-            print(data_to_set["roles"])
 
         if 'interval' in data_to_set:
             if not isinstance(data_to_set["interval"], int):
