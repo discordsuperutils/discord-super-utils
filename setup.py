@@ -13,7 +13,7 @@ setup(
   long_description=README,
   long_description_content_type="text/markdown",
   author = 'koyashie07 and adam7100',
-  url = 'https://github.com/koyashie07/discord-super-utils',
+  url = 'https://github.com/discordsuperutils/discord-super-utils',
   download_url = 'https://github.com/discordsuperutils/discord-super-utils/archive/refs/tags/v0.1.4.tar.gz',
   keywords = ['discord', 'easy', 'discord.py', 'music', 'download', 'links', 'images', 'videos','audio', 'bot','paginator','economy','reaction','reaction roles', 'database', 'database manager'],
   install_requires=[
