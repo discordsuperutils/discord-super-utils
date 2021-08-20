@@ -6,7 +6,7 @@ setuptools~=56.0.0
 requests~=2.25.1
 pymongo[srv]>=3.12.0
 psycopg2~=2.9.1
-spotipy~=2.18.0
+spotipy~=2.16.1
 spotify_dl==7.6.0
 aiosqlite>=0.17.0
 motor>=2.5.0
