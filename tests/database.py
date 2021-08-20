@@ -4,10 +4,11 @@ from tester import Tester
 import asyncio
 
 
-async def start_testing():
-    global database
-    database = discordSuperUtils.DatabaseManager.connect(...)
+async def get_database():
+    return discordSuperUtils.DatabaseManager.connect(...)
 
+
+async def start_testing():
     tester = Tester()
     tester.add_test(check_table_and_delete, [], ())
     tester.add_test(check_insert, [{"id": 1}])
@@ -52,4 +53,5 @@ async def check_update():
 
 
 loop = asyncio.get_event_loop()
+database = loop.run_until_complete(get_database())
 loop.run_until_complete(start_testing())

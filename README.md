@@ -267,6 +267,7 @@ Known Issues
 
 - Removing an animated emoji wont be recognized as a reaction role, as it shows up as not animated for some reason, breaking the reaction matcher.
 - Spotify queueing is very slow. 
+- Our event decorators do not work in Cogs. (Can be called manually, we are working on a fix currently)
 
 Support
 --------------
