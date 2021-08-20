@@ -105,8 +105,6 @@ class Player(discord.PCMVolumeTransformer):
     async def make_player(cls, query: str):
         data = await MusicManager.fetch_data(query)
         if data is None:
-            # await self.call_event('on_music_error', ctx, FetchFailed("Failed to fetch query data."))
-            # doesnt inherit EventManager so cant call on_music_error event!
             return []
 
         if 'entries' in data:
@@ -120,8 +118,6 @@ class Player(discord.PCMVolumeTransformer):
     async def generate_player(cls, query: str):
         data = await MusicManager.fetch_data(query)
         if data is None:
-            # await self.call_event('on_music_error', ctx, FetchFailed("Failed to fetch query data."))
-            # doesnt inherit EventManager so cant call on_music_error event!
             return None
 
         if 'entries' in data:
@@ -223,8 +219,10 @@ class MusicManager(EventManager):
                                                                                  item_type=url_type[0],
                                                                                  url=query))
 
+            songs = [Player.generate_player(f"{song['name']} {song['artist']}") for song in data]
+
             return list(filter(lambda a: a is not None,
-                               [await Player.generate_player(f"{song['name']} {song['artist']}") for song in data]))
+                               await asyncio.gather(*songs)))
 
         return await Player.make_player(query)
 

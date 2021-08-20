@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 
 import aiomysql
 import aiopg
@@ -58,6 +59,45 @@ class EventManager:
 
         if name in self.events:
             self.events[name].remove(func)
+
+
+class CogManager:
+    class Cog:
+        def __init__(self):
+            listeners = {}
+            managers = []
+
+            attribute_objects = [getattr(self, attr) for attr in dir(self)]
+
+            for attr in attribute_objects:
+                listener_type = getattr(attr, "_listener_type", None)
+                if listener_type:
+                    if listener_type in listeners:
+                        listeners[listener_type].append(attr)
+                    else:
+                        listeners[listener_type] = [attr]
+
+            for attr in attribute_objects:
+                if type(attr) in listeners:
+                    managers.append(attr)
+
+            for event_type in listeners:
+                for manager in managers:
+                    if isinstance(manager, event_type):
+                        for event in listeners[event_type]:
+                            manager.add_event(event)
+
+    @staticmethod
+    def event(manager_type):
+        def decorator(func):
+            if not inspect.iscoroutinefunction(func):
+                raise TypeError('Listeners must be async.')
+
+            func._listener_type = manager_type
+
+            return func
+
+        return decorator
 
 
 class DatabaseChecker(EventManager):

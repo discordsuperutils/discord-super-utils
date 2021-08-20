@@ -7,6 +7,7 @@ from .Economy import EconomyManager, EconomyAccount
 from .Imaging import ImageManager
 from .InviteTracker import InviteTracker
 from .CommandHinter import CommandHinter
+from .Base import CogManager
 
 __title__ = "discordSuperUtils"
 __version__ = "0.1.5"
