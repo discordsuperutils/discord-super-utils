@@ -1,7 +1,7 @@
 <h1 align="center">discord-super-utils</h1>
 
 <p align="center">
-  <a href="#"><img src="https://img.shields.io/codefactor/grade/github/discordsuperutils/discord-super-utils?style=flat-square" /></a>
+  <a href="https://codefactor.io/repository/github/discordsuperutils/discord-super-utils/"><img src="https://img.shields.io/codefactor/grade/github/discordsuperutils/discord-super-utils?style=flat-square" /></a>
   <a href="https://discord.gg/zhwcpTBBeC"><img src="https://img.shields.io/discord/863388828734586880?logo=discord&color=blue&style=flat-square" /></a>
   <a href="https://pepy.tech/project/discordsuperutils"><img src="https://img.shields.io/pypi/dm/discordSuperUtils?color=green&style=flat-square" /></a>
   <a href="https://pypi.org/project/discordSuperUtils/"><img src="https://img.shields.io/pypi/v/discordSuperUtils?style=flat-square" /></a>
@@ -22,12 +22,13 @@ Features
 - Very easy to use and user friendly.
 - Modern Leveling Manager.
 - Modern Music/Audio playing manager.
-- Modern Async Database Manager (SQLite, MongoDB, PostgreSQL).
+- Modern Async Database Manager (SQLite, MongoDB, PostgreSQL, MySQL, MariaDB).
 - Modern Paginator.
 - Modern Reaction Manager.
 - Modern Economy Manager.
 - Modern Image Manager (PIL).
 - Modern Invite Tracker.
+- Modern Command Hinter.
 
 Installation
 --------------
@@ -41,33 +42,48 @@ python -m pip install discordSuperUtils
 Examples
 --------------
 
-### Leveling Example ###
+### Leveling Example (With Role Manager) ###
 
 ```py
+import discord
+
 import discordSuperUtils
 from discord.ext import commands
 
 bot = commands.Bot(command_prefix='-')
-LevelingManager = discordSuperUtils.LevelingManager(bot)
+RoleManager = discordSuperUtils.RoleManager()
+LevelingManager = discordSuperUtils.LevelingManager(bot, RoleManager)
 
 
 @bot.event
 async def on_ready():
     database = discordSuperUtils.DatabaseManager.connect(...)
+    await RoleManager.connect_to_database(database, "xp_roles")
     await LevelingManager.connect_to_database(database, "xp")
 
     print('Leveling manager is ready.', bot.user)
 
 
 @LevelingManager.event()
-async def on_level_up(message, member_data):
-    await message.reply(f"You are now level {member_data.level}")
+async def on_level_up(message, member_data, roles):
+    await message.reply(f"You are now level {await member_data.level()}" + (f", you have received the {roles[0]}"
+                                                                            f" role." if roles else ""))
 
 
 @bot.command()
 async def rank(ctx):
     member_data = await LevelingManager.get_account(ctx.author)
-    await ctx.send(f'You are currently level **{await member_data.level()}**, with **{await member_data.xp()}** XP.')
+
+    if member_data:
+        await ctx.send(
+            f'You are currently level **{await member_data.level()}**, with **{await member_data.xp()}** XP.')
+    else:
+        await ctx.send(f"I am still creating your account! please wait a few seconds.")
+
+
+@bot.command()
+async def set_roles(ctx, *roles: discord.Role):
+    await RoleManager.set_roles(ctx.guild, {"roles": roles})
 
 
 @bot.command()
@@ -201,6 +217,8 @@ bot.run("token")
 ### Database Example ###
 
 ```py
+import aiopg
+
 import discordSuperUtils
 import aiosqlite
 from motor import motor_asyncio
@@ -209,15 +227,19 @@ import asyncio
 
 async def database_test():
     mongo_database = discordSuperUtils.DatabaseManager.connect(motor_asyncio.AsyncIOMotorClient("con-string")['name'])
-    # Replace 'con-string' by the MongoDB connection string and 'name' by the database name you want to use.
+    # Replace 'con-string' with the MongoDB connection string and 'name' by the database name you want to use.
 
-    postgre_database = discordSuperUtils.DatabaseManager.connect(await discordSuperUtils.create_postgre("con-string"))
-    # Replace 'con-string' by the PostrgeSQL connection string.
+    postgre_database = discordSuperUtils.DatabaseManager.connect(await aiopg.create_pool("con-string"))
+    # Replace 'con-string' with the PostrgeSQL connection string.
     # PostgreSQL connection string example:
     # "dbname=name user=postgres password=xxx host=host" host is not required.
 
+    mysql_database = await discordSuperUtils.create_mysql(host=..., port=..., user=..., password=..., dbname=...)
+    # Replace '...' with the arguments.
+    # create_mysql supports mysql AND mariaDB
+
     sqlite_database = discordSuperUtils.DatabaseManager.connect(await aiosqlite.connect('path'))
-    # Replace 'path' by the SQLite database path. (must be on your computer)
+    # Replace 'path' with the SQLite database path. (must be on your computer)
 
     await sqlite_database.insert('economy', {'guild': ..., 'member': ..., 'currency': ..., 'bank': ...})
 
@@ -265,9 +287,8 @@ More examples are listed in the examples folder.
 Known Issues
 --------------
 
-- Removing an animated emoji wont be recognized as a reaction role, as it shows up as not animated for some reason, breaking the reaction matcher.
+- Removing an animated emoji wont be recognized as a reaction role, as it shows up as not animated for some reason, breaking the reaction matcher. (Discord API Related)
 - Spotify queueing is very slow. 
-- Our event decorators do not work in Cogs. (Can be called manually, we are working on a fix currently)
 
 Support
 --------------
