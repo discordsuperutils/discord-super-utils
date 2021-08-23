@@ -1,5 +1,6 @@
 import time
 from threading import Thread
+import asyncio
 
 
 class Test:
@@ -74,5 +75,4 @@ class Tester:
 
         self._thread.start()
 
-        for test in self.tests:
-            await test.run()
+        await asyncio.gather(*[x.run() for x in self.tests])
