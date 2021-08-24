@@ -95,7 +95,8 @@ class Player(discord.PCMVolumeTransformer):
 
         self.data = data
         self.title = data.get('title')
-        self.url = data.get('url')
+        self.stream_url = data.get('url')
+        self.url = data.get('webpage_url')
         self.duration = data.get('duration') if data.get('duration') != 0 else "LIVE"
 
     def __str__(self):
@@ -154,6 +155,9 @@ class MusicManager(EventManager):
         self.client_secret = kwargs.get('client_secret')
         self.spotify_reg = "^https://open.spotify.com/"
         self.spotify_support = spotify_support
+        self.now = {}
+        self.check = {}
+        self.duration = {}
         if spotify_support:
             self.sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=self.client_id,
                                                                             client_secret=self.client_secret))
