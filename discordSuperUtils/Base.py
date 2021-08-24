@@ -2,6 +2,7 @@ import asyncio
 import inspect
 
 import aiomysql
+import discord
 import aiopg
 import aiosqlite
 from motor import motor_asyncio
@@ -25,6 +26,35 @@ def generate_column_types(types, database_type):
         return
 
     return [database_type_configuration[x] for x in types]
+
+
+async def questionnaire(ctx, questions, public=False, timeout=30, member=None):
+    answers = []
+    timed_out = False
+
+    if not public and not member:
+        raise ValueError("The questionnaire is private and no member was provided.")
+
+    def checks(msg):
+        return msg.channel == ctx.channel if public else msg.channel == ctx.channel and msg.author == member
+
+    for question in questions:
+        if isinstance(question, str):
+            await ctx.send(question)
+        elif isinstance(question, discord.Embed):
+            await ctx.send(embed=question)
+        else:
+            raise TypeError("Question must be of type 'str' or 'discord.Embed'.")
+
+        try:
+            message = await ctx.bot.wait_for('message', check=checks, timeout=timeout)
+        except asyncio.TimeoutError:
+            timed_out = True
+            break
+
+        answers.append(message.content)
+
+    return answers, timed_out
 
 
 class EventManager:
@@ -109,10 +139,15 @@ class DatabaseChecker(EventManager):
         self.column_names = column_names
         self.column_types = column_types
 
-    def _check_database(self):
+    def _check_database(self, raise_error=True):
         if not self.database:
-            raise DatabaseNotConnected(f"Database not connected."
-                                       f" Connect this manager to a database using {self.__class__.__name__}")
+            if raise_error:
+                raise DatabaseNotConnected(f"Database not connected."
+                                           f" Connect this manager to a database using 'connect_to_database'")
+
+            return False
+
+        return True
 
     async def connect_to_database(self, database, table):
         types = generate_column_types(self.column_types,

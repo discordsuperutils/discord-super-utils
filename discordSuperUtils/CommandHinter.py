@@ -3,10 +3,6 @@ from difflib import SequenceMatcher
 import discord
 
 
-class InvalidGeneratedMessageType(Exception):
-    """Raises an error when the generate_function returns an invalid type"""
-
-
 class CommandHinter:
     def __init__(self, bot, generate_function):
         self.bot = bot
@@ -44,4 +40,4 @@ class CommandHinter:
             elif isinstance(generated_message, str):
                 await ctx.send(generated_message)
             else:
-                raise InvalidGeneratedMessageType("The generated message must be of type discord.Embed or str.")
+                raise TypeError("The generated message must be of type 'discord.Embed' or 'str'.")

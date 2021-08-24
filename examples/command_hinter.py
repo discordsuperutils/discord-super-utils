@@ -29,7 +29,7 @@ async def on_ready():
 
 @bot.command()
 async def ping(ctx):
-    await ctx.send(f"Pong! ping is {bot.latency}ms")
+    await ctx.send(f"Pong! ping is {bot.latency * 1000}ms")
 
 
 bot.run("token")
