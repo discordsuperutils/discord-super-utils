@@ -20,6 +20,7 @@ Features
 -------------
 
 - Very easy to use and user friendly.
+- Object Oriented.
 - Modern Leveling Manager.
 - Modern Music/Audio playing manager.
 - Modern Async Database Manager (SQLite, MongoDB, PostgreSQL, MySQL, MariaDB).
@@ -29,6 +30,11 @@ Features
 - Modern Image Manager (PIL).
 - Modern Invite Tracker.
 - Modern Command Hinter.
+- Modern FiveM Server Parser.
+- Modern Birthday Manager.
+- Modern Prefix Manager.
+- And many more!
+(MORE COMING SOON!)
 
 Installation
 --------------
