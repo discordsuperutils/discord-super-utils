@@ -1,5 +1,6 @@
 import asyncio
 import inspect
+from typing import List
 
 import aiomysql
 import discord
@@ -93,9 +94,9 @@ class EventManager:
 
 class CogManager:
     class Cog:
-        def __init__(self):
+        def __init__(self, managers: List = None):
             listeners = {}
-            managers = []
+            managers = [] if managers is None else managers
 
             attribute_objects = [getattr(self, attr) for attr in dir(self)]
 
@@ -107,9 +108,10 @@ class CogManager:
                     else:
                         listeners[listener_type] = [attr]
 
-            for attr in attribute_objects:
-                if type(attr) in listeners:
-                    managers.append(attr)
+            if not managers:
+                for attr in attribute_objects:
+                    if type(attr) in listeners:
+                        managers.append(attr)
 
             for event_type in listeners:
                 for manager in managers:

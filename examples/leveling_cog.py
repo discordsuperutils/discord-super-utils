@@ -16,6 +16,9 @@ class Leveling(commands.Cog, discordSuperUtils.CogManager.Cog):
         self.LevelingManager = discordSuperUtils.LevelingManager(bot, self.RoleManager)
         super().__init__()  # Make sure you define your managers before running CogManager.Cog's __init__ function.
         # Incase you do not, CogManager.Cog wont find the managers and will not link them to the events.
+        # Alternatively, you can pass your managers in CogManager.Cog's __init__ function incase you are using the same
+        # managers in different files, I recommend saving the managers as attributes on the bot object, instead of
+        # importing them.
 
     @commands.Cog.listener()
     async def on_ready(self):

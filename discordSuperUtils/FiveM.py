@@ -14,10 +14,10 @@ class FiveMPlayer:
         self.ping = ping
 
     def __str__(self):
-        return f"<FiveM Player id={self.player_id}>"
+        return f"<FiveM Player {self.player_id=}>"
 
     def __repr__(self):
-        return f"<FiveM Player name={self.name}, id={self.player_id}, identifiers={self.identifiers}, ping={self.ping}>"
+        return f"<FiveM Player {self.name=}, {self.player_id=}, {self.identifiers=}, {self.ping=}>"
 
     @classmethod
     def fetch(cls, player_dict):
@@ -34,14 +34,14 @@ class FiveMServer:
         self.variables = variables
 
     def __str__(self):
-        return f"<FiveM Server name={self.name}>"
+        return f"<FiveM Server {self.name=}>"
 
     def __repr__(self):
-        return f"<FiveM Server ip={self.ip}," \
-               f" name={self.name}," \
-               f" players={self.players}," \
-               f" resources={self.resources}," \
-               f" variables={self.variables}>"
+        return f"<FiveM Server {self.ip=}," \
+               f" {self.name=}," \
+               f" {self.players=}," \
+               f" {self.resources=}," \
+               f" {self.variables=}>"
 
     @classmethod
     async def fetch(cls, ip):
