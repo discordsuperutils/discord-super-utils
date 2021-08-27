@@ -4,9 +4,10 @@ import asyncio
 
 
 class Test:
-    def __init__(self, func, *args):
+    def __init__(self, func, ignored_exception, *args):
         self.func = func
         self.value = args
+        self.ignored_exception = ignored_exception
         self.completed = None
         self.time = 0
         self.result = None
@@ -19,6 +20,8 @@ class Test:
             self.result = await self.func()
         except Exception as e:
             self.exception = e.__class__.__name__ + ": " + str(e)
+            if self.ignored_exception and isinstance(e, self.ignored_exception):
+                self.exception = None
 
         self.time = (time.time() - start) * 1000
         self.completed = any(self.result == val for val in self.value) and not self.exception
@@ -67,8 +70,8 @@ class Tester:
                                 for x in failed])
         print(f"---------------\nDone, ({len(self.tests) - len(failed)}/{len(self.tests)}) tests have passed.\n" + failed_str)
 
-    def add_test(self, function, *args):
-        self.tests.append(Test(function, *args))
+    def add_test(self, function, *args, ignored_exception=None):
+        self.tests.append(Test(function, ignored_exception, *args))
 
     async def run(self):
         print(f'Running {len(self.tests)} test(s).\n---------------')

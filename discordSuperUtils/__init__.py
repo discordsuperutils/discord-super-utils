@@ -11,6 +11,8 @@ from .Base import CogManager, questionnaire
 from .FiveM import FiveMServer
 from .Birthday import BirthdayManager
 from .Prefix import PrefixManager
+from .Moderation import InfractionManager
+from .Convertors import TimeConvertor
 
 __title__ = "discordSuperUtils"
 __version__ = "0.1.5"

@@ -1,14 +1,32 @@
 from discord.ext import commands
 from difflib import SequenceMatcher
+from typing import (
+    Callable,
+    List,
+    Union
+)
 import discord
 
 
 class CommandHinter:
-    def __init__(self, bot, generate_function):
+    def __init__(self, bot, generate_function: Callable[[str, List[str]], Union[discord.Embed, str]] = None):
         self.bot = bot
-        self.generate_function = generate_function
+        self.generate_function = self.generate_embed if generate_function is None else generate_function
 
         self.bot.add_listener(self.__handle_hinter, "on_command_error")
+
+    @staticmethod
+    def generate_embed(invalid_command: str, suggestions: List[str]) -> discord.Embed:
+        embed = discord.Embed(
+            title="Invalid command!",
+            description=f"**`{invalid_command}`** is invalid. Did you mean:",
+            color=0x00ff00
+        )
+
+        for index, suggestion in enumerate(suggestions[:3]):
+            embed.add_field(name=f"**{index + 1}.**", value=f"**`{suggestion}`**", inline=False)
+
+        return embed
 
     @property
     def command_names(self):
@@ -16,6 +34,7 @@ class CommandHinter:
 
         for command in self.bot.commands:
             if isinstance(command, commands.Group):
+                names += [command.name] + command.aliases
                 for inner_command in command.commands:
                     names += [inner_command.name] + inner_command.aliases
 
@@ -41,3 +60,6 @@ class CommandHinter:
                 await ctx.send(generated_message)
             else:
                 raise TypeError("The generated message must be of type 'discord.Embed' or 'str'.")
+
+        else:
+            raise error

@@ -201,12 +201,11 @@ class _SqlDatabase:
         if checks:
             query += "WHERE "
             for check in checks:
-                query += f"{list(check)[0]} = {self.place_holder} AND "
+                query += f"{check} = {self.place_holder} AND "
 
             query = query[:-4]
 
-        values = [list(x.values())[0] for x in checks]
-        await cursor.execute(query, values)
+        await cursor.execute(query, list(checks.values()))
 
     @with_cursor
     async def select(self, cursor, table_name, keys, checks=None, fetchall=False):
