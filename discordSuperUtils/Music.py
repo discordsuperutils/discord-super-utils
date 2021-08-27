@@ -31,6 +31,7 @@ ffmpeg_options = {
 }
 
 ytdl = youtube_dl.YoutubeDL(ytdl_opts)
+spotify_reg = re.compile("^https://open.spotify.com/")
 
 
 # errors/exceptions
@@ -102,30 +103,28 @@ class Player(discord.PCMVolumeTransformer):
     def __str__(self):
         return self.title
 
+    @staticmethod
+    async def make_multiple_players(songs):
+        tasks = [Player.make_player(song, playlist=False) for song in songs]
+        players = await asyncio.gather(*tasks)
+
+        return [x[0] for x in players if x]
+
     @classmethod
-    async def make_player(cls, query: str):
+    async def make_player(cls, query: str, playlist=True):
         data = await MusicManager.fetch_data(query)
         if data is None:
             return []
 
         if 'entries' in data:
-            return [cls(discord.FFmpegPCMAudio(player['url'],
-                                               **ffmpeg_options), data=player) for player in data['entries']]
+            if not playlist:
+                data = data['entries'][0]
+            else:
+                return [cls(discord.FFmpegPCMAudio(player['url'],
+                                                   **ffmpeg_options), data=player) for player in data['entries']]
 
         filename = data['url']
         return [cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)]
-
-    @classmethod
-    async def generate_player(cls, query: str):
-        data = await MusicManager.fetch_data(query)
-        if data is None:
-            return None
-
-        if 'entries' in data:
-            data = data['entries'][0]
-
-        filename = data['url']
-        return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
 
 
 class QueueManager:
@@ -153,11 +152,7 @@ class MusicManager(EventManager):
         self.queue = {}
         self.client_id = kwargs.get('client_id')
         self.client_secret = kwargs.get('client_secret')
-        self.spotify_reg = "^https://open.spotify.com/"
         self.spotify_support = spotify_support
-        self.now = {}
-        self.check = {}
-        self.duration = {}
         if spotify_support:
             self.sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=self.client_id,
                                                                             client_secret=self.client_secret))
@@ -215,7 +210,7 @@ class MusicManager(EventManager):
             return None
 
     async def create_player(self, query):
-        if re.match(self.spotify_reg, query) and self.spotify_support:
+        if spotify_reg.match(query) and self.spotify_support:
             loop = asyncio.get_event_loop()
             url_type = await loop.run_in_executor(None, lambda: spotify.parse_spotify_url(query))
 
@@ -223,10 +218,7 @@ class MusicManager(EventManager):
                                                                                  item_type=url_type[0],
                                                                                  url=query))
 
-            songs = [Player.generate_player(f"{song['name']} {song['artist']}") for song in data]
-
-            return list(filter(lambda a: a is not None,
-                               await asyncio.gather(*songs)))
+            return Player.make_multiple_players([f'{song["name"]} {song["artist"]}' for song in data])
 
         return await Player.make_player(query)
 
