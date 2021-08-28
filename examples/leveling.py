@@ -2,7 +2,6 @@ import discord
 
 import discordSuperUtils
 from discord.ext import commands
-import aiomysql
 
 bot = commands.Bot(command_prefix='-')
 RoleManager = discordSuperUtils.RoleManager()
@@ -11,9 +10,7 @@ LevelingManager = discordSuperUtils.LevelingManager(bot, RoleManager)
 
 @bot.event
 async def on_ready():
-    database = discordSuperUtils.DatabaseManager.connect(await aiomysql.connect(host='127.0.0.1', port=3306,
-                                                                                user='ussr', password='root',
-                                                                                db='testtt', loop=bot.loop))
+    database = discordSuperUtils.DatabaseManager.connect(...)
     await RoleManager.connect_to_database(database, "xp_roles")
     await LevelingManager.connect_to_database(database, "xp")
 
