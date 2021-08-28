@@ -19,6 +19,7 @@ class Spotify:
 
     async def get_songs(self, url):
         playlist_type = await self.get_type(url)
+        songs = None
 
         if playlist_type == "playlist":
             playlist = self.sp.playlist_items(playlist_id=url, fields='items.track.name,items.track.artists(name)',
@@ -27,10 +28,10 @@ class Spotify:
             return [await self.make_title(song['track']) for song in playlist]
 
         elif playlist_type == "track":
-            song = self.sp.track(track_id=url)
-            return [await self.make_title(song)]
+            songs = [self.sp.track(track_id=url)]
 
         elif playlist_type == "album":
             album = self.sp.album_tracks(album_id=url, limit=50)
-            album = album.get("items")
-            return [await self.make_title(song) for song in album]
+            songs = album.get("items")
+
+        return [await self.make_title(song) for song in songs]
