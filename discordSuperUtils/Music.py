@@ -208,8 +208,7 @@ class MusicManager(EventManager):
 
     async def create_player(self, query):
         if spotify_reg.match(query) and self.spotify_support:
-            data = await self.spotify.get_songs(query)
-            return await Player.make_multiple_players([song for song in data])
+            return await Player.make_multiple_players([song for song in await self.spotify.get_songs(query)])
 
         return await Player.make_player(query)
 
