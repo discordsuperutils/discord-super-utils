@@ -41,6 +41,10 @@ class TimeConvertor(commands.Converter):
                             "d": 60 * 60 * 24,
                             "w": 60 * 60 * 24 * 7}
 
+        permanent = ["permanent", "perm", "0"]
+        if argument.lower() in permanent:
+            return 0
+
         if not isint(argument[:-1]) or argument[-1] not in time_multipliers.keys():
             raise commands.BadArgument(f"Invalid time argument provided, cannot convert '{argument}' to time.")
 

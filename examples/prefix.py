@@ -1,5 +1,3 @@
-import aiosqlite
-
 import discordSuperUtils
 from discord.ext import commands
 

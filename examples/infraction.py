@@ -1,21 +1,47 @@
-import aiosqlite
-
 import discordSuperUtils
 from discord.ext import commands
 import discord
-import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 bot = commands.Bot(command_prefix="-")
 InfractionManager = discordSuperUtils.InfractionManager(bot)
+BanManager = discordSuperUtils.BanManager(bot)
+InfractionManager.add_punishments([
+    discordSuperUtils.Punishment(BanManager, punishment_time=timedelta(minutes=1))
+])
+
+
+@BanManager.event()
+async def on_unban(member, reason):
+    print(f"{member} has been unbanned. ban reason: {reason}")
+
+
+@BanManager.event()
+async def on_punishment(ctx, member, punishment):
+    await ctx.send(f"{member.mention} has been punished!")
 
 
 @bot.event
 async def on_ready():
-    database = discordSuperUtils.DatabaseManager.connect(await aiosqlite.connect('main.sqlite'))
+    database = discordSuperUtils.DatabaseManager.connect(...)
     await InfractionManager.connect_to_database(database, "infractions")
+    await BanManager.connect_to_database(database, "bans")
     print('Infraction manager is ready.', bot.user)
+
+
+@bot.command()
+async def ban(ctx, member: discord.Member, time_of_ban: discordSuperUtils.TimeConvertor, reason: str = "No reason specified."):
+    await ctx.send(f"{member} has been banned. Reason: {reason}")
+    await BanManager.ban(member, reason, time_of_ban)
+
+
+@bot.command()
+async def unban(ctx, member: discord.User):
+    if await BanManager.unban(member, guild=ctx.guild):
+        await ctx.send(f"{member} has been unbanned.")
+    else:
+        await ctx.send(f"{member} is not banned.")
 
 
 @bot.group(invoke_without_command=True)
@@ -34,7 +60,7 @@ async def infractions(ctx, member: discord.Member):
 
 @infractions.command()
 async def add(ctx, member: discord.Member, reason: str = "No reason specified."):
-    infraction = await InfractionManager.warn(member, reason)
+    infraction = await InfractionManager.warn(ctx, member, reason)
 
     embed = discord.Embed(
         title=f"{member} has been warned.",
@@ -74,7 +100,7 @@ async def get(ctx, member: discord.Member, infraction_id: str):
 
 @infractions.command()
 async def get_before(ctx, member: discord.Member, from_time: discordSuperUtils.TimeConvertor):
-    from_timestamp = time.time() - from_time
+    from_timestamp = datetime.utcnow().timestamp() - from_time
 
     member_infractions = await InfractionManager.get_infractions(member, from_timestamp=from_timestamp)
 
@@ -129,7 +155,7 @@ async def remove(ctx, member: discord.Member, infraction_id: str):
 
 @infractions.command()
 async def remove_before(ctx, member: discord.Member, from_time: discordSuperUtils.TimeConvertor):
-    from_timestamp = time.time() - from_time
+    from_timestamp = datetime.utcnow().timestamp() - from_time
 
     member_infractions = await InfractionManager.get_infractions(member, from_timestamp=from_timestamp)
     removed_infractions = []

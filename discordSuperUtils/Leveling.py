@@ -119,10 +119,9 @@ class LevelingManager(DatabaseChecker):
         if not message.guild or message.author.bot:
             return
 
-        if message.guild.id not in self.cooldown_members:
-            self.cooldown_members[message.guild.id] = {}
+        member_cooldown = self.cooldown_members.setdefault(message.guild.id, {}).get(message.author.id, 0)
 
-        if (time.time() - self.cooldown_members[message.guild.id].get(message.author.id, 0)) >= self.xp_cooldown:
+        if (time.time() - member_cooldown) >= self.xp_cooldown:
             await self.create_account(message.author)
             member_account = await self.get_account(message.author)
 

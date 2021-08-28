@@ -6,7 +6,8 @@ from discord.ext import commands
 from typing import (
     Dict,
     List,
-    Optional
+    Optional,
+    Any
 )
 
 from .Base import DatabaseChecker
@@ -100,6 +101,60 @@ class BirthdayManager(DatabaseChecker):
 
         return birthdays
 
+    @staticmethod
+    def get_midnight_timezones() -> List[str]:
+        """
+        This method returns a list of timezones where the current time is 12 am.
+        :return:
+        """
+
+        current_utc_time = datetime.utcnow()
+        utc_offset = -(current_utc_time.hour % 24)
+
+        minutes = 30 if current_utc_time.minute > 5 else 0
+        checks = (
+            timedelta(hours=utc_offset, minutes=minutes),
+            timedelta(hours=24 - (current_utc_time.hour % 24) if current_utc_time.hour != 0 else 0, minutes=minutes)
+        )
+
+        return [tz.zone for tz in map(pytz.timezone, pytz.all_timezones_set)
+                if current_utc_time.astimezone(tz).utcoffset() in checks]
+
+    async def get_members_with_birthday(self, timezones: List[str]) -> List[Dict[str, Any]]:
+        """
+        This function receives a list of timezones and returns a list of members that have birthdays in that date
+        and timezone.
+
+        :param timezones:
+        :return:
+        """
+
+        result_members = []
+        registered_members = await self.database.select(self.table, [], fetchall=True)
+
+        birthday_members = [x for x in registered_members if x["timezone"] in self.get_midnight_timezones()]
+        for birthday_member in birthday_members:
+            timezone_time = datetime.now(pytz.timezone(birthday_member["timezone"]))
+            date_of_birth = datetime.fromtimestamp(birthday_member["utc_birthday"])
+
+            if date_of_birth.month == timezone_time.month and date_of_birth.day == timezone_time.day:
+                result_members.append(result_members)
+
+        return result_members
+
+    @staticmethod
+    def round_to_nearest(timedelta_to_round):
+        """
+        This function receives a timedelta to round to and gets the amount of seconds before that timestamp.
+
+        :param timedelta_to_round:
+        :return:
+        """
+
+        now = datetime.now()
+        nearest = now + (datetime.min - now) % timedelta_to_round
+        return nearest.timestamp() - now.timestamp()
+
     async def __detect_birthdays(self) -> None:
         await self.bot.wait_until_ready()
 
@@ -109,40 +164,15 @@ class BirthdayManager(DatabaseChecker):
                 # the on ready event.
                 continue
 
-            now = datetime.now()
-            nearest = now + (datetime.min - now) % timedelta(minutes=30)
+            await asyncio.sleep(self.round_to_nearest(timedelta(minutes=30)))
 
-            rounded = nearest.timestamp() - now.timestamp()
+            for birthday_member in await self.get_members_with_birthday(self.get_midnight_timezones()):
+                guild = self.bot.get_guild(birthday_member["guild"])
 
-            await asyncio.sleep(rounded)
+                if guild:
+                    member = guild.get_member(birthday_member["member"])
 
-            current_utc_time = datetime.utcnow()
-            utc_offset = -(current_utc_time.hour % 24)
-
-            minutes = 30 if current_utc_time.minute > 5 else 0
-            checks = (
-                timedelta(hours=utc_offset, minutes=minutes),
-                timedelta(hours=24 - (current_utc_time.hour % 24) if current_utc_time.hour != 0 else 0, minutes=minutes)
-            )
-
-            timezones = [tz.zone for tz in map(pytz.timezone, pytz.all_timezones_set)
-                         if current_utc_time.astimezone(tz).utcoffset() in checks]
-
-            registered_members = await self.database.select(self.table, [], fetchall=True)
-            # add SQL custom to make OR statement
-
-            birthday_members = [x for x in registered_members if x["timezone"] in timezones]
-            for birthday_member in birthday_members:
-                timezone_time = datetime.now(pytz.timezone(birthday_member["timezone"]))
-                date_of_birth = datetime.fromtimestamp(birthday_member["utc_birthday"])
-
-                if date_of_birth.month == timezone_time.month and date_of_birth.day == timezone_time.day:
-                    guild = self.bot.get_guild(birthday_member["guild"])
-
-                    if guild:
-                        member = guild.get_member(birthday_member["member"])
-
-                        if member:
-                            await self.call_event("on_member_birthday", BirthdayMember(
-                                self.database, self.table, member
-                            ))
+                    if member:
+                        await self.call_event("on_member_birthday", BirthdayMember(
+                            self.database, self.table, member
+                        ))

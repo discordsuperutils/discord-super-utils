@@ -11,8 +11,9 @@ from .Base import CogManager, questionnaire
 from .FiveM import FiveMServer
 from .Birthday import BirthdayManager
 from .Prefix import PrefixManager
-from .Moderation import InfractionManager
+from .Moderation import InfractionManager, Punishment, BanManager
 from .Convertors import TimeConvertor
+from .Spotify import SpotifyClient
 
 __title__ = "discordSuperUtils"
 __version__ = "0.1.5"

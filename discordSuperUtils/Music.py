@@ -5,10 +5,8 @@ from .Base import EventManager
 from typing import Optional
 import asyncio
 from enum import Enum
-from .Spotify import Spotify
+from .Spotify import SpotifyClient
 import re
-
-# should be .Base, koyashie use Base for testing
 
 # just some options etc.
 
@@ -152,7 +150,7 @@ class MusicManager(EventManager):
         self.client_secret = kwargs.get('client_secret')
         self.spotify_support = spotify_support
         if spotify_support:
-            self.spotify = Spotify(client_id=self.client_id, client_secret=self.client_secret)
+            self.spotify = SpotifyClient(client_id=self.client_id, client_secret=self.client_secret)
 
     async def __check_connection(self, ctx, check_playing: bool = False, check_queue: bool = False) -> Optional[bool]:
         if not ctx.voice_client or not ctx.voice_client.is_connected():
@@ -186,15 +184,17 @@ class MusicManager(EventManager):
 
             self.queue[ctx.guild.id].now_playing = player
 
-            if player is not None and ctx.voice_client:
-                player.volume = self.queue[ctx.guild.id].volume
-                ctx.voice_client.play(player, after=lambda x: self.__check_queue(ctx))
+            if player is None or not ctx.voice_client:
+                return
 
-                if self.queue[ctx.guild.id].loop == Loops.NO_LOOP:
-                    self.queue[ctx.guild.id].history.append(player)
-                    self.bot.loop.create_task(
-                        self.call_event('on_play', ctx, player)
-                    )
+            player.volume = self.queue[ctx.guild.id].volume
+            ctx.voice_client.play(player, after=lambda x: self.__check_queue(ctx))
+
+            if self.queue[ctx.guild.id].loop == Loops.NO_LOOP:
+                self.queue[ctx.guild.id].history.append(player)
+                self.bot.loop.create_task(
+                    self.call_event('on_play', ctx, player)
+                )
         except (IndexError, KeyError):
             return
 
@@ -291,19 +291,19 @@ class MusicManager(EventManager):
                 await self.call_event('on_music_error', ctx, InvalidSkipIndex("Skip index invalid."))
                 return
 
-        if len(self.queue[ctx.guild.id].queue) > skip_index:
-            if skip_index > 0:
-                removed_songs = self.queue[ctx.guild.id].queue[:skip_index]
+        if len(self.queue[ctx.guild.id].queue) <= skip_index:
+            await self.call_event('on_music_error', ctx, SkipError("No song to skip to."))
 
-                self.queue[ctx.guild.id].queue = self.queue[ctx.guild.id].queue[skip_index:]
-                if self.queue[ctx.guild.id].loop == Loops.QUEUE_LOOP:
-                    self.queue[ctx.guild.id].queue += removed_songs
+        if skip_index > 0:
+            removed_songs = self.queue[ctx.guild.id].queue[:skip_index]
 
-            player = self.queue[ctx.guild.id].queue[0]
-            ctx.voice_client.stop()
-            return player
+            self.queue[ctx.guild.id].queue = self.queue[ctx.guild.id].queue[skip_index:]
+            if self.queue[ctx.guild.id].loop == Loops.QUEUE_LOOP:
+                self.queue[ctx.guild.id].queue += removed_songs
 
-        await self.call_event('on_music_error', ctx, SkipError("No song to skip to."))
+        player = self.queue[ctx.guild.id].queue[0]
+        ctx.voice_client.stop()
+        return player
 
     async def volume(self, ctx, volume: int = None):
         if not await self.__check_connection(ctx, True, check_queue=True):

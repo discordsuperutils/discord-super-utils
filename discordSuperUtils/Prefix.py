@@ -16,14 +16,22 @@ class PrefixManager(DatabaseChecker):
         self.bot = bot
         self.mentioned = mentioned
 
+        self.prefix_cache = {}
         bot.command_prefix = self.__get_prefix
 
     async def get_prefix(self, guild: Union[discord.Guild, Any]) -> str:
-        prefix = await self.database.select(self.table, ['prefix'], {'guild': guild.id})
+        if guild.id in self.prefix_cache:
+            return self.prefix_cache[guild.id]
 
-        return prefix["prefix"] if prefix else self.default_prefix
+        prefix = await self.database.select(self.table, ['prefix'], {'guild': guild.id})
+        prefix = prefix["prefix"] if prefix else self.default_prefix
+
+        self.prefix_cache[guild.id] = prefix
+
+        return prefix
 
     async def set_prefix(self, guild: discord.Guild, prefix: str) -> None:
+        self.prefix_cache[guild.id] = prefix
         await self.database.updateorinsert(self.table,
                                            {'prefix': prefix},
                                            {'guild': guild.id},

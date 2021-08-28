@@ -12,6 +12,19 @@ async def start_testing():
     tester.add_test(convert_invalid2, None, ignored_exception=BadArgument)
     await tester.run()
 
+    """
+    RESULTS
+    --------
+        convert_valid: 7d: Passed 0.0ms
+        convert_valid2: 1m: Passed 0.0ms
+        convert_invalid: heyh: Passed 0.0ms raised BadArgument
+        convert_invalid: 100j: Passed 0.0ms raised BadArgument
+
+    Conclusion
+    ----------
+        Everything seems to work perfectly.
+    """
+
 
 async def convert_valid():
     return await convertor.convert(None, "7d")

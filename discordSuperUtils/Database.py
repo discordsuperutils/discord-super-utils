@@ -42,7 +42,9 @@ class _MongoDatabase:
     async def insert(self, table_name, data):
         return await self.database[table_name].insert_one(data)
 
-    async def create_table(self, table_name, columns=None, exists=False):
+    async def create_table(self, table_name, _=None, exists=False):
+        # create_table has an unused positional parameter to make the methods consistent between database types.
+
         if exists and table_name in await self.database.list_collection_names():
             return
 
