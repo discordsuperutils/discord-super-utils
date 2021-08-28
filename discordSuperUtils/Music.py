@@ -5,9 +5,7 @@ from .Base import EventManager
 from typing import Optional
 import asyncio
 from enum import Enum
-from spotify_dl import spotify
-from spotipy import SpotifyClientCredentials
-import spotipy
+from .Spotify import Spotify
 import re
 
 # should be .Base, koyashie use Base for testing
@@ -154,8 +152,7 @@ class MusicManager(EventManager):
         self.client_secret = kwargs.get('client_secret')
         self.spotify_support = spotify_support
         if spotify_support:
-            self.sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=self.client_id,
-                                                                            client_secret=self.client_secret))
+            self.spotify = Spotify(client_id=self.client_id, client_secret=self.client_secret)
 
     async def __check_connection(self, ctx, check_playing: bool = False, check_queue: bool = False) -> Optional[bool]:
         if not ctx.voice_client or not ctx.voice_client.is_connected():
@@ -211,14 +208,8 @@ class MusicManager(EventManager):
 
     async def create_player(self, query):
         if spotify_reg.match(query) and self.spotify_support:
-            loop = asyncio.get_event_loop()
-            url_type = await loop.run_in_executor(None, lambda: spotify.parse_spotify_url(query))
-
-            data = await loop.run_in_executor(None, lambda: spotify.fetch_tracks(sp=self.sp,
-                                                                                 item_type=url_type[0],
-                                                                                 url=query))
-
-            return Player.make_multiple_players([f'{song["name"]} {song["artist"]}' for song in data])
+            data = await self.spotify.get_songs(query)
+            return await Player.make_multiple_players([song for song in data])
 
         return await Player.make_player(query)
 
