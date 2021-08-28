@@ -10,23 +10,23 @@ playlist_url = ...
 
 
 async def start_testing():
-    tester = Tester()
-    tester.add_test(fetch_spotify_client, ...)
-    tester.add_test(fetch_spotify_dl_client, ...)
-    await tester.run()
-
     """
     Tested with a playlist containing 463 songs.
-    
+
     RESULTS
     --------
         Our spotify client: ~1181ms
         spotify_dl: ~94000ms
-    
+
     Conclusion
     ----------
         Our spotify client is ~80x faster than spotify_dl and is optimised for discord.py spotify fetching.
     """
+
+    tester = Tester()
+    tester.add_test(fetch_spotify_client, ...)
+    tester.add_test(fetch_spotify_dl_client, ...)
+    await tester.run()
 
 
 async def fetch_spotify_client():

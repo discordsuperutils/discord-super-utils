@@ -5,13 +5,6 @@ from discord.ext.commands import BadArgument
 
 
 async def start_testing():
-    tester = Tester()
-    tester.add_test(convert_valid, 604800)
-    tester.add_test(convert_valid2, 60)
-    tester.add_test(convert_invalid, None, ignored_exception=BadArgument)
-    tester.add_test(convert_invalid2, None, ignored_exception=BadArgument)
-    await tester.run()
-
     """
     RESULTS
     --------
@@ -24,6 +17,13 @@ async def start_testing():
     ----------
         Everything seems to work perfectly.
     """
+
+    tester = Tester()
+    tester.add_test(convert_valid, 604800)
+    tester.add_test(convert_valid2, 60)
+    tester.add_test(convert_invalid, None, ignored_exception=BadArgument)
+    tester.add_test(convert_invalid2, None, ignored_exception=BadArgument)
+    await tester.run()
 
 
 async def convert_valid():
