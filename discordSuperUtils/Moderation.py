@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import asyncio
 import discord
 
-from .Base import DatabaseChecker
+from .Base import DatabaseChecker, EventManager
 import uuid
 from typing import (
     Dict,
@@ -34,6 +34,16 @@ class Punishment:
 
 def get_relevant_punishment(punishments: List[Punishment], punish_count: int) -> Optional[Punishment]:
     return {x.punish_after: x for x in punishments}.get(punish_count)
+
+
+class KickManager(EventManager):
+    def __init__(self, bot: commands.Bot):
+        super().__init__()
+        self.bot = bot
+
+    async def punish(self, ctx: commands.Context, member: discord.Member, punishment: Punishment) -> None:
+        await member.kick(reason=punishment.punishment_reason)
+        await self.call_event("on_punishment", ctx, member, punishment)
 
 
 class BanManager(DatabaseChecker):
@@ -211,4 +221,4 @@ class InfractionManager(DatabaseChecker):
                            infraction['id']) for infraction in warnings if infraction['timestamp'] > from_timestamp]
 
 
-MANAGERS = [BanManager, InfractionManager]
+MANAGERS = [BanManager, InfractionManager, KickManager]

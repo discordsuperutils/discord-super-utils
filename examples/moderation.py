@@ -5,10 +5,14 @@ from datetime import datetime, timedelta
 
 
 bot = commands.Bot(command_prefix="-")
+
 InfractionManager = discordSuperUtils.InfractionManager(bot)
 BanManager = discordSuperUtils.BanManager(bot)
+KickManager = discordSuperUtils.KickManager(bot)
+
 InfractionManager.add_punishments([
-    discordSuperUtils.Punishment(BanManager, punishment_time=timedelta(minutes=1))
+    discordSuperUtils.Punishment(KickManager, punish_after=3),
+    discordSuperUtils.Punishment(BanManager, punish_after=5)
 ])
 
 
