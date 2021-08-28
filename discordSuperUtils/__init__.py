@@ -11,7 +11,7 @@ from .Base import CogManager, questionnaire
 from .FiveM import FiveMServer
 from .Birthday import BirthdayManager
 from .Prefix import PrefixManager
-from .Moderation import InfractionManager, Punishment, BanManager
+from .Moderation import InfractionManager, Punishment, BanManager, KickManager
 from .Convertors import TimeConvertor
 from .Spotify import SpotifyClient
 
