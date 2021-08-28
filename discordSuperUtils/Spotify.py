@@ -1,11 +1,13 @@
 from spotipy import SpotifyClientCredentials
 import spotipy
+import asyncio
 
 
 class Spotify:
     def __init__(self, client_id, client_secret):
         self.sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=client_id,
                                                                         client_secret=client_secret))
+        self.loop = asyncio.get_event_loop()
 
     @staticmethod
     async def get_type(url):
@@ -22,16 +24,17 @@ class Spotify:
         songs = None
 
         if playlist_type == "playlist":
-            playlist = self.sp.playlist_items(playlist_id=url, fields='items.track.name,items.track.artists(name)',
-                                              offset=0)
+            playlist = await self.loop.run_in_executor(None, self.sp.playlist_items(playlist_id=url,
+                                                                                    fields='items.track.name,items.track.artists(name)',
+                                                                                    offset=0))
             playlist = playlist.get('items')
             return [await self.make_title(song['track']) for song in playlist]
 
         elif playlist_type == "track":
-            songs = [self.sp.track(track_id=url)]
+            songs = [await self.loop.run_in_executor(None, self.sp.track(track_id=url))]
 
         elif playlist_type == "album":
-            album = self.sp.album_tracks(album_id=url, limit=50)
+            album = await self.loop.run_in_executor(None, self.sp.album_tracks(album_id=url, limit=50))
             songs = album.get("items")
 
         return [await self.make_title(song) for song in songs]
