@@ -1,10 +1,10 @@
+import inspect
+from abc import ABC, abstractmethod
 from difflib import SequenceMatcher
 from typing import (
     List,
     Union
 )
-from abc import ABC, abstractmethod
-import inspect
 
 import discord
 from discord.ext import commands
@@ -66,10 +66,11 @@ class CommandHinter:
                 return self.generator.generate(command_used, suggestions)
             else:
                 return self.generator().generate(command_used, suggestions)
-        elif isinstance(self.generator, CommandResponseGenerator):
+
+        if isinstance(self.generator, CommandResponseGenerator):
             return self.generator.generate(command_used, suggestions)
-        else:
-            raise InvalidGenerator(self.generator)
+
+        raise InvalidGenerator(self.generator)
 
     async def __handle_hinter(self, ctx: commands.Context, error) -> None:
         if isinstance(error, commands.CommandNotFound):
