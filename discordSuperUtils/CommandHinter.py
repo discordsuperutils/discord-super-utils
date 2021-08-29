@@ -64,8 +64,8 @@ class CommandHinter:
         if inspect.isclass(self.generator) and issubclass(self.generator, CommandResponseGenerator):
             if inspect.ismethod(self.generator.generate):
                 return self.generator.generate(command_used, suggestions)
-            else:
-                return self.generator().generate(command_used, suggestions)
+
+            return self.generator().generate(command_used, suggestions)
 
         if isinstance(self.generator, CommandResponseGenerator):
             return self.generator.generate(command_used, suggestions)
