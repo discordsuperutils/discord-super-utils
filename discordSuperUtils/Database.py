@@ -1,16 +1,17 @@
-import aiopg
-import aiosqlite
-from motor import motor_asyncio
 import asyncio
-import aiomysql
+import sys
+from abc import ABC, abstractmethod
 from typing import (
     Dict,
     Any,
     Optional,
     List
 )
-import sys
-from abc import ABC, abstractmethod
+
+import aiomysql
+import aiopg
+import aiosqlite
+from motor import motor_asyncio
 
 if sys.version_info >= (3, 8) and sys.platform.lower().startswith("win"):
     # Aiopg requires the event loop policy to be WindowsSelectorEventLoop, if it is not, aiopg raises an error.

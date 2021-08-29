@@ -1,5 +1,6 @@
-import time
 import math
+import time
+
 from .Base import DatabaseChecker
 
 
@@ -63,6 +64,9 @@ class RoleManager(DatabaseChecker):
         self._check_database()
 
         role_data = await self.database.select(self.table, ['interval', 'roles'], {'guild': guild.id})
+
+        if not role_data:
+            return []
 
         roles = role_data["roles"]
         if isinstance(roles, str):
@@ -138,11 +142,11 @@ class LevelingManager(DatabaseChecker):
                 roles = []
                 if self.role_manager:
                     role_data = await self.role_manager.get_roles(message.guild)
-
-                    member_level = await member_account.level()
-                    if member_level % role_data["interval"] == 0 and member_level // role_data["interval"] <= len(role_data["roles"]):
-                        roles = [message.guild.get_role(role_id) for role_id in role_data["roles"][:await member_account.level() // role_data["interval"]]]
-                        roles.reverse()
+                    if role_data:
+                        member_level = await member_account.level()
+                        if member_level % role_data["interval"] == 0 and member_level // role_data["interval"] <= len(role_data["roles"]):
+                            roles = [message.guild.get_role(role_id) for role_id in role_data["roles"][:await member_account.level() // role_data["interval"]]]
+                            roles.reverse()
 
                 await self.call_event('on_level_up', message, member_account, roles)
 

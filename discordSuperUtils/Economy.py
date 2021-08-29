@@ -1,4 +1,5 @@
 import discord
+
 from .Base import DatabaseChecker
 
 

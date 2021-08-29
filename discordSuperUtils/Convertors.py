@@ -1,19 +1,20 @@
 from typing import (
-    Optional
+    Optional,
+    Union
 )
 
 from discord.ext import commands
 
 
-def isint(string: str) -> bool:
+def isfloat(string: str) -> bool:
     """
-    This function receives a string and returns if it is an int or not
+    This function receives a string and returns if it is a float or not
     :param string:
     :return:
     """
 
     try:
-        int(string)
+        float(string)
         return True
     except (ValueError, TypeError):
         return False
@@ -34,7 +35,7 @@ class TimeConvertor(commands.Converter):
         100j: BadArgument ('j' is not a valid time multiplier)
     """
 
-    async def convert(self, ctx: commands.Context, argument: str) -> Optional[int]:
+    async def convert(self, ctx: commands.Context, argument: str) -> Optional[Union[int, float]]:
         time_multipliers = {"s": 1,
                             "m": 60,
                             "h": 60 * 60,
@@ -45,7 +46,7 @@ class TimeConvertor(commands.Converter):
         if argument.lower() in permanent:
             return 0
 
-        if not isint(argument[:-1]) or argument[-1] not in time_multipliers.keys():
+        if not isfloat(argument[:-1]) or argument[-1] not in time_multipliers.keys():
             raise commands.BadArgument(f"Invalid time argument provided, cannot convert '{argument}' to time.")
 
-        return int(argument[:-1]) * time_multipliers[argument[-1]]
+        return float(argument[:-1]) * time_multipliers[argument[-1]]

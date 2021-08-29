@@ -1,5 +1,6 @@
-import discordSuperUtils
 from discord.ext import commands
+
+import discordSuperUtils
 from discordSuperUtils import MusicManager
 
 client_id = ...

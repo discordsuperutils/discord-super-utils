@@ -1,9 +1,8 @@
 import aiosqlite
 import discord
-
-import discordSuperUtils
 from discord.ext import commands
 
+import discordSuperUtils
 
 bot = commands.Bot(command_prefix='-')
 

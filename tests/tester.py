@@ -1,6 +1,6 @@
+import asyncio
 import time
 from threading import Thread
-import asyncio
 
 
 class Test:

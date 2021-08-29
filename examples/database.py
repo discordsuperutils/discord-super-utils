@@ -1,9 +1,10 @@
-import aiopg
+import asyncio
 
-import discordSuperUtils
+import aiopg
 import aiosqlite
 from motor import motor_asyncio
-import asyncio
+
+import discordSuperUtils
 
 
 async def database_test():

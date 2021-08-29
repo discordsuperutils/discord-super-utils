@@ -1,11 +1,10 @@
 from datetime import datetime, timezone
 
+import discord
 import pytz
+from discord.ext import commands
 
 import discordSuperUtils
-from discord.ext import commands
-import discord
-
 
 bot = commands.Bot(command_prefix="-", intents=discord.Intents.all())
 BirthdayManager = discordSuperUtils.BirthdayManager(bot)

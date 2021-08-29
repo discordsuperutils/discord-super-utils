@@ -1,10 +1,11 @@
+import os
+from io import BytesIO
+
 import PIL
 import PIL.ImageShow
 import aiohttp  # koyashie fix unused / duplicate imports
 import discord
-import os
 from PIL import Image, ImageFont, ImageDraw
-from io import BytesIO
 
 
 class ImageManager:

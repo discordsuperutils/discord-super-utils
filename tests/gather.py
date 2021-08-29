@@ -1,5 +1,6 @@
-from tester import Tester
 import asyncio
+
+from tester import Tester
 
 
 async def start_testing():

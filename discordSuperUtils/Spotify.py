@@ -1,5 +1,3 @@
-from spotipy import SpotifyClientCredentials
-import spotipy
 import asyncio
 from typing import (
     Optional,
@@ -7,6 +5,9 @@ from typing import (
     Dict,
     Union
 )
+
+import spotipy
+from spotipy import SpotifyClientCredentials
 
 FIELD = "items.track.name,items.track.artists(name),total"
 

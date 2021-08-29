@@ -3,9 +3,9 @@ import inspect
 from typing import List
 
 import aiomysql
-import discord
 import aiopg
 import aiosqlite
+import discord
 from motor import motor_asyncio
 
 COLUMN_TYPES = {

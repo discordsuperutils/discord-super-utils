@@ -1,7 +1,7 @@
-import discordSuperUtils.Base
-
-from tester import Tester
 import asyncio
+
+import discordSuperUtils.Base
+from tester import Tester
 
 
 async def get_database():

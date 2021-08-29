@@ -1,12 +1,14 @@
+import asyncio
+import re
+from enum import Enum
+from typing import Optional
+
 import aiohttp
 import discord
 import youtube_dl
+
 from .Base import EventManager
-from typing import Optional
-import asyncio
-from enum import Enum
 from .Spotify import SpotifyClient
-import re
 
 # just some options etc.
 

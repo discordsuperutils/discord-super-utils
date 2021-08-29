@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+
 import discordSuperUtils
 
 intents = discord.Intents.all()
@@ -10,7 +11,7 @@ ImageManager = discordSuperUtils.ImageManager(bot, card_back=3, txt_colour=(255,
 
 @bot.event
 async def on_ready():
-    print(bot.user)
+    print('Imaging manager is ready.', bot.user)
 
 
 @bot.command()

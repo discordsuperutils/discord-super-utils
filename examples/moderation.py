@@ -1,14 +1,16 @@
-import discordSuperUtils
-from discord.ext import commands
-import discord
-from datetime import datetime, timedelta
+from datetime import datetime
 
+import discord
+from discord.ext import commands
+
+import discordSuperUtils
 
 bot = commands.Bot(command_prefix="-")
 
 InfractionManager = discordSuperUtils.InfractionManager(bot)
 BanManager = discordSuperUtils.BanManager(bot)
 KickManager = discordSuperUtils.KickManager(bot)
+MuteManager = discordSuperUtils.MuteManager(bot)  # undone, do not recommend using
 
 InfractionManager.add_punishments([
     discordSuperUtils.Punishment(KickManager, punish_after=3),
@@ -32,6 +34,11 @@ async def on_ready():
     await InfractionManager.connect_to_database(database, "infractions")
     await BanManager.connect_to_database(database, "bans")
     print('Infraction manager is ready.', bot.user)
+
+
+@bot.command()
+async def mute(ctx, member: discord.Member, reason: str = "No reason specified."):
+    await MuteManager.mute(ctx, member, reason)
 
 
 @bot.command()

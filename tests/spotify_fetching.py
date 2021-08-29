@@ -1,8 +1,9 @@
-from tester import Tester
-import discordSuperUtils
 import asyncio
+
 from spotify_dl import spotify
 
+import discordSuperUtils
+from tester import Tester
 
 client_id = ...
 client_secret = ...
