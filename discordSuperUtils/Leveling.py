@@ -15,9 +15,6 @@ class LevelingAccount:
     def __str__(self):
         return f"<Account MEMBER={self.member}, GUILD={self.guild}>"
 
-    async def compare(self, other):
-        return await self.xp() < other.xp()
-
     @property
     def __checks(self):
         return LevelingManager.generate_checks(self.guild, self.member)
