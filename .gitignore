@@ -1,0 +1,5 @@
+.vscode/
+dist/
+venv/
+*.sqlite
+*.egg-info
