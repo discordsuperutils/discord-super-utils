@@ -1,7 +1,8 @@
 from typing import List
 
-import discordSuperUtils
 from discord.ext import commands
+
+import discordSuperUtils
 
 
 class MyCommandGenerator(discordSuperUtils.CommandResponseGenerator):
