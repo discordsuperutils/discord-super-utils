@@ -6,7 +6,7 @@ from .ReactionRoles import ReactionManager
 from .Economy import EconomyManager, EconomyAccount
 from .Imaging import ImageManager
 from .InviteTracker import InviteTracker
-from .CommandHinter import CommandHinter
+from .CommandHinter import CommandHinter, CommandResponseGenerator
 from .Base import CogManager, questionnaire
 from .FiveM import FiveMServer
 from .Birthday import BirthdayManager

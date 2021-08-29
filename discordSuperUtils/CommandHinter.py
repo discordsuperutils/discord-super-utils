@@ -1,22 +1,23 @@
-from discord.ext import commands
 from difflib import SequenceMatcher
 from typing import (
-    Callable,
     List,
     Union
 )
+from abc import ABC, abstractmethod
+import inspect
+
 import discord
+from discord.ext import commands
 
 
-class CommandHinter:
-    def __init__(self, bot, generate_function: Callable[[str, List[str]], Union[discord.Embed, str]] = None):
-        self.bot = bot
-        self.generate_function = self.generate_embed if generate_function is None else generate_function
+class CommandResponseGenerator(ABC):
+    @abstractmethod
+    def generate(self, invalid_command: str, suggestions: List[str]) -> Union[str, discord.Embed]:
+        pass
 
-        self.bot.add_listener(self.__handle_hinter, "on_command_error")
 
-    @staticmethod
-    def generate_embed(invalid_command: str, suggestions: List[str]) -> discord.Embed:
+class DefaultResponseGenerator(CommandResponseGenerator):
+    def generate(self, invalid_command: str, suggestions: List[str]) -> discord.Embed:
         embed = discord.Embed(
             title="Invalid command!",
             description=f"**`{invalid_command}`** is invalid. Did you mean:",
@@ -28,8 +29,24 @@ class CommandHinter:
 
         return embed
 
+
+class InvalidGenerator(Exception):
+    def __init__(self, generator):
+        self.generator = generator
+        super().__init__(f"Generator of type {type(self.generator)!r} is not supported.")
+
+
+class CommandHinter:
+    def __init__(self,
+                 bot: commands.Bot,
+                 generator=None):
+        self.bot = bot
+        self.generator = DefaultResponseGenerator if generator is None else generator
+
+        self.bot.add_listener(self.__handle_hinter, "on_command_error")
+
     @property
-    def command_names(self):
+    def command_names(self) -> List[str]:
         names = []
 
         for command in self.bot.commands:
@@ -43,7 +60,18 @@ class CommandHinter:
 
         return names
 
-    async def __handle_hinter(self, ctx, error):
+    def _generate_message(self, command_used: str, suggestions: List[str]) -> Union[discord.Embed, str]:
+        if inspect.isclass(self.generator) and issubclass(self.generator, CommandResponseGenerator):
+            if inspect.ismethod(self.generator.generate):
+                return self.generator.generate(command_used, suggestions)
+            else:
+                return self.generator().generate(command_used, suggestions)
+        elif isinstance(self.generator, CommandResponseGenerator):
+            return self.generator.generate(command_used, suggestions)
+        else:
+            raise InvalidGenerator(self.generator)
+
+    async def __handle_hinter(self, ctx: commands.Context, error) -> None:
         if isinstance(error, commands.CommandNotFound):
             command_similarity = {}
             command_used = ctx.message.content.lstrip(ctx.prefix)[:max([len(c) for c in self.command_names])]
@@ -51,7 +79,7 @@ class CommandHinter:
             for command in self.command_names:
                 command_similarity[SequenceMatcher(None, command, command_used).ratio()] = command
 
-            generated_message = self.generate_function(command_used,
+            generated_message = self._generate_message(command_used,
                                                        [x[1] for x in sorted(command_similarity.items(), reverse=True)])
 
             if isinstance(generated_message, discord.Embed):

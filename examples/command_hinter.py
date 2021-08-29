@@ -2,24 +2,17 @@ from typing import List
 
 import discordSuperUtils
 from discord.ext import commands
-import discord
 
 
-def generate_embed(invalid_command: str, suggestions: List[str]) -> discord.Embed:
-    embed = discord.Embed(
-        title="Invalid command!",
-        description=f"**`{invalid_command}`** is invalid. Did you mean:",
-        color=0x00ff00
-    )
-
-    for index, suggestion in enumerate(suggestions[:3]):
-        embed.add_field(name=f"**{index + 1}.**", value=f"**`{suggestion}`**", inline=False)
-
-    return embed
+class MyCommandGenerator(discordSuperUtils.CommandResponseGenerator):
+    def generate(self, invalid_command: str, suggestion: List[str]) -> str:
+        # This is only an example, you can use the default generator if you want to.
+        return f"Try using {suggestion[0]}"
 
 
 bot = commands.Bot(command_prefix="-")
-discordSuperUtils.CommandHinter(bot, generate_embed)
+discordSuperUtils.CommandHinter(bot, MyCommandGenerator())
+# Incase you want to use the default command generator, don't pass a command generator.
 
 
 @bot.event

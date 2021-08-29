@@ -12,7 +12,20 @@ BirthdayManager = discordSuperUtils.BirthdayManager(bot)
 
 
 def ordinal(num: int) -> str:
-    # Returns the ordinal representation of a number.
+    """
+    Returns the ordinal representation of a number
+
+    Examples:
+        11: 11th
+        13: 13th
+        14: 14th
+        3: 3rd
+        5: 5th
+
+    :param num:
+    :return:
+    """
+
     return f"{num}th" if 11 <= (num % 100) <= 13 else f"{num}{['', 'st', 'nd', 'rd', 'th'][min(num % 10, 4)]}"
 
 

@@ -3,9 +3,18 @@ import aiosqlite
 from motor import motor_asyncio
 import asyncio
 import aiomysql
+from typing import (
+    Dict,
+    Any,
+    Optional,
+    List
+)
 import sys
+from abc import ABC, abstractmethod
 
 if sys.version_info >= (3, 8) and sys.platform.lower().startswith("win"):
+    # Aiopg requires the event loop policy to be WindowsSelectorEventLoop, if it is not, aiopg raises an error.
+
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
@@ -19,7 +28,52 @@ class UnsupportedDatabase(Exception):
     """Raises error when the user tries to use an unsupported database."""
 
 
-class _MongoDatabase:
+class Database(ABC):
+    @abstractmethod
+    async def close(self):
+        pass
+
+    @abstractmethod
+    async def insertifnotexists(self, table_name: str, data: Dict[str, Any], checks: Dict[str, Any]):
+        pass
+
+    @abstractmethod
+    async def insert(self, table_name: str, data: Dict[str, Any]):
+        pass
+
+    @abstractmethod
+    async def create_table(self,
+                           table_name: str,
+                           columns: Optional[Dict[str, str]] = None,
+                           exists: Optional[bool] = False):
+        pass
+
+    @abstractmethod
+    async def update(self, table_name: str, data: Dict[str, Any], checks: Dict[str, Any]):
+        pass
+
+    @abstractmethod
+    async def updateorinsert(self,
+                             table_name: str,
+                             data: Dict[str, Any],
+                             checks: Dict[str, Any],
+                             insert_data: Dict[str, Any]):
+        pass
+
+    @abstractmethod
+    async def delete(self, table_name: str, checks: Dict[str, Any]):
+        pass
+
+    @abstractmethod
+    async def select(self,
+                     table_name: str,
+                     keys: List[str],
+                     checks: Optional[Dict[str, Any]] = None,
+                     fetchall: Optional[bool] = False):
+        pass
+
+
+class _MongoDatabase(Database):
     def __init__(self, database):
         self.database = database
 
@@ -93,7 +147,7 @@ class _MongoDatabase:
         return result
 
 
-class _SqlDatabase:
+class _SqlDatabase(Database):
     def __str__(self):
         return f"<{self.__class__.__name__}>"
 
@@ -233,23 +287,37 @@ class _SqlDatabase:
         return [dict(zip(columns, x)) for x in result] if fetchall else dict(zip(columns, result))
 
 
-DATABASE_TYPES = {
-    motor_asyncio.AsyncIOMotorDatabase: {"class": _MongoDatabase, "placeholder": None},
-    aiosqlite.core.Connection: {"class": _SqlDatabase, "placeholder": '?', 'cursorcontext': True, 'commit': True,
-                                'quotes': '"', 'pool': False},
-    aiopg.pool.Pool: {"class": _SqlDatabase, "placeholder": '%s', 'cursorcontext': True, 'commit': True, 'quotes': '"',
+DATABASE_TYPES: Dict[Any, Dict[str, Any]] = {
+    motor_asyncio.AsyncIOMotorDatabase: {"class": _MongoDatabase,
+                                         "placeholder": None},
+
+    aiosqlite.core.Connection: {"class": _SqlDatabase,
+                                "placeholder": '?',
+                                'cursorcontext': True,
+                                'commit': True,
+                                'quotes': '"',
+                                'pool': False},
+
+    aiopg.pool.Pool: {"class": _SqlDatabase,
+                      "placeholder": '%s',
+                      'cursorcontext': True,
+                      'commit': True,
+                      'quotes': '"',
                       'pool': True},
-    aiomysql.pool.Pool: {"class": _SqlDatabase, "placeholder": '%s', 'cursorcontext': True, 'commit': False,
-                         'quotes': '`', 'pool': True}
+
+    aiomysql.pool.Pool: {"class": _SqlDatabase,
+                         "placeholder": '%s',
+                         'cursorcontext': True,
+                         'commit': False,
+                         'quotes': '`',
+                         'pool': True}
 }
 
 
-class DatabaseManager:
-    """
-    A database class for easier access
-    database MUST be of type sqlite3, mongodb or postgresql
-    """
+DATABASES: List = [_SqlDatabase, _MongoDatabase]
 
+
+class DatabaseManager:
     @staticmethod
     def connect(database):
         if type(database) not in DATABASE_TYPES:
