@@ -113,9 +113,12 @@ class BirthdayManager(DatabaseChecker):
         utc_offset = -(current_utc_time.hour % 24)
 
         minutes = 30 if current_utc_time.minute > 5 else 0
+        if minutes == 30:
+            utc_offset -= 1
+
         checks = (
             timedelta(hours=utc_offset, minutes=minutes),
-            timedelta(hours=24 - (current_utc_time.hour % 24) if current_utc_time.hour != 0 else 0, minutes=minutes)
+            timedelta(hours=24 - -utc_offset if current_utc_time.hour != 0 else 0, minutes=minutes)
         )
 
         return [tz.zone for tz in map(pytz.timezone, pytz.all_timezones_set)
