@@ -133,13 +133,13 @@ class BirthdayManager(DatabaseChecker):
         result_members = []
         registered_members = await self.database.select(self.table, [], fetchall=True)
 
-        birthday_members = [x for x in registered_members if x["timezone"] in self.get_midnight_timezones()]
+        birthday_members = [x for x in registered_members if x["timezone"] in timezones]
         for birthday_member in birthday_members:
             timezone_time = datetime.now(pytz.timezone(birthday_member["timezone"]))
             date_of_birth = datetime.fromtimestamp(birthday_member["utc_birthday"])
 
             if date_of_birth.month == timezone_time.month and date_of_birth.day == timezone_time.day:
-                result_members.append(result_members)
+                result_members.append(birthday_member)
 
         return result_members
 
