@@ -1,4 +1,4 @@
-<h1 align="center">discord-super-utils</h1>
+<h1 align="center">discordSuperUtils-splitted</h1>
 
 <p align="center">
   <a href="https://codefactor.io/repository/github/discordsuperutils/discord-super-utils/"><img src="https://img.shields.io/codefactor/grade/github/discordsuperutils/discord-super-utils?style=flat-square" /></a>
