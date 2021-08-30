@@ -8,13 +8,18 @@ from typing import (
     Optional
 )
 
+import discord
+
 from .Base import DatabaseChecker
 from .Punishments import Punisher
 
 if TYPE_CHECKING:
     from .Punishments import Punishment
     from discord.ext import commands
-    import discord
+
+
+class UnbanFailure(Exception):
+    """Raises an exception when the user tries to unban a discord.User without passing the guild."""
 
 
 class BanManager(DatabaseChecker, Punisher):
@@ -74,6 +79,9 @@ class BanManager(DatabaseChecker, Punisher):
                 return x.user
 
     async def unban(self, member: Union[discord.Member, discord.User], guild: discord.Guild = None) -> bool:
+        if isinstance(member, discord.User) and not guild:
+            raise UnbanFailure("Cannot unban a discord.User without a guild.")
+
         guild = guild if guild is not None else member.guild
         await self.database.delete(self.table, {'guild': guild.id, 'member': member.id})
 

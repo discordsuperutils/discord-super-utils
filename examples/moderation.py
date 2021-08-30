@@ -48,11 +48,11 @@ async def ban(ctx, member: discord.Member, time_of_ban: discordSuperUtils.TimeCo
 
 
 @bot.command()
-async def unban(ctx, member: discord.User):
-    if await BanManager.unban(member, guild=ctx.guild):
-        await ctx.send(f"{member} has been unbanned.")
+async def unban(ctx, user: discord.User):
+    if await BanManager.unban(user, guild=ctx.guild):
+        await ctx.send(f"{user} has been unbanned.")
     else:
-        await ctx.send(f"{member} is not banned.")
+        await ctx.send(f"{user} is not banned.")
 
 
 @bot.group(invoke_without_command=True)

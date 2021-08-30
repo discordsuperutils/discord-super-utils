@@ -36,11 +36,11 @@ class LevelingAccount:
         xp = await self.xp()
         initial_xp = await self.initial_rank_xp()
 
-        return math.floor(abs(xp - initial_xp) / (await level_up - initial_xp) * 100)
+        return math.floor(abs(xp - initial_xp) / (level_up - initial_xp) * 100)
 
     async def initial_rank_xp(self):
         next_level = await self.next_level()
-        return 0 if next_level == 50 else await next_level / self.rank_multiplier
+        return 0 if next_level == 50 else next_level / self.rank_multiplier
 
     async def set_xp(self, value):
         await self.database.update(self.table, {"xp": value}, self.__checks)
