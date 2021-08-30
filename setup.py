@@ -5,7 +5,7 @@ README = f.read()
 
 setup(
     name='discordSuperUtils-splitted',
-    packages=['discordSuperUtils-splitted'],
+    packages=['discordSuperUtils'],
     version='0.1.6',
     license='MIT',
     description='Discord Bot Development made easy!',
