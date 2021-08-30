@@ -21,6 +21,8 @@ Information
 
 I have recently left the discordSuperUtils organization because of issues with the team that wont be listed here.
 
+Maybe this fork will merge with discordSuperUtils one day.
+
 Features
 -------------
 
