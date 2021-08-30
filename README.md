@@ -16,6 +16,12 @@
    <b>The documentation is not done. if you have any questions, feel free to ask them in our <a href="https://discord.gg/zhwcpTBBeC">discord server.</a></b>
 </p>
 
+Information
+-------------
+
+I have recently left the discordSuperUtils organization because of issues with the team that wont be listed here.
+Soon, this fork will be renamed and maintained by me
+
 Features
 -------------
 
@@ -299,5 +305,5 @@ Known Issues
 Support
 --------------
 
-- **[Support Server](https://discord.gg/zhwcpTBBeC)**
+- **[Support Server](#)**
 - **[Documentation](https://discord-super-utils.gitbook.io/discord-super-utils/)**
