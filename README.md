@@ -20,7 +20,6 @@ Information
 -------------
 
 I have recently left the discordSuperUtils organization because of issues with the team that wont be listed here.
-Soon, this fork will be renamed and maintained by me
 
 Features
 -------------
