@@ -6,14 +6,14 @@ README = f.read()
 setup(
     name='discordSuperUtils-splitted',
     packages=['discordSuperUtils-splitted'],
-    version='0.1.4',
+    version='0.1.6',
     license='MIT',
     description='Discord Bot Development made easy!',
     long_description=README,
     long_description_content_type="text/markdown",
     author='adam7100',
     url='https://github.com/adam757521/discordSuperUtils-splitted/',
-    download_url='https://github.com/adam757521/discordSuperUtils-splitted/archive/refs/tags/v0.0.1.tar.gz',
+    download_url='https://github.com/adam757521/discordSuperUtils-splitted/archive/refs/tags/v0.1.6.tar.gz',
     keywords=['discord', 'easy', 'discord.py', 'music', 'download', 'links', 'images', 'videos', 'audio', 'bot',
               'paginator', 'economy', 'reaction', 'reaction roles', 'database', 'database manager'],
     install_requires=[
