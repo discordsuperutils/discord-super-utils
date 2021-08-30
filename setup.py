@@ -21,6 +21,14 @@ setup(
     install_requires=[
         'youtube-dl',
         'discord.py'
+        'Pillow',
+        'requests',
+        'spotipy',
+        'aiosqlite',
+        'motor',
+        'aiopg'
+        'aiomysql',
+        'pytz'
     ],
     classifiers=[  # Optional
         # How mature is this project? Common values are

@@ -104,7 +104,7 @@ class ImageManager:
         draw.text((620, 60), f"Rank #{rank}", text_color, font=font_big)
         draw.text((245, 145), f"Level {await member_account.level()}", text_color, font=font_small)
         draw.text((625, 145),
-                  f"{self.human_format(await member_account.xp())} "
+                  f"{self.human_format(await member_account.xp())} /"
                   f" {self.human_format(await member_account.next_level())} XP",
                   text_color,
                   font=font_small)
