@@ -41,7 +41,9 @@ class MuteManager(DatabaseChecker, Punisher):
                 if x["timestamp_of_unmute"] <= datetime.utcnow().timestamp()]
 
     async def on_member_join(self, member):
-        muted_members = [x for x in await self.database.select(self.table, ["member"], {
+        self._check_database()
+
+        muted_members = [x for x in await self.database.select(self.table, ["timestamp_of_unmute", "member"], {
             'guild': member.guild.id,
             'member': member.id
         }, fetchall=True) if x["timestamp_of_unmute"] > datetime.utcnow().timestamp()]
@@ -50,7 +52,7 @@ class MuteManager(DatabaseChecker, Punisher):
             muted_role = discord.utils.get(member.guild.roles, name="Muted")
 
             if muted_role:
-                member.add_roles(muted_role)
+                await member.add_roles(muted_role)
 
     async def __check_mutes(self) -> None:
         await self.bot.wait_until_ready()
@@ -67,7 +69,7 @@ class MuteManager(DatabaseChecker, Punisher):
                 if guild is None:
                     continue
 
-                member = await guild.get_member(muted_member['member'])
+                member = guild.get_member(muted_member['member'])
 
                 if await self.unmute(member):
                     await self.call_event('on_unmute', member, muted_member["reason"])
