@@ -2,10 +2,12 @@ import discord
 from discord.ext import commands
 
 import discordSuperUtils
+import aiosqlite
 
-bot = commands.Bot(command_prefix='-')
+bot = commands.Bot(command_prefix='-', intents=discord.Intents.all())
 RoleManager = discordSuperUtils.RoleManager()
 LevelingManager = discordSuperUtils.LevelingManager(bot, RoleManager)
+ImageManager = discordSuperUtils.ImageManager()  # LevelingManager uses ImageManager to create the rank command.
 
 
 @bot.event
@@ -27,11 +29,20 @@ async def on_level_up(message, member_data, roles):
 async def rank(ctx):
     member_data = await LevelingManager.get_account(ctx.author)
 
-    if member_data:
-        await ctx.send(
-            f'You are currently level **{await member_data.level()}**, with **{await member_data.xp()}** XP.')
-    else:
+    if not member_data:
         await ctx.send(f"I am still creating your account! please wait a few seconds.")
+        return
+
+    guild_leaderboard = await LevelingManager.get_leaderboard(ctx.guild)
+    member = [x for x in guild_leaderboard if x.member == ctx.author.id]
+
+    image = await ImageManager.create_leveling_profile(ctx.author,
+                                                       member_data,
+                                                       discordSuperUtils.Backgrounds.GALAXY,
+                                                       (255, 255, 255),
+                                                       guild_leaderboard.index(member[0]) + 1 if member else -1,
+                                                       outline=True)
+    await ctx.send(file=image)
 
 
 @bot.command()

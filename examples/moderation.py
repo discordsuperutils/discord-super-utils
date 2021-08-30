@@ -5,7 +5,7 @@ from discord.ext import commands
 
 import discordSuperUtils
 
-bot = commands.Bot(command_prefix="-")
+bot = commands.Bot(command_prefix="-", intents=discord.Intents.all())
 
 InfractionManager = discordSuperUtils.InfractionManager(bot)
 BanManager = discordSuperUtils.BanManager(bot)
@@ -16,6 +16,11 @@ InfractionManager.add_punishments([
     discordSuperUtils.Punishment(KickManager, punish_after=3),
     discordSuperUtils.Punishment(BanManager, punish_after=5)
 ])
+
+
+@MuteManager.event()
+async def on_unmute(member, reason):
+    print(f"{member} has been unmuted. Mute reason: {reason}")
 
 
 @BanManager.event()
@@ -33,16 +38,33 @@ async def on_ready():
     database = discordSuperUtils.DatabaseManager.connect(...)
     await InfractionManager.connect_to_database(database, "infractions")
     await BanManager.connect_to_database(database, "bans")
+    await MuteManager.connect_to_database(database, "mutes")
+
     print('Infraction manager is ready.', bot.user)
 
 
 @bot.command()
-async def mute(ctx, member: discord.Member, reason: str = "No reason specified."):
-    await MuteManager.mute(ctx, member, reason)
+async def mute(ctx,
+               member: discord.Member,
+               time_of_mute: discordSuperUtils.TimeConvertor,
+               reason: str = "No reason specified."):
+    await ctx.send(f"{member} has been muted. Reason: {reason}")
+    await MuteManager.mute(member, reason, time_of_mute)
 
 
 @bot.command()
-async def ban(ctx, member: discord.Member, time_of_ban: discordSuperUtils.TimeConvertor, reason: str = "No reason specified."):
+async def unmute(ctx, member: discord.Member):
+    if await MuteManager.unmute(member):
+        await ctx.send(f"{member.mention} has been unmuted.")
+    else:
+        await ctx.send(f"{member.mention} is not muted!")
+
+
+@bot.command()
+async def ban(ctx,
+              member: discord.Member,
+              time_of_ban: discordSuperUtils.TimeConvertor,
+              reason: str = "No reason specified."):
     await ctx.send(f"{member} has been banned. Reason: {reason}")
     await BanManager.ban(member, reason, time_of_ban)
 
