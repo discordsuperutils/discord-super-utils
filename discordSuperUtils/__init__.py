@@ -20,6 +20,6 @@ from .ReactionRoles import ReactionManager
 from .Spotify import SpotifyClient
 
 __title__ = "discordSuperUtils"
-__version__ = "0.1.8"
+__version__ = "0.1.9"
 __author__ = "Koyashie07 & Adam7100"
 __license__ = "MIT"
