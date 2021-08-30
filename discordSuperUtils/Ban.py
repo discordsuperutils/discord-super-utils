@@ -36,7 +36,7 @@ class BanManager(DatabaseChecker, Punisher):
         :return:
         """
         return [x for x in await self.database.select(self.table, [], fetchall=True)
-                if x["timestamp"] < datetime.utcnow().timestamp()]
+                if x["timestamp"] <= datetime.utcnow().timestamp()]
 
     async def __check_bans(self) -> None:
         await self.bot.wait_until_ready()
@@ -71,14 +71,15 @@ class BanManager(DatabaseChecker, Punisher):
             await self.call_event("on_punishment", ctx, member, punishment)
 
     @staticmethod
-    async def get_ban(member: Union[discord.Member, discord.User],
-                      guild: discord.Guild) -> Optional[discord.User]:
+    async def get_ban(member: Union[discord.Member, discord.User], guild: discord.Guild) -> Optional[discord.User]:
         banned = await guild.bans()
         for x in banned:
             if x.user.id == member.id:
                 return x.user
 
     async def unban(self, member: Union[discord.Member, discord.User], guild: discord.Guild = None) -> bool:
+        self._check_database()
+
         if isinstance(member, discord.User) and not guild:
             raise UnbanFailure("Cannot unban a discord.User without a guild.")
 

@@ -6,7 +6,7 @@ from .Convertors import TimeConvertor
 from .Database import DatabaseManager, create_mysql
 from .Economy import EconomyManager, EconomyAccount
 from .FiveM import FiveMServer
-from .Imaging import ImageManager
+from .Imaging import ImageManager, Backgrounds
 from .Infractions import InfractionManager
 from .InviteTracker import InviteTracker
 from .Kick import KickManager
