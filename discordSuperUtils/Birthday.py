@@ -52,6 +52,9 @@ class BirthdayManager(DatabaseChecker):
         super().__init__(['guild', 'member', 'utc_birthday', 'timezone'],
                          ['snowflake', 'snowflake', 'snowflake', 'smallnumber'])
         self.bot = bot
+        self.add_event(self.on_database_connect)
+
+    async def on_database_connect(self):
         self.bot.loop.create_task(self.__detect_birthdays())
 
     async def create_birthday(self,
@@ -163,11 +166,6 @@ class BirthdayManager(DatabaseChecker):
         await self.bot.wait_until_ready()
 
         while not self.bot.is_closed():
-            if not self._check_database(False):
-                await asyncio.sleep(0.01)  # Not sleeping here will break the loop resulting in discord.py not calling
-                # the on ready event.
-                continue
-
             await asyncio.sleep(self.round_to_nearest(timedelta(minutes=30)))
 
             for birthday_member in await self.get_members_with_birthday(self.get_midnight_timezones()):

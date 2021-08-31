@@ -27,6 +27,9 @@ class BanManager(DatabaseChecker, Punisher):
         super().__init__(['guild', 'member', 'reason', 'timestamp'], ['snowflake', 'snowflake', 'string', 'snowflake'])
         self.bot = bot
 
+        self.add_event(self.on_database_connect)
+
+    async def on_database_connect(self):
         self.bot.loop.create_task(self.__check_bans())
 
     async def get_banned_members(self):
@@ -42,11 +45,6 @@ class BanManager(DatabaseChecker, Punisher):
         await self.bot.wait_until_ready()
 
         while not self.bot.is_closed():
-            if not self._check_database(False):
-                await asyncio.sleep(0.01)  # Not sleeping here will break the loop resulting in discord.py not calling
-                # the on ready event.
-                continue
-
             for banned_member in await self.get_banned_members():
                 guild = self.bot.get_guild(banned_member['guild'])
 
