@@ -2,7 +2,6 @@ import discord
 from discord.ext import commands
 
 import discordSuperUtils
-import aiosqlite
 
 bot = commands.Bot(command_prefix='-', intents=discord.Intents.all())
 RoleManager = discordSuperUtils.RoleManager()
@@ -13,8 +12,8 @@ ImageManager = discordSuperUtils.ImageManager()  # LevelingManager uses ImageMan
 @bot.event
 async def on_ready():
     database = discordSuperUtils.DatabaseManager.connect(...)
-    await RoleManager.connect_to_database(database, "xp_roles")
-    await LevelingManager.connect_to_database(database, "xp")
+    await RoleManager.connect_to_database(database, ["xp_roles"])
+    await LevelingManager.connect_to_database(database, ["xp"])
 
     print('Leveling manager is ready.', bot.user)
 
@@ -39,7 +38,7 @@ async def rank(ctx):
     image = await ImageManager.create_leveling_profile(ctx.author,
                                                        member_data,
                                                        discordSuperUtils.Backgrounds.GALAXY,
-                                                       (255, 255, 255),
+                                                       (127, 255, 0),
                                                        guild_leaderboard.index(member[0]) + 1 if member else -1,
                                                        outline=5)
     await ctx.send(file=image)

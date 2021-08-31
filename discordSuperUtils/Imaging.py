@@ -177,7 +177,7 @@ class ImageManager:
                                       outline: int = 5) -> discord.File:
         result_bytes = BytesIO()
 
-        card = Image.open(background.value).resize((900, 238))
+        card = Image.open(background.value).resize((850, 238))
 
         font_path = font_path if font_path else self.load_asset("font.ttf")
         font_big = ImageFont.truetype(font_path, 36)
