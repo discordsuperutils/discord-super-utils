@@ -41,7 +41,7 @@ async def rank(ctx):
                                                        discordSuperUtils.Backgrounds.GALAXY,
                                                        (255, 255, 255),
                                                        guild_leaderboard.index(member[0]) + 1 if member else -1,
-                                                       outline=True)
+                                                       outline=5)
     await ctx.send(file=image)
 
 

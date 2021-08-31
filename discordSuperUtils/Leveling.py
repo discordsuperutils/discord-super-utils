@@ -36,7 +36,7 @@ class LevelingAccount:
         xp = await self.xp()
         initial_xp = await self.initial_rank_xp()
 
-        return math.floor(abs(xp - initial_xp) / (level_up - initial_xp) * 100)
+        return min(abs(math.floor(abs(xp - initial_xp) / (level_up - initial_xp) * 100)), 100)
 
     async def initial_rank_xp(self):
         next_level = await self.next_level()

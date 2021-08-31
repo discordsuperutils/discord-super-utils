@@ -28,6 +28,9 @@ class MuteManager(DatabaseChecker, Punisher):
                          ['snowflake', 'snowflake', 'snowflake', 'snowflake', 'string'])
         self.bot = bot
 
+        self.add_event(self.on_database_connect)
+
+    async def on_database_connect(self):
         self.bot.loop.create_task(self.__check_mutes())
         self.bot.add_listener(self.on_member_join)
 
@@ -41,8 +44,6 @@ class MuteManager(DatabaseChecker, Punisher):
                 if x["timestamp_of_unmute"] <= datetime.utcnow().timestamp()]
 
     async def on_member_join(self, member):
-        self._check_database()
-
         muted_members = [x for x in await self.database.select(self.table, ["timestamp_of_unmute", "member"], {
             'guild': member.guild.id,
             'member': member.id
@@ -58,11 +59,6 @@ class MuteManager(DatabaseChecker, Punisher):
         await self.bot.wait_until_ready()
 
         while not self.bot.is_closed():
-            if not self._check_database(False):
-                await asyncio.sleep(0.01)  # Not sleeping here will break the loop resulting in discord.py not calling
-                # the on ready event.
-                continue
-
             for muted_member in await self.get_muted_members():
                 guild = self.bot.get_guild(muted_member['guild'])
 
