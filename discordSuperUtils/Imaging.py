@@ -21,7 +21,12 @@ if TYPE_CHECKING:
     from .Leveling import LevelingAccount
 
 
+__all__ = ("ImageManager", "Backgrounds")
+
+
 class ImageManager:
+    __slots__ = ()
+
     @staticmethod
     def load_asset(name: str) -> str:
         return os.path.join(os.path.dirname(__file__), 'assets', name)
@@ -79,7 +84,10 @@ class ImageManager:
                                    location: Tuple[int, int],
                                    size: int = 180,
                                    outline_thickness: int = 5,
-                                   status: bool = True):
+                                   status: bool = True,
+                                   outline_color: Tuple[int, int, int] = (255, 255, 255)):
+        blank = Image.new("RGBA", card.size, (255, 255, 255, 0))
+
         location = tuple(round(x - size / 2) if i <= 1 else round(x + size / 2)
                          for i, x in enumerate(location + location))
 
@@ -95,13 +103,12 @@ class ImageManager:
         avatar = (await self.convert_image(str(member.avatar_url))).resize(size_dimensions)
         profile_pic_holder = Image.new("RGBA", card.size, (255, 255, 255, 255))
 
-        ImageDraw.Draw(card).ellipse(outline_dimensions, fill='white', outline='white')
+        ImageDraw.Draw(card).ellipse(outline_dimensions, fill=outline_color)
 
         profile_pic_holder.paste(avatar, location)
         pre_card = Image.composite(profile_pic_holder, card, mask)
         pre_card = pre_card.convert('RGBA')
 
-        blank = Image.new("RGBA", card.size, (255, 255, 255, 0))
         if status:
             status_picture = Image.open(self.load_asset(f"{member.status.name}.png"))
             status_picture = status_picture.convert("RGBA").resize(status_dimensions)
@@ -177,21 +184,25 @@ class ImageManager:
         font_small = ImageFont.truetype(font_path, 20)
 
         draw = ImageDraw.Draw(card)
-        draw.text((245, 60), str(member), text_color, font=font_big)
-        draw.text((620, 60), f"Rank #{rank}", text_color, font=font_big)
-        draw.text((245, 145), f"Level {await member_account.level()}", text_color, font=font_small)
-        draw.text((750, 165),
+        draw.text((245, 90), str(member), text_color, font=font_big, anchor="ls")
+        draw.text((800, 90), f"Rank #{rank}", text_color, font=font_big, anchor="rs")
+        draw.text((245, 165), f"Level {await member_account.level()}", text_color, font=font_small, anchor="ls")
+        draw.text((800, 165),
                   f"{self.human_format(await member_account.xp())} /"
                   f" {self.human_format(await member_account.next_level())} XP",
                   text_color,
                   font=font_small,
                   anchor="rs")
 
-        draw.rounded_rectangle((245, 185, 750, 205), fill=(0, 0, 0, 0), outline=text_color, radius=10)
-        length_of_bar = (await member_account.percentage_next_level() * 4.9) + 248
-        draw.rounded_rectangle((248, 188, length_of_bar, 202), fill=text_color, radius=7)
+        draw.rounded_rectangle((245, 185, 800, 205), fill=(0, 0, 0, 0), outline=text_color, radius=10)
+        length_of_bar = await member_account.percentage_next_level() * 5.5 + 250
+        draw.rounded_rectangle((245, 185, length_of_bar, 205), fill=text_color, radius=10)
 
-        final_card = await self.draw_profile_picture(card, member, (109, 119), outline_thickness=outline)
+        final_card = await self.draw_profile_picture(card,
+                                                     member,
+                                                     (109, 119),
+                                                     outline_thickness=outline,
+                                                     outline_color=text_color)
 
         final_card.save(result_bytes, format="PNG")
         result_bytes.seek(0)
