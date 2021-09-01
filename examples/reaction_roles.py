@@ -18,7 +18,7 @@ async def on_reaction_event(guild, channel, message, member, emoji):
 @bot.event
 async def on_ready():
     database = discordSuperUtils.DatabaseManager.connect(...)
-    await ReactionManager.connect_to_database(database, "reaction_roles")
+    await ReactionManager.connect_to_database(database, ["reaction_roles"])
 
     print('Reaction manager is ready.', bot.user)
 

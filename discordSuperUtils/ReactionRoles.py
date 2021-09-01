@@ -4,8 +4,15 @@ from .Paginator import EmojiError
 
 class ReactionManager(DatabaseChecker):
     def __init__(self, bot):
-        super().__init__(['guild', 'message', 'role', 'emoji', 'remove_on_reaction'],
-                         ['snowflake', 'snowflake', 'snowflake', 'string', 'smallnumber'])
+        super().__init__([
+            {
+                'guild': 'snowflake',
+                'message': 'snowflake',
+                'role': 'snowflake',
+                'emoji': 'string',
+                'remove_on_reaction': 'smallnumber'
+            }
+        ], ['reaction_roles'])
 
         self.bot = bot
         self.add_event(self.on_database_connect)
@@ -35,7 +42,8 @@ class ReactionManager(DatabaseChecker):
                            'message': payload.message_id,
                            'emoji': self.get_emoji_sql(payload.emoji)}
 
-        reaction_role_data = await self.database.select(self.table, self.column_names, database_checks)
+        reaction_role_data = await self.database.select(self.tables['reaction_roles'], self.tables_column_data[0],
+                                                        database_checks)
 
         if not reaction_role_data:
             return
@@ -61,8 +69,8 @@ class ReactionManager(DatabaseChecker):
     async def create_reaction(self, guild, message, role, emoji, remove_on_reaction: int):
         self._check_database()
 
-        await self.database.insertifnotexists(self.table,
-                                              dict(zip(self.column_names, [
+        await self.database.insertifnotexists(self.tables['reaction_roles'],
+                                              dict(zip(self.tables_column_data[0], [
                                                   guild.id,
                                                   message.id,
                                                   role.id if role is not None else role,
@@ -79,7 +87,8 @@ class ReactionManager(DatabaseChecker):
             raise EmojiError("Cannot add reaction to message.")
 
     async def delete_reaction(self, guild, message, emoji):
-        await self.database.delete(self.table, {'guild': guild.id, 'message': message.id, 'emoji': emoji})
+        await self.database.delete(self.tables['reaction_roles'],
+                                   {'guild': guild.id, 'message': message.id, 'emoji': emoji})
 
     async def get_reactions(self, guild=None):
-        return await self.database.select(self.table, [], {'guild': guild.id} if guild else {}, True)
+        return await self.database.select(self.tables['reaction_roles'], [], {'guild': guild.id} if guild else {}, True)

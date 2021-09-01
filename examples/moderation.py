@@ -36,9 +36,9 @@ async def on_punishment(ctx, member, punishment):
 @bot.event
 async def on_ready():
     database = discordSuperUtils.DatabaseManager.connect(...)
-    await InfractionManager.connect_to_database(database, "infractions")
-    await BanManager.connect_to_database(database, "bans")
-    await MuteManager.connect_to_database(database, "mutes")
+    await InfractionManager.connect_to_database(database, ["infractions"])
+    await BanManager.connect_to_database(database, ["bans"])
+    await MuteManager.connect_to_database(database, ["mutes"])
 
     print('Infraction manager is ready.', bot.user)
 

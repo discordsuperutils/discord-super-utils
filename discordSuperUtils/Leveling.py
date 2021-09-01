@@ -157,7 +157,7 @@ class LevelingManager(DatabaseChecker):
         await self.database.insertifnotexists(self.tables["xp"],
                                               dict(
                                                   zip(
-                                                      self.tables_column_data[0].values(),
+                                                      self.tables_column_data[0],
                                                       [member.guild.id, member.id, 1, 0, 50]
                                                   )
                                               ),

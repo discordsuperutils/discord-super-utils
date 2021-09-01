@@ -54,7 +54,7 @@ async def on_member_birthday(birthday_member):
 @bot.event
 async def on_ready():
     database = discordSuperUtils.DatabaseManager.connect(...)
-    await BirthdayManager.connect_to_database(database, "birthdays")
+    await BirthdayManager.connect_to_database(database, ["birthdays"])
 
     print('Birthday manager is ready.', bot.user)
 
@@ -62,7 +62,9 @@ async def on_ready():
 @bot.command()
 async def upcoming(ctx):
     guild_upcoming = await BirthdayManager.get_upcoming(ctx.guild)
-    formatted_upcoming = [f"Member: {x.member}, Age: {await x.age()}, Date of Birth: {(await x.birthday_date()):'%b %d %Y'}" for x in guild_upcoming]
+    formatted_upcoming = [
+        f"Member: {x.member}, Age: {await x.age()}, Date of Birth: {(await x.birthday_date()):'%b %d %Y'}" for x in
+        guild_upcoming]
 
     await discordSuperUtils.PageManager(ctx, discordSuperUtils.generate_embeds(
         formatted_upcoming,
@@ -159,7 +161,7 @@ async def setup_birthday(ctx):
     else:
         await BirthdayManager.create_birthday(ctx.author, date_of_birth.timestamp(), answers[3])
 
-    await ctx.send(f"Successfully set your birthday to {date_of_birth:%b %d %Y)}.")
+    await ctx.send(f"Successfully set your birthday to {date_of_birth:%b %d %Y}.")
 
 
 bot.run("token")

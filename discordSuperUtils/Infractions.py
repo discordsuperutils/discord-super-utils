@@ -68,8 +68,9 @@ class Infraction:
 
 class InfractionManager(DatabaseChecker, Punisher):
     def __init__(self, bot: commands.Bot):
-        super().__init__(['guild', 'member', 'timestamp', 'id', 'reason'],
-                         ['snowflake', 'snowflake', 'snowflake', 'string', 'string'])
+        super().__init__([
+            {'guild': "snowflake", 'member': "snowflake", 'timestamp': "snowflake", 'id': 'string', 'reason': 'string'}
+        ], ['infractions'])
         self.punishments = []
         self.bot = bot
 
@@ -80,7 +81,7 @@ class InfractionManager(DatabaseChecker, Punisher):
         self._check_database()
 
         generated_id = str(uuid.uuid4())
-        await self.database.insert(self.table, {
+        await self.database.insert(self.tables['infractions'], {
             'guild': member.guild.id,
             'member': member.id,
             'timestamp': datetime.utcnow().timestamp(),
@@ -91,7 +92,7 @@ class InfractionManager(DatabaseChecker, Punisher):
         if punishment := get_relevant_punishment(self.punishments, len(await self.get_infractions(member))):
             await punishment.punishment_manager.punish(ctx, member, punishment)
 
-        return Infraction(self.database, self.table, member, generated_id)
+        return Infraction(self.database, self.tables['infractions'], member, generated_id)
 
     async def punish(self, ctx: commands.Context, member: discord.Member, punishment: Punishment) -> None:
         await self.warn(ctx, member, punishment.punishment_reason)
@@ -107,9 +108,9 @@ class InfractionManager(DatabaseChecker, Punisher):
         if infraction_id:
             checks['id'] = infraction_id
 
-        warnings = await self.database.select(self.table, [], checks, fetchall=True)
+        warnings = await self.database.select(self.tables['infractions'], [], checks, fetchall=True)
 
         return [Infraction(self.database,
-                           self.table,
+                           self.tables['infractions'],
                            member,
                            infraction['id']) for infraction in warnings if infraction['timestamp'] > from_timestamp]

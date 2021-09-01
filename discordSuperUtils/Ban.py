@@ -24,7 +24,8 @@ class UnbanFailure(Exception):
 
 class BanManager(DatabaseChecker, Punisher):
     def __init__(self, bot: commands.Bot):
-        super().__init__(['guild', 'member', 'reason', 'timestamp'], ['snowflake', 'snowflake', 'string', 'snowflake'])
+        super().__init__([{'guild': "snowflake", 'member': "snowflake", 'reason': "string", 'timestamp': "snowflake"}],
+                         ['bans'])
         self.bot = bot
 
         self.add_event(self.on_database_connect)
@@ -38,7 +39,7 @@ class BanManager(DatabaseChecker, Punisher):
 
         :return:
         """
-        return [x for x in await self.database.select(self.table, [], fetchall=True)
+        return [x for x in await self.database.select(self.tables['bans'], [], fetchall=True)
                 if x["timestamp"] <= datetime.utcnow().timestamp()]
 
     async def __check_bans(self) -> None:
@@ -82,7 +83,7 @@ class BanManager(DatabaseChecker, Punisher):
             raise UnbanFailure("Cannot unban a discord.User without a guild.")
 
         guild = guild if guild is not None else member.guild
-        await self.database.delete(self.table, {'guild': guild.id, 'member': member.id})
+        await self.database.delete(self.tables['bans'], {'guild': guild.id, 'member': member.id})
 
         if user := await self.get_ban(member, guild):
             await guild.unban(user)
@@ -99,10 +100,10 @@ class BanManager(DatabaseChecker, Punisher):
         if time_of_ban <= 0:
             return
 
-        await self.database.insert(self.table, {'guild': member.guild.id,
-                                                'member': member.id,
-                                                'reason': reason,
-                                                'timestamp': datetime.utcnow().timestamp() + time_of_ban})
+        await self.database.insert(self.tables['bans'], {'guild': member.guild.id,
+                                                         'member': member.id,
+                                                         'reason': reason,
+                                                         'timestamp': datetime.utcnow().timestamp() + time_of_ban})
 
         await asyncio.sleep(time_of_ban)
 

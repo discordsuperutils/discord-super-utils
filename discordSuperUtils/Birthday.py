@@ -49,8 +49,9 @@ class BirthdayMember:
 
 class BirthdayManager(DatabaseChecker):
     def __init__(self, bot: commands.Bot):
-        super().__init__(['guild', 'member', 'utc_birthday', 'timezone'],
-                         ['snowflake', 'snowflake', 'snowflake', 'smallnumber'])
+        super().__init__([
+            {'guild': 'snowflake', 'member': 'snowflake', 'utc_birhtday': 'snowflake', 'timezone': 'string'}
+        ], ['birthdays'])
         self.bot = bot
         self.add_event(self.on_database_connect)
 
@@ -63,25 +64,27 @@ class BirthdayManager(DatabaseChecker):
                               timezone: str = "UTC") -> None:
         self._check_database()
 
-        await self.database.insertifnotexists(self.table,
-                                              dict(zip(self.column_names,
+        await self.database.insertifnotexists(self.tables['birthdays'],
+                                              dict(zip(self.tables_column_data[0],
                                                        [member.guild.id, member.id, member_birthday, timezone])),
                                               {'guild': member.guild.id, 'member': member.id})
 
     async def get_birthday(self, member: discord.Member) -> Optional[BirthdayMember]:
         self._check_database()
 
-        member_data = await self.database.select(self.table, [], {'guild': member.guild.id, 'member': member.id}, True)
+        member_data = await self.database.select(self.tables['birthdays'],
+                                                 [],
+                                                 {'guild': member.guild.id, 'member': member.id}, True)
 
         if member_data:
-            return BirthdayMember(self.database, self.table, member)
+            return BirthdayMember(self.database, self.tables['birthdays'], member)
 
         return None
 
     async def get_upcoming(self, guild: discord.Guild) -> List[BirthdayMember]:
         self._check_database()
 
-        member_data = await self.database.select(self.table, [], fetchall=True)
+        member_data = await self.database.select(self.tables['birthdays'], [], fetchall=True)
 
         member_data_formatted = []
         for member in member_data:
@@ -101,7 +104,7 @@ class BirthdayManager(DatabaseChecker):
             member = guild.get_member(birthday_member['member'])
 
             if member:
-                birthdays.append(BirthdayMember(self.database, self.table, member))
+                birthdays.append(BirthdayMember(self.database, self.tables['birthdays'], member))
 
         return birthdays
 
@@ -137,7 +140,7 @@ class BirthdayManager(DatabaseChecker):
         """
 
         result_members = []
-        registered_members = await self.database.select(self.table, [], fetchall=True)
+        registered_members = await self.database.select(self.tables['birthdays'], [], fetchall=True)
 
         birthday_members = [x for x in registered_members if x["timezone"] in timezones]
         for birthday_member in birthday_members:
@@ -176,5 +179,5 @@ class BirthdayManager(DatabaseChecker):
 
                     if member:
                         await self.call_event("on_member_birthday", BirthdayMember(
-                            self.database, self.table, member
+                            self.database, self.tables['birthdays'], member
                         ))

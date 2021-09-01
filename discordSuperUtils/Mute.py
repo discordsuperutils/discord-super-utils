@@ -24,8 +24,15 @@ class AlreadyMuted(Exception):
 
 class MuteManager(DatabaseChecker, Punisher):
     def __init__(self, bot: commands.Bot):
-        super().__init__(['guild', 'member', 'timestamp_of_mute', 'timestamp_of_unmute', 'reason'],
-                         ['snowflake', 'snowflake', 'snowflake', 'snowflake', 'string'])
+        super().__init__([
+            {
+                'guild': 'snowflake',
+                'member': 'snowflake',
+                'timestamp_of_mute': 'snowflake',
+                'timestamp_of_unmute': 'snowflake',
+                'reason': 'string'
+            }
+        ], ['mutes'])
         self.bot = bot
 
         self.add_event(self.on_database_connect)
@@ -40,14 +47,16 @@ class MuteManager(DatabaseChecker, Punisher):
 
         :return:
         """
-        return [x for x in await self.database.select(self.table, [], fetchall=True)
+        return [x for x in await self.database.select(self.tables['mutes'], [], fetchall=True)
                 if x["timestamp_of_unmute"] <= datetime.utcnow().timestamp()]
 
     async def on_member_join(self, member):
-        muted_members = [x for x in await self.database.select(self.table, ["timestamp_of_unmute", "member"], {
-            'guild': member.guild.id,
-            'member': member.id
-        }, fetchall=True) if x["timestamp_of_unmute"] > datetime.utcnow().timestamp()]
+        muted_members = [x for x in await self.database.select(self.tables['mutes'], ["timestamp_of_unmute", "member"],
+                                                               {
+                                                                   'guild': member.guild.id,
+                                                                   'member': member.id
+                                                               }, fetchall=True) if
+                         x["timestamp_of_unmute"] > datetime.utcnow().timestamp()]
 
         if any([muted_member["member"] == member.id for muted_member in muted_members]):
             muted_role = discord.utils.get(member.guild.roles, name="Muted")
@@ -102,12 +111,13 @@ class MuteManager(DatabaseChecker, Punisher):
         if time_of_mute <= 0:
             return
 
-        await self.database.insert(self.table, {'guild': member.guild.id,
-                                                'member': member.id,
-                                                'timestamp_of_mute': datetime.utcnow().timestamp(),
-                                                'timestamp_of_unmute': datetime.utcnow().timestamp() + time_of_mute,
-                                                'reason': reason
-                                                })
+        await self.database.insert(self.tables['mutes'], {
+            'guild': member.guild.id,
+            'member': member.id,
+            'timestamp_of_mute': datetime.utcnow().timestamp(),
+            'timestamp_of_unmute': datetime.utcnow().timestamp() + time_of_mute,
+            'reason': reason
+        })
 
         await asyncio.sleep(time_of_mute)
 
@@ -115,7 +125,7 @@ class MuteManager(DatabaseChecker, Punisher):
             await self.call_event('on_unmute', member, reason)
 
     async def unmute(self, member: discord.Member) -> Optional[bool]:
-        await self.database.delete(self.table, {'guild': member.guild.id, 'member': member.id})
+        await self.database.delete(self.tables['mutes'], {'guild': member.guild.id, 'member': member.id})
         muted_role = discord.utils.get(member.guild.roles, name="Muted")
         if not muted_role:
             return
