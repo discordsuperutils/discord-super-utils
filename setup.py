@@ -4,18 +4,18 @@ f = open("README.md", "r")
 README = f.read()
 
 setup(
-    name='discordSuperUtils-splitted',
+    name='discordSuperUtils',
     packages=['discordSuperUtils'],
     package_data={"discordSuperUtils.assets": ["*"]},
-    version='0.2.0',
+    include_package_data=True,
+    version='0.1.4',
     license='MIT',
     description='Discord Bot Development made easy!',
-    include_package_data=True,
     long_description=README,
     long_description_content_type="text/markdown",
-    author='adam7100',
-    url='https://github.com/adam757521/discordSuperUtils-splitted/',
-    download_url='https://github.com/adam757521/discordSuperUtils-splitted/archive/refs/tags/v0.1.9.tar.gz/',
+    author='koyashie07 and adam7100',
+    url='https://github.com/discordsuperutils/discord-super-utils',
+    download_url='https://github.com/discordsuperutils/discord-super-utils/archive/refs/tags/v0.1.4.tar.gz',
     keywords=['discord', 'easy', 'discord.py', 'music', 'download', 'links', 'images', 'videos', 'audio', 'bot',
               'paginator', 'economy', 'reaction', 'reaction roles', 'database', 'database manager'],
     install_requires=[
