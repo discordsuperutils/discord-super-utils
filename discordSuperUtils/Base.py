@@ -133,13 +133,13 @@ class CogManager:
 
 
 class DatabaseChecker(EventManager):
-    def __init__(self, column_names, column_types):
+    def __init__(self, tables_column_data, table_identifiers):
         super().__init__()
 
         self.database = None
-        self.table = None
-        self.column_names = column_names
-        self.column_types = column_types
+        self.table_identifiers = table_identifiers
+        self.tables = {}
+        self.tables_column_data = tables_column_data
 
     def _check_database(self, raise_error=True):
         if not self.database:
@@ -151,13 +151,13 @@ class DatabaseChecker(EventManager):
 
         return True
 
-    async def connect_to_database(self, database, table):
-        types = generate_column_types(self.column_types,
-                                      type(database.database))
+    async def connect_to_database(self, database, tables):
+        for table, table_data, identifier in zip(tables, self.tables_column_data, self.table_identifiers):
+            types = generate_column_types(table_data.values(), type(database.database))
 
-        await database.create_table(table, dict(zip(self.column_names, types)) if types else None, True)
+            await database.create_table(table, dict(zip(list(table_data), types)) if types else None, True)
 
-        self.database = database
-        self.table = table
+            self.database = database
+            self.tables[identifier] = table
 
         await self.call_event("on_database_connect")

@@ -35,7 +35,7 @@ class InviteAccount:
 
 class InviteTracker(DatabaseChecker):
     def __init__(self, bot: commands.Bot):
-        super().__init__(['guild', 'member', 'members_invited'], ['snowflake', 'snowflake', 'string'])
+        super().__init__([{'guild': 'snowflake', 'member': 'snowflake', 'members_invited': 'string'}], ['invites'])
         self.bot = bot
         self.cache = {}
 
@@ -60,7 +60,7 @@ class InviteTracker(DatabaseChecker):
     async def get_members_invited(self, user: Union[discord.User, discord.Member], guild: discord.Guild):
         self._check_database()
 
-        invited_members = await self.database.select(self.table, ['members_invited'], {
+        invited_members = await self.database.select(self.tables['invites'], ['members_invited'], {
             'guild': guild.id,
             'member': user.id
         })
@@ -90,7 +90,7 @@ class InviteTracker(DatabaseChecker):
         invited_members_sql = '\0'.join(str(invited_member) for invited_member in invited_members)
 
         await self.database.updateorinsert(
-            self.table,
+            self.tables['invites'],
             {'members_invited': invited_members_sql},
             {'guild': invite.guild.id, 'member': inviter.id},
             {'guild': invite.guild.id, 'member': inviter.id, 'members_invited': invited_members_sql}

@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import (
     TYPE_CHECKING,
-    Union
+    Union,
+    Optional
 )
 
 import discord.utils
@@ -17,68 +18,120 @@ if TYPE_CHECKING:
     from .Punishments import Punishment
 
 
-class RoleError(Exception):
-    """Raises error when roles are not correct"""
-
-class Mute:
-    def __init__(self, ctx: commands.Context, member: discord.Member, reason: str):
-        self.muter = ctx.author
-        self.member = member
-        self.reason = reason
-        self.guild = ctx.guild
-        self.time = ctx.message.created_at  # returns datetime object
-
-
-class UnMute:
-    def __init__(self, ctx: commands.Context, member: discord.Member):
-        self.muter = ctx.author
-        self.member = member
-        self.guild = ctx.guild
-        self.time = ctx.message.created_at  # returns datetime object
+class AlreadyMuted(Exception):
+    """Raises an error when a user is already muted."""
 
 
 class MuteManager(DatabaseChecker, Punisher):
     def __init__(self, bot: commands.Bot):
-        super().__init__(['guild', 'member', 'timestamp_of_mute', 'timestamp_of_unmute', 'reason'],
-                         ['snowflake', 'snowflake', 'snowflake', 'snowflake', 'string'])
+        super().__init__([
+            {
+                'guild': 'snowflake',
+                'member': 'snowflake',
+                'timestamp_of_mute': 'snowflake',
+                'timestamp_of_unmute': 'snowflake',
+                'reason': 'string'
+            }
+        ], ['mutes'])
         self.bot = bot
 
+        self.add_event(self.on_database_connect)
+
+    async def on_database_connect(self):
+        self.bot.loop.create_task(self.__check_mutes())
+        self.bot.add_listener(self.on_member_join)
+
+    async def get_muted_members(self):
+        """
+        This function returns all the members that are supposed to be unmuted but are muted.
+
+        :return:
+        """
+        return [x for x in await self.database.select(self.tables['mutes'], [], fetchall=True)
+                if x["timestamp_of_unmute"] <= datetime.utcnow().timestamp()]
+
+    async def on_member_join(self, member):
+        muted_members = [x for x in await self.database.select(self.tables['mutes'], ["timestamp_of_unmute", "member"],
+                                                               {
+                                                                   'guild': member.guild.id,
+                                                                   'member': member.id
+                                                               }, fetchall=True) if
+                         x["timestamp_of_unmute"] > datetime.utcnow().timestamp()]
+
+        if any([muted_member["member"] == member.id for muted_member in muted_members]):
+            muted_role = discord.utils.get(member.guild.roles, name="Muted")
+
+            if muted_role:
+                await member.add_roles(muted_role)
+
+    async def __check_mutes(self) -> None:
+        await self.bot.wait_until_ready()
+
+        while not self.bot.is_closed():
+            for muted_member in await self.get_muted_members():
+                guild = self.bot.get_guild(muted_member['guild'])
+
+                if guild is None:
+                    continue
+
+                member = guild.get_member(muted_member['member'])
+
+                if await self.unmute(member):
+                    await self.call_event('on_unmute', member, muted_member["reason"])
+
+            await asyncio.sleep(300)
+
     async def punish(self, ctx: commands.Context, member: discord.Member, punishment: Punishment) -> None:
-        await self.mute(ctx, member)
+        try:
+            await self.mute(member)
+        except discord.errors.Forbidden as e:
+            raise e
+        else:
+            await self.call_event("on_punishment", ctx, member, punishment)
 
-    async def mute(self, ctx: commands.Context, member: discord.Member, reason: str = "No reason provided.") -> Union[Mute, None]:
-        muted_role = discord.utils.get(ctx.guild.roles, name="Muted")
+    async def mute(self,
+                   member: discord.Member,
+                   reason: str = "No reason provided.",
+                   time_of_mute: Union[int, float] = 0) -> None:
+        self._check_database()
+
+        muted_role = discord.utils.get(member.guild.roles, name="Muted")
         if not muted_role:
-            muted_role = await ctx.guild.create_role(name="Muted", permissions=discord.Permissions(send_messages=False))
-        if muted_role in member.roles:
-            await self.call_event('on_mute_error', RoleError("User is already Muted"))
-        await member.add_roles(muted_role, reason=f"Mute | {reason}")
-        await self.call_event('on_mute', Mute(ctx, member, reason))
-        return Mute(ctx, member, reason)
+            muted_role = await member.guild.create_role(name="Muted",
+                                                        permissions=discord.Permissions(send_messages=False))
 
-    async def unmute(self, ctx: commands.Context, member: discord.Member) -> Union[UnMute, None]:
-        muted_role = discord.utils.get(ctx.guild.roles, name="Muted")
+        if muted_role in member.roles:
+            raise AlreadyMuted(f"{member} is already muted.")
+
+        await member.add_roles(muted_role, reason=reason)
+
+        for channel in member.guild.channels:
+            await channel.set_permissions(muted_role, send_messages=False)
+
+        if time_of_mute <= 0:
+            return
+
+        await self.database.insert(self.tables['mutes'], {
+            'guild': member.guild.id,
+            'member': member.id,
+            'timestamp_of_mute': datetime.utcnow().timestamp(),
+            'timestamp_of_unmute': datetime.utcnow().timestamp() + time_of_mute,
+            'reason': reason
+        })
+
+        await asyncio.sleep(time_of_mute)
+
+        if await self.unmute(member):
+            await self.call_event('on_unmute', member, reason)
+
+    async def unmute(self, member: discord.Member) -> Optional[bool]:
+        await self.database.delete(self.tables['mutes'], {'guild': member.guild.id, 'member': member.id})
+        muted_role = discord.utils.get(member.guild.roles, name="Muted")
         if not muted_role:
             return
+
         if muted_role not in member.roles:
-            await self.call_event('on_mute_error', RoleError("User is not Muted"))
-        await member.remove_roles(muted_role, reason="UnMute")
-        await self.call_event('on_unmute', UnMute(ctx, member))
-        return UnMute(ctx, member)
+            return
 
-    async def tempmute(self, ctx: commands.Context,
-                       member: discord.Member,
-                       time_of_mute: Union[int, float] = 0,
-                       reason: str = "No reason provided.",
-                       ):
-        self._check_database()
-        await self.mute(ctx, member, reason)
-
-        await self.database.insert(self.table, {'guild': member.guild.id,
-                                                'member': member.id,
-                                                'timestamp_of_mute': datetime.utcnow().timestamp(),
-                                                'timestamp_of_unmute': datetime.utcnow().timestamp() + time_of_mute,
-                                                'reason': reason,
-                                                })
-        await asyncio.sleep(time_of_mute)
-        await self.unmute(ctx, member)
+        await member.remove_roles(muted_role)
+        return True

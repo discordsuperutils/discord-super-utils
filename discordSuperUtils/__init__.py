@@ -6,7 +6,7 @@ from .Convertors import TimeConvertor
 from .Database import DatabaseManager, create_mysql
 from .Economy import EconomyManager, EconomyAccount
 from .FiveM import FiveMServer
-from .Imaging import ImageManager
+from .Imaging import ImageManager, Backgrounds
 from .Infractions import InfractionManager
 from .InviteTracker import InviteTracker
 from .Kick import KickManager
@@ -20,6 +20,6 @@ from .ReactionRoles import ReactionManager
 from .Spotify import SpotifyClient
 
 __title__ = "discordSuperUtils"
-__version__ = "0.1.5"
+__version__ = "0.2.0"
 __author__ = "Koyashie07 & Adam7100"
 __license__ = "MIT"

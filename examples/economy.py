@@ -9,7 +9,7 @@ EconomyManager = discordSuperUtils.EconomyManager(bot)
 @bot.event
 async def on_ready():
     database = discordSuperUtils.DatabaseManager.connect(...)
-    await EconomyManager.connect_to_database(database, "economy")
+    await EconomyManager.connect_to_database(database, ["economy"])
 
     print('Economy manager is ready.', bot.user)
 

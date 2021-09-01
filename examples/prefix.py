@@ -16,7 +16,7 @@ async def prefix(ctx, new_prefix):
 @bot.event
 async def on_ready():
     database = discordSuperUtils.DatabaseManager.connect(...)
-    await PrefixManager.connect_to_database(database, "prefixes")
+    await PrefixManager.connect_to_database(database, ["prefixes"])
     print('Prefix manager is ready.', bot.user)
 
 

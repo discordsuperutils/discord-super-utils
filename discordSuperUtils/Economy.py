@@ -39,9 +39,8 @@ class EconomyAccount:
 
 class EconomyManager(DatabaseChecker):
     def __init__(self, bot):
-        super().__init__(['guild', 'member', 'currency', 'bank'],
-                         ['snowflake', 'snowflake', 'snowflake', 'snowflake'])
-
+        super().__init__([{'guild': 'snowflake', 'member': 'snowflake', 'currency': 'snowflake', 'bank': 'snowflake'}],
+                         ['economy'])
         self.bot = bot
 
     @staticmethod
@@ -51,7 +50,7 @@ class EconomyManager(DatabaseChecker):
     async def create_account(self, member: discord.Member):
         self._check_database()
 
-        await self.database.insertifnotexists(self.table,
+        await self.database.insertifnotexists(self.tables['economy'],
                                               {"guild": member.guild.id,
                                                "member": member.id,
                                                "currency": 0,
@@ -62,22 +61,26 @@ class EconomyManager(DatabaseChecker):
     async def get_account(self, member: discord.Member):
         self._check_database()
 
-        member_data = await self.database.select(self.table, [], self.generate_checks(member.guild.id, member.id), True)
+        member_data = await self.database.select(self.tables['economy'],
+                                                 [],
+                                                 self.generate_checks(member.guild.id, member.id),
+                                                 True)
 
         if member_data:
-            return EconomyAccount(member.guild.id, member.id, self.database, self.table)
+            return EconomyAccount(member.guild.id, member.id, self.database, self.tables['economy'])
 
         return None
 
     async def get_leaderboard(self, guild):
         self._check_database()
 
-        guild_info = await self.database.select(self.table, [], {'guild': guild.id}, True)
+        guild_info = await self.database.select(self.tables['economy'], [], {'guild': guild.id}, True)
         members = [EconomyAccount(member_info['guild'],
                                   member_info['member'],
                                   database=self.database,
-                                  table=self.table) for member_info in sorted(guild_info,
-                                                                              key=lambda x: x["bank"] + x["currency"],
-                                                                              reverse=True)]
+                                  table=self.tables['economy']) for member_info in sorted(guild_info,
+                                                                                          key=lambda x: x["bank"] + x[
+                                                                                              "currency"],
+                                                                                          reverse=True)]
 
         return members

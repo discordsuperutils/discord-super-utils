@@ -36,7 +36,7 @@ class LevelingAccount:
         xp = await self.xp()
         initial_xp = await self.initial_rank_xp()
 
-        return math.floor(abs(xp - initial_xp) / (level_up - initial_xp) * 100)
+        return min(abs(math.floor(abs(xp - initial_xp) / (level_up - initial_xp) * 100)), 100)
 
     async def initial_rank_xp(self):
         next_level = await self.next_level()
@@ -54,13 +54,13 @@ class LevelingAccount:
 
 class RoleManager(DatabaseChecker):
     def __init__(self, interval=5):
-        super().__init__(['guild', 'interval', 'roles'], ['snowflake', 'smallnumber', 'string'])
+        super().__init__([{'guild': 'snowflake', 'interval': 'smallnumber', 'roles': 'string'}], ['xp_roles'])
         self.interval = interval
 
     async def get_roles(self, guild):
         self._check_database()
 
-        role_data = await self.database.select(self.table, ['interval', 'roles'], {'guild': guild.id})
+        role_data = await self.database.select(self.tables["xp_roles"], ['interval', 'roles'], {'guild': guild.id})
 
         if not role_data:
             return []
@@ -87,7 +87,7 @@ class RoleManager(DatabaseChecker):
             if not isinstance(data_to_set["interval"], int):
                 raise TypeError("Interval must be of type int.")
 
-        await self.database.updateorinsert(self.table,
+        await self.database.updateorinsert(self.tables["xp_roles"],
                                            data_to_set,
                                            {'guild': guild.id},
                                            dict(data_to_set, **default_values))
@@ -95,8 +95,9 @@ class RoleManager(DatabaseChecker):
 
 class LevelingManager(DatabaseChecker):
     def __init__(self, bot, role_manager=None, xp_on_message=5, rank_multiplier=1.5, xp_cooldown=60):
-        super().__init__(['guild', 'member', 'rank', 'xp', 'level_up'],
-                         ['snowflake', 'snowflake', 'number', 'number', 'number'])
+        super().__init__([
+            {'guild': 'snowflake', 'member': 'snowflake', 'rank': 'number', 'xp': 'number', 'level_up': 'number'}
+        ], ['xp'])
 
         self.bot = bot
         self.xp_on_message = xp_on_message
@@ -153,27 +154,35 @@ class LevelingManager(DatabaseChecker):
     async def create_account(self, member):
         self._check_database()
 
-        await self.database.insertifnotexists(self.table,
-                                              dict(zip(self.column_names, [member.guild.id, member.id, 1, 0, 50])),
+        await self.database.insertifnotexists(self.tables["xp"],
+                                              dict(
+                                                  zip(
+                                                      self.tables_column_data[0],
+                                                      [member.guild.id, member.id, 1, 0, 50]
+                                                  )
+                                              ),
                                               self.generate_checks(member.guild.id, member.id))
 
     async def get_account(self, member):
         self._check_database()
 
-        member_data = await self.database.select(self.table, [], self.generate_checks(member.guild.id, member.id), True)
+        member_data = await self.database.select(self.tables["xp"],
+                                                 [],
+                                                 self.generate_checks(member.guild.id, member.id),
+                                                 True)
 
         if member_data:
-            return LevelingAccount(self.database, self.table, member.guild.id, member.id, self.rank_multiplier)
+            return LevelingAccount(self.database, self.tables['xp'], member.guild.id, member.id, self.rank_multiplier)
 
         return None
 
     async def get_leaderboard(self, guild):
         self._check_database()
 
-        guild_info = await self.database.select(self.table, [], {'guild': guild.id}, True)
+        guild_info = await self.database.select(self.tables['xp'], [], {'guild': guild.id}, True)
 
         members = [LevelingAccount(self.database,
-                                   self.table,
+                                   self.tables['xp'],
                                    member_info['guild'],
                                    member_info['member'],
                                    rank_multiplier=self.rank_multiplier)

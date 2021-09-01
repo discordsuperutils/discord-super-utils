@@ -1,53 +1,45 @@
+from __future__ import annotations
+
 import os
+import textwrap
+from enum import Enum
 from io import BytesIO
+from typing import (
+    Optional,
+    Tuple,
+    Union,
+    TYPE_CHECKING
+)
 
 import PIL
 import PIL.ImageShow
-import aiohttp  # koyashie fix unused / duplicate imports
+import aiohttp
 import discord
 from PIL import Image, ImageFont, ImageDraw
 
+if TYPE_CHECKING:
+    from .Leveling import LevelingAccount
+
+
+__all__ = ("ImageManager", "Backgrounds")
+
 
 class ImageManager:
-    def __init__(self, bot, txt_colour=None, card_back=1, custom_card_back: bool = False):
-        self.bot = bot
-        self.txt_colour = (80, 92, 112) if not txt_colour else txt_colour
-        self.default_bg = self.fetch_card_back(card_back, custom_card_back)
-        self.online = self.load_asset('online.png')
-        self.offline = self.load_asset('offline.png')
-        self.idle = self.load_asset('idle.png')
-        self.dnd = self.load_asset('dnd.png')
-        self.streaming = self.load_asset('streaming.png')
-        self.font = self.load_asset('font.ttf')
-        self.bk = self.load_asset('grey.png')
+    __slots__ = ()
 
-    @classmethod
-    def load_asset(cls, name):
+    @staticmethod
+    def load_asset(name: str) -> str:
         return os.path.join(os.path.dirname(__file__), 'assets', name)
 
-    @classmethod
-    def fetch_card_back(cls, card_back, custom_card_back):
-        if custom_card_back:
-            return card_back
-
-        if card_back in [1, 2, 3]:
-            return cls.load_asset(f"{card_back}.png")
-
-    @classmethod
-    async def make_request(cls, url):
+    @staticmethod
+    async def make_request(url: str) -> Optional[bytes]:
         async with aiohttp.ClientSession() as session:
-            async with session.get(str(url)) as response:
+            async with session.get(url) as response:
                 return await response.read()
 
     @classmethod
-    async def convert_image(cls, url):
-        info = await cls.make_request(url)
-        return PIL.Image.open(BytesIO(info)).convert('RGBA')
-
-    @staticmethod
-    def create_card():
-        """Solely for testing | Creates a blank image"""
-        img = PIL.Image.new('RGB', (900, 238), color=(91, 95, 102))
+    async def convert_image(cls, url: str) -> Image:
+        return PIL.Image.open(BytesIO(await cls.make_request(url))).convert('RGBA')
 
     @classmethod
     def human_format(cls, num):
@@ -68,26 +60,100 @@ class ImageManager:
         except IndexError:
             return original_num
 
-    async def add_gay(self, avatar, discord_file: bool = True, if_url : bool = False):
-        """Adds gay overlay to image url given"""
-        gay_image = PIL.Image.open(self.load_asset('gay.jpg'))
-        if if_url:
-            avatar = await self.convert_image(avatar)
+    @staticmethod
+    def multiline_text(card: ImageDraw,
+                       text: str,
+                       font: ImageFont,
+                       text_color: Tuple[int, int, int],
+                       start_height: Union[int, float],
+                       width: int):
+        draw = ImageDraw.Draw(card)
+        image_width, image_height = card.size
 
-        width, height = avatar.size
-        foreground = gay_image.convert('RGBA').resize((width, height), PIL.Image.ANTIALIAS)
-        img = discord.File(await self.merge_image(foreground, avatar, blend_level=0.4))
+        y_text = start_height
+        lines = textwrap.wrap(text, width=width)
 
-        if discord_file:
-            return discord.File(img, filename="Gay.png")
-        return img
+        for line in lines:
+            line_width, line_height = font.getsize(line)
+            draw.text(((image_width - line_width) / 2, y_text), line, font=font, fill=text_color)
+            y_text += line_height
 
-    async def merge_image(self, foreground, background, if_url: bool = False, blend_level: float = 0.6,
-                          discord_file: bool = True):
+    async def draw_profile_picture(self,
+                                   card: Image,
+                                   member: discord.Member,
+                                   location: Tuple[int, int],
+                                   size: int = 180,
+                                   outline_thickness: int = 5,
+                                   status: bool = True,
+                                   outline_color: Tuple[int, int, int] = (255, 255, 255)):
+        blank = Image.new("RGBA", card.size, (255, 255, 255, 0))
+
+        location = tuple(round(x - size / 2) if i <= 1 else round(x + size / 2)
+                         for i, x in enumerate(location + location))
+
+        outline_dimensions = tuple(x - outline_thickness if i <= 1 else x + outline_thickness
+                                   for i, x in enumerate(location))
+
+        size_dimensions = (size, size)
+        status_dimensions = tuple(round(x / 4) for x in size_dimensions)
+
+        mask = Image.new("RGBA", card.size, 0)
+        ImageDraw.Draw(mask).ellipse(location, fill=(255, 25, 255, 255))
+
+        avatar = (await self.convert_image(str(member.avatar_url))).resize(size_dimensions)
+        profile_pic_holder = Image.new("RGBA", card.size, (255, 255, 255, 255))
+
+        ImageDraw.Draw(card).ellipse(outline_dimensions, fill=outline_color)
+
+        profile_pic_holder.paste(avatar, location)
+        pre_card = Image.composite(profile_pic_holder, card, mask)
+        pre_card = pre_card.convert('RGBA')
+
+        if status:
+            status_picture = Image.open(self.load_asset(f"{member.status.name}.png"))
+            status_picture = status_picture.convert("RGBA").resize(status_dimensions)
+
+            blank.paste(status_picture, tuple(x - status_dimensions[0] for x in location[2:]))
+
+        return Image.alpha_composite(pre_card, blank)
+
+    async def create_welcome_card(self,
+                                  member: discord.Member,
+                                  background: Backgrounds,
+                                  text_color: Tuple[int, int, int],
+                                  title: str,
+                                  description: str,
+                                  font_path: str = None,
+                                  outline: int = 5,
+                                  transparency: int = 0):
+        result_bytes = BytesIO()
+
+        card = Image.open(background.value).resize((1024, 500))
+
+        font_path = font_path if font_path else self.load_asset("font.ttf")
+
+        big_font = ImageFont.truetype(font_path, 36)
+        small_font = ImageFont.truetype(font_path, 30)
+
+        draw = ImageDraw.Draw(card, 'RGBA')
+        draw.rectangle((30, 30, 994, 470), fill=(0, 0, 0, transparency))
+        draw.text((512, 360), title, text_color, font=big_font, anchor="ms")
+        self.multiline_text(card, description, small_font, text_color, 380, 60)
+
+        final_card = await self.draw_profile_picture(card, member, (512, 180), 260, outline_thickness=outline)
+
+        final_card.save(result_bytes, format="PNG")
+        result_bytes.seek(0)
+        return discord.File(result_bytes, filename="welcome_card.png")
+
+    async def merge_image(self,
+                          foreground: str,
+                          background: str,
+                          blend_level: float = 0.6,
+                          discord_file: bool = True) -> Union[discord.File, Image]:
         """Merges two images together"""
-        if if_url:
-            foreground = self.convert_image(foreground)
-            background = self.convert_image(background)
+        foreground = await self.convert_image(foreground)
+        background = await self.convert_image(background)
         result_bytes = BytesIO()
         width, height = background.size
 
@@ -101,64 +167,49 @@ class ImageManager:
 
         return result
 
-    async def create_profile(self, user: discord.Member, rank: int, level: int, xp: int, next_level_xp: int = None,
-                             current_level_xp: int = None, discord_file=True):
-
-        avatar = PIL.Image.open(BytesIO(await self.make_request(str(user.avatar_url))))
-        avatar = avatar.convert('RGBA').resize((180, 180))
-        card = Image.open(self.default_bg)
-        card = card.resize((900, 238))
-        font = ImageFont.truetype(self.font, 36)
-        font_small = ImageFont.truetype(self.font, 20)
+    async def create_leveling_profile(self,
+                                      member: discord.Member,
+                                      member_account: LevelingAccount,
+                                      background: Backgrounds,
+                                      text_color: Tuple[int, int, int],
+                                      rank: int,
+                                      font_path: str = None,
+                                      outline: int = 5) -> discord.File:
         result_bytes = BytesIO()
 
-        status = Image.open(getattr(self, user.status.name))
+        card = Image.open(background.value).resize((850, 238))
 
-        status = status.convert("RGBA").resize((55, 55))
-        profile_pic_holder = Image.new("RGBA", card.size, (255, 255, 255, 0))
-
-        mask = Image.new("RGBA", card.size, 0)
-        mask_draw = ImageDraw.Draw(mask)
-        mask_draw.ellipse(
-            (29, 29, 209, 209), fill=(255, 25, 255, 255)
-        )
+        font_path = font_path if font_path else self.load_asset("font.ttf")
+        font_big = ImageFont.truetype(font_path, 36)
+        font_small = ImageFont.truetype(font_path, 20)
 
         draw = ImageDraw.Draw(card)
-        draw.text((245, 60), f"{user}", self.txt_colour, font=font)
-        draw.text((620, 60), f"Rank #{rank}", self.txt_colour, font=font)
-        draw.text((245, 145), f"Level {level}", self.txt_colour, font=font_small)
-        draw.text((620, 145), f"{self.human_format(xp)} / {self.human_format(next_level_xp)} XP", self.txt_colour,
-                  font=font_small)
+        draw.text((245, 90), str(member), text_color, font=font_big, anchor="ls")
+        draw.text((800, 90), f"Rank #{rank}", text_color, font=font_big, anchor="rs")
+        draw.text((245, 165), f"Level {await member_account.level()}", text_color, font=font_small, anchor="ls")
+        draw.text((800, 165),
+                  f"{self.human_format(await member_account.xp())} /"
+                  f" {self.human_format(await member_account.next_level())} XP",
+                  text_color,
+                  font=font_small,
+                  anchor="rs")
 
-        blank = Image.new("RGBA", card.size, (255, 255, 255, 0))
-        blankdraw = ImageDraw.Draw(blank)
-        blankdraw.rounded_rectangle((245, 185, 750, 205), fill=(255, 255, 255, 0), outline=self.txt_colour, radius=10)
+        draw.rounded_rectangle((245, 185, 800, 205), fill=(0, 0, 0, 0), outline=text_color, radius=10)
+        length_of_bar = await member_account.percentage_next_level() * 5.5 + 250
+        draw.rounded_rectangle((245, 185, length_of_bar, 205), fill=text_color, radius=10)
 
-        xpneed = next_level_xp - current_level_xp
-        xphave = xp - current_level_xp
-        length_of_bar = (((xphave / xpneed) * 100) * 4.9) + 248
+        final_card = await self.draw_profile_picture(card,
+                                                     member,
+                                                     (109, 119),
+                                                     outline_thickness=outline,
+                                                     outline_color=text_color)
 
-        blankdraw.rounded_rectangle((248, 188, length_of_bar, 202), fill=self.txt_colour, radius=7)
+        final_card.save(result_bytes, format="PNG")
+        result_bytes.seek(0)
+        return discord.File(result_bytes, filename="rankcard.png")
 
-        profile_pic_holder.paste(avatar, (29, 29, 209, 209))
-        precard = Image.composite(profile_pic_holder, card, mask)
-        precard = precard.convert('RGBA')
-        precard = Image.alpha_composite(precard, blank)
 
-        blank = Image.new("RGBA", card.size, (255, 255, 255, 0))
-        blank.paste(status, (155, 155))
-        finalcard = Image.alpha_composite(precard, blank)
-
-        if discord_file:
-            finalcard.save(result_bytes, format="PNG")
-            result_bytes.seek(0)
-            return discord.File(result_bytes, filename="rankcard.png")
-
-        return finalcard
-
-    async def greyscale(self, img, if_url: bool = False, discord_file: bool = False):
-        if if_url:
-            img = await self.convert_image(img)
-        if discord_file:
-            return discord.File(img.convert('LA'))
-        return img.convert('LA')
+class Backgrounds(Enum):
+    GALAXY = ImageManager.load_asset("1.png")
+    BLANK_GRAY = ImageManager.load_asset("2.png")
+    GAMING = ImageManager.load_asset("3.png")

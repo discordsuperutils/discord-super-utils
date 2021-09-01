@@ -24,9 +24,13 @@ class UnbanFailure(Exception):
 
 class BanManager(DatabaseChecker, Punisher):
     def __init__(self, bot: commands.Bot):
-        super().__init__(['guild', 'member', 'reason', 'timestamp'], ['snowflake', 'snowflake', 'string', 'snowflake'])
+        super().__init__([{'guild': "snowflake", 'member': "snowflake", 'reason': "string", 'timestamp': "snowflake"}],
+                         ['bans'])
         self.bot = bot
 
+        self.add_event(self.on_database_connect)
+
+    async def on_database_connect(self):
         self.bot.loop.create_task(self.__check_bans())
 
     async def get_banned_members(self):
@@ -35,18 +39,13 @@ class BanManager(DatabaseChecker, Punisher):
 
         :return:
         """
-        return [x for x in await self.database.select(self.table, [], fetchall=True)
-                if x["timestamp"] < datetime.utcnow().timestamp()]
+        return [x for x in await self.database.select(self.tables['bans'], [], fetchall=True)
+                if x["timestamp"] <= datetime.utcnow().timestamp()]
 
     async def __check_bans(self) -> None:
         await self.bot.wait_until_ready()
 
         while not self.bot.is_closed():
-            if not self._check_database(False):
-                await asyncio.sleep(0.01)  # Not sleeping here will break the loop resulting in discord.py not calling
-                # the on ready event.
-                continue
-
             for banned_member in await self.get_banned_members():
                 guild = self.bot.get_guild(banned_member['guild'])
 
@@ -71,19 +70,20 @@ class BanManager(DatabaseChecker, Punisher):
             await self.call_event("on_punishment", ctx, member, punishment)
 
     @staticmethod
-    async def get_ban(member: Union[discord.Member, discord.User],
-                      guild: discord.Guild) -> Optional[discord.User]:
+    async def get_ban(member: Union[discord.Member, discord.User], guild: discord.Guild) -> Optional[discord.User]:
         banned = await guild.bans()
         for x in banned:
             if x.user.id == member.id:
                 return x.user
 
     async def unban(self, member: Union[discord.Member, discord.User], guild: discord.Guild = None) -> bool:
+        self._check_database()
+
         if isinstance(member, discord.User) and not guild:
             raise UnbanFailure("Cannot unban a discord.User without a guild.")
 
         guild = guild if guild is not None else member.guild
-        await self.database.delete(self.table, {'guild': guild.id, 'member': member.id})
+        await self.database.delete(self.tables['bans'], {'guild': guild.id, 'member': member.id})
 
         if user := await self.get_ban(member, guild):
             await guild.unban(user)
@@ -100,10 +100,10 @@ class BanManager(DatabaseChecker, Punisher):
         if time_of_ban <= 0:
             return
 
-        await self.database.insert(self.table, {'guild': member.guild.id,
-                                                'member': member.id,
-                                                'reason': reason,
-                                                'timestamp': datetime.utcnow().timestamp() + time_of_ban})
+        await self.database.insert(self.tables['bans'], {'guild': member.guild.id,
+                                                         'member': member.id,
+                                                         'reason': reason,
+                                                         'timestamp': datetime.utcnow().timestamp() + time_of_ban})
 
         await asyncio.sleep(time_of_ban)
 

@@ -25,7 +25,7 @@ def ordinal(num: int) -> str:
     :return:
     """
 
-    return f"{num}th" if 11 <= (num % 100) <= 13 else f"{num}{['', 'st', 'nd', 'rd', 'th'][min(num % 10, 4)]}"
+    return f"{num}th" if 11 <= (num % 100) <= 13 else f"{num}{['th', 'st', 'nd', 'rd', 'th'][min(num % 10, 4)]}"
 
 
 @BirthdayManager.event()
@@ -54,7 +54,7 @@ async def on_member_birthday(birthday_member):
 @bot.event
 async def on_ready():
     database = discordSuperUtils.DatabaseManager.connect(...)
-    await BirthdayManager.connect_to_database(database, "birthdays")
+    await BirthdayManager.connect_to_database(database, ["birthdays"])
 
     print('Birthday manager is ready.', bot.user)
 
@@ -62,7 +62,9 @@ async def on_ready():
 @bot.command()
 async def upcoming(ctx):
     guild_upcoming = await BirthdayManager.get_upcoming(ctx.guild)
-    formatted_upcoming = [f"Member: {x.member}, Age: {await x.age()}, Date of Birth: {(await x.birthday_date()).strftime('%b %d %Y')}" for x in guild_upcoming]
+    formatted_upcoming = [
+        f"Member: {x.member}, Age: {await x.age()}, Date of Birth: {(await x.birthday_date()):'%b %d %Y'}" for x in
+        guild_upcoming]
 
     await discordSuperUtils.PageManager(ctx, discordSuperUtils.generate_embeds(
         formatted_upcoming,
@@ -115,6 +117,8 @@ async def setup_birthday(ctx):
         "What month where you born in?",
         "What day of month where you born in?",
         "What is your timezone? List: https://gist.github.com/heyalexej/8bf688fd67d7199be4a1682b3eec7568"
+        "\nAlternatively, you can use the timezone picker: "
+        "http://scratch.andrewl.in/timezone-picker/example_site/openlayers_example.html"
     ]
     # BirthdayManager uses pytz to save timezones and not raw UTC offsets, why?
     # well, simply, using UTC offsets will result in a lot of confusion. The user might pass an incorrect UTC offset
@@ -157,7 +161,7 @@ async def setup_birthday(ctx):
     else:
         await BirthdayManager.create_birthday(ctx.author, date_of_birth.timestamp(), answers[3])
 
-    await ctx.send(f"Successfully set your birthday to {date_of_birth.strftime('%b %d %Y')}.")
+    await ctx.send(f"Successfully set your birthday to {date_of_birth:%b %d %Y}.")
 
 
 bot.run("token")

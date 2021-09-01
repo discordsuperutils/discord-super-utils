@@ -10,7 +10,7 @@ InviteTracker = discordSuperUtils.InviteTracker(bot)
 @bot.event
 async def on_ready():
     database = discordSuperUtils.DatabaseManager.connect(...)
-    await InviteTracker.connect_to_database(database, "invites")
+    await InviteTracker.connect_to_database(database, ["invites"])
     print('Invite tracker is ready.', bot.user)
 
 
@@ -21,7 +21,8 @@ async def on_member_join(member):
     await InviteTracker.register_invite(invite, member, inviter)
 
     channel = bot.get_channel(...)
-    await channel.send(f"{member.mention} was invited by {inviter.mention if inviter else None} with code {invite.code}")
+    await channel.send(
+        f"{member.mention} was invited by {inviter.mention if inviter else None} with code {invite.code}")
 
 
 @bot.command()
