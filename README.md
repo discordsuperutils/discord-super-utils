@@ -6,13 +6,13 @@
   <a href="https://pepy.tech/project/discordsuperutils"><img src="https://img.shields.io/pypi/dm/discordSuperUtils?color=green&style=flat-square" /></a>
   <a href="https://pypi.org/project/discordSuperUtils/"><img src="https://img.shields.io/pypi/v/discordSuperUtils?style=flat-square" /></a>
   <a href=""><img src="https://img.shields.io/pypi/l/discordSuperUtils?style=flat-square" /></a>
-  <br></br>
+    <br/>
   <a href="https://discord-super-utils.gitbook.io/discord-super-utils/">Documentation</a>
 </p>
 
 <p align="center">
    A modern python module including many useful features that make discord bot programming extremely easy.
-   <br></br>
+    <br/>
    <b>The documentation is not done. if you have any questions, feel free to ask them in our <a href="https://discord.gg/zhwcpTBBeC">discord server.</a></b>
 </p>
 
@@ -20,7 +20,7 @@ Features
 -------------
 
 
-- Very easy to use and user friendly.
+- Very easy to use and user-friendly.
 - Object Oriented.
 - Modern Leveling Manager.
 - Modern Music/Audio playing manager.
