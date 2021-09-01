@@ -1,11 +1,11 @@
-<h1 align="center">discordSuperUtils-splitted</h1>
+<h1 align="center">discord-super-utils</h1>
 
 <p align="center">
-  <a href="https://codefactor.io/repository/github/adam757521/discordsuperutils-splitted"><img src="https://img.shields.io/codefactor/grade/github/discordsuperutils/discord-super-utils?style=flat-square" /></a>
-  <a href="https://discord.gg/xzbTzhgbru"><img src="https://img.shields.io/discord/881965477189005343?logo=discord&color=blue&style=flat-square" /></a>
-  <a href="https://pepy.tech/project/discordsuperutils-splitted"><img src="https://img.shields.io/pypi/dm/discordSuperUtils-splitted?color=green&style=flat-square" /></a>
-  <a href="https://pypi.org/project/discordSuperUtils-splitted/"><img src="https://img.shields.io/pypi/v/discordSuperUtils-splitted?style=flat-square" /></a>
-  <a href=""><img src="https://img.shields.io/pypi/l/discordSuperUtils-splitted?style=flat-square" /></a>
+  <a href="https://codefactor.io/repository/github/discordsuperutils/discord-super-utils/"><img src="https://img.shields.io/codefactor/grade/github/discordsuperutils/discord-super-utils?style=flat-square" /></a>
+  <a href="https://discord.gg/zhwcpTBBeC"><img src="https://img.shields.io/discord/863388828734586880?logo=discord&color=blue&style=flat-square" /></a>
+  <a href="https://pepy.tech/project/discordsuperutils"><img src="https://img.shields.io/pypi/dm/discordSuperUtils?color=green&style=flat-square" /></a>
+  <a href="https://pypi.org/project/discordSuperUtils/"><img src="https://img.shields.io/pypi/v/discordSuperUtils?style=flat-square" /></a>
+  <a href=""><img src="https://img.shields.io/pypi/l/discordSuperUtils?style=flat-square" /></a>
   <br></br>
   <a href="https://discord-super-utils.gitbook.io/discord-super-utils/">Documentation</a>
 </p>
@@ -13,18 +13,12 @@
 <p align="center">
    A modern python module including many useful features that make discord bot programming extremely easy.
    <br></br>
-   <b>The documentation is not done. if you have any questions, feel free to ask them in our <a href="https://discord.gg/xzbTzhgbru">discord server.</a></b>
+   <b>The documentation is not done. if you have any questions, feel free to ask them in our <a href="https://discord.gg/zhwcpTBBeC">discord server.</a></b>
 </p>
-
-Information
--------------
-
-I have recently left the discordSuperUtils organization because of issues with the team that wont be listed here.
-
-Maybe this fork will merge with discordSuperUtils one day.
 
 Features
 -------------
+
 
 - Very easy to use and user friendly.
 - Object Oriented.
@@ -49,27 +43,26 @@ Features
 Installation
 --------------
 
-Installing discordSuperUtils-splitted is very easy.
+Installing discordSuperUtils is very easy.
 
 ```sh
-python -m pip install discordSuperUtils-splitted
+python -m pip install discordSuperUtils
 ```
 
 Examples
 --------------
 
-### Leveling Example (With Role Manager and Image Manager) ###
+### Leveling Example (With Role Manager) ###
 
 ```py
 import discord
-from discord.ext import commands
 
 import discordSuperUtils
+from discord.ext import commands
 
-bot = commands.Bot(command_prefix='-', intents=discord.Intents.all())
+bot = commands.Bot(command_prefix='-')
 RoleManager = discordSuperUtils.RoleManager()
 LevelingManager = discordSuperUtils.LevelingManager(bot, RoleManager)
-ImageManager = discordSuperUtils.ImageManager()  # LevelingManager uses ImageManager to create the rank command.
 
 
 @bot.event
@@ -91,20 +84,11 @@ async def on_level_up(message, member_data, roles):
 async def rank(ctx):
     member_data = await LevelingManager.get_account(ctx.author)
 
-    if not member_data:
+    if member_data:
+        await ctx.send(
+            f'You are currently level **{await member_data.level()}**, with **{await member_data.xp()}** XP.')
+    else:
         await ctx.send(f"I am still creating your account! please wait a few seconds.")
-        return
-
-    guild_leaderboard = await LevelingManager.get_leaderboard(ctx.guild)
-    member = [x for x in guild_leaderboard if x.member == ctx.author.id]
-
-    image = await ImageManager.create_leveling_profile(ctx.author,
-                                                       member_data,
-                                                       discordSuperUtils.Backgrounds.GALAXY,
-                                                       (255, 255, 255),
-                                                       guild_leaderboard.index(member[0]) + 1 if member else -1,
-                                                       outline=True)
-    await ctx.send(file=image)
 
 
 @bot.command()
@@ -130,6 +114,116 @@ bot.run("token")
 
 ![Leveling Manager Example](https://media.giphy.com/media/ey1Iv2HlYYLPy0bm9p/giphy.gif)
 
+### Playing Example ### 
+
+```py
+import discordSuperUtils
+from discord.ext import commands
+from discordSuperUtils import MusicManager
+
+client_id = ...
+client_secret = ...
+
+bot = commands.Bot(command_prefix='-')
+MusicManager = MusicManager(bot, client_id=client_id, client_secret=client_secret)
+
+
+@MusicManager.event()
+async def on_music_error(ctx, error):
+    raise error  # add your error handling here! Errors are listed in the documentation.
+
+
+@MusicManager.event()
+async def on_play(ctx, player):
+    await ctx.send(f"Playing {player}")
+
+
+@bot.event
+async def on_ready():
+    print('Music manager is ready.', bot.user)
+
+
+@bot.command()
+async def leave(ctx):
+    if await MusicManager.leave(ctx):
+        await ctx.send("Left Voice Channel")
+
+
+@bot.command()
+async def np(ctx):
+    if player := await MusicManager.now_playing(ctx):
+        await ctx.send(f"Currently playing: {player}")
+
+
+@bot.command()
+async def join(ctx):
+    if await MusicManager.join(ctx):
+        await ctx.send("Joined Voice Channel")
+
+
+@bot.command()
+async def play(ctx, *, query: str):
+    player = await MusicManager.create_player(query)
+    if player:
+        await MusicManager.queue_add(player=player, ctx=ctx)
+
+        if not await MusicManager.play(ctx):
+            await ctx.send("Added to queue")
+
+    else:
+        await ctx.send("Query not found.")
+
+
+@bot.command()
+async def volume(ctx, volume: int):
+    await MusicManager.volume(ctx, volume)
+
+
+@bot.command()
+async def loop(ctx):
+    is_loop = await MusicManager.loop(ctx)
+    await ctx.send(f"Looping toggled to {is_loop}")
+
+
+@bot.command()
+async def queueloop(ctx):
+    is_loop = await MusicManager.queueloop(ctx)
+    await ctx.send(f"Queue looping toggled to {is_loop}")
+
+
+@bot.command()
+async def history(ctx):
+    embeds = discordSuperUtils.generate_embeds(await MusicManager.history(ctx),
+                                               "Song History",
+                                               "Shows all played songs",
+                                               25,
+                                               string_format="Title: {}")
+
+    page_manager = discordSuperUtils.PageManager(ctx, embeds, public=True)
+    await page_manager.run()
+
+
+@bot.command()
+async def skip(ctx, index: int = None):
+    await MusicManager.skip(ctx, index)
+
+
+@bot.command()
+async def queue(ctx):
+    embeds = discordSuperUtils.generate_embeds(await MusicManager.get_queue(ctx),
+                                               "Queue",
+                                               f"Now Playing: {await MusicManager.now_playing(ctx)}",
+                                               25,
+                                               string_format="Title: {}")
+
+    page_manager = discordSuperUtils.PageManager(ctx, embeds, public=True)
+    await page_manager.run()
+
+
+bot.run("token")
+```
+![MusicManager Example](https://media.giphy.com/media/SF6K0zIVHl6RCQ0Aqk/giphy.gif)
+
 More examples are listed in the examples folder.
 
 Known Issues
@@ -141,5 +235,5 @@ Known Issues
 Support
 --------------
 
-- **[Support Server](https://discord.gg/xzbTzhgbru)**
+- **[Support Server](https://discord.gg/zhwcpTBBeC)**
 - **[Documentation](https://discord-super-utils.gitbook.io/discord-super-utils/)**
