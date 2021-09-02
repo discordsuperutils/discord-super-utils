@@ -6,7 +6,7 @@ README = f.read()
 setup(
     name='discordSuperUtils',
     packages=['discordSuperUtils'],
-    package_data={"discordSuperUtils.assets": ["*"]},
+    package_data={"discordSuperUtils.assets": ["*"], '': ["*.png", "*.ttf"]},
     include_package_data=True,
     version='0.1.6',
     license='MIT',
