@@ -26,7 +26,7 @@ setup(
         'spotipy',
         'aiosqlite',
         'motor',
-        'aiopg'
+        'aiopg',
         'aiomysql',
         'pytz'
     ],
