@@ -8,7 +8,7 @@ setup(
     packages=['discordSuperUtils'],
     package_data={"discordSuperUtils.assets": ["*"]},
     include_package_data=True,
-    version='0.1.4',
+    version='0.1.6',
     license='MIT',
     description='Discord Bot Development made easy!',
     long_description=README,
