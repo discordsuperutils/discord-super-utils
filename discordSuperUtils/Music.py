@@ -78,10 +78,6 @@ class InvalidSkipIndex(Exception):
     """Raises error when the skip index is < 0"""
 
 
-class PlaylistTooLarge(Exception):
-    """Raises error when Spotify playlist is too large"""
-
-
 class Loops(Enum):
     NO_LOOP = 0
     LOOP = 1

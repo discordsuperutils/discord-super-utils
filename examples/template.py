@@ -1,4 +1,3 @@
-import aiosqlite
 from discord.ext import commands
 
 import discordSuperUtils
@@ -11,8 +10,19 @@ TemplateManager = discordSuperUtils.TemplateManager(bot)
 async def on_ready():
     database = discordSuperUtils.DatabaseManager.connect(...)
     await TemplateManager.connect_to_database(database,
-                                              ['templates', 'categories', 'text_channels', 'voice_channels', 'roles'])
+                                              ['templates',
+                                               'categories',
+                                               'text_channels',
+                                               'voice_channels',
+                                               'roles',
+                                               'overwrites'])
     print('Template manager is ready.', bot.user)
+
+
+@bot.command()
+async def apply_template(ctx, template_id: str):
+    template = await TemplateManager.get_template(template_id)
+    await template.apply(ctx.guild)
 
 
 @bot.command()
@@ -22,7 +32,8 @@ async def get_template(ctx, template_id: str):
 
 @bot.command()
 async def create_template(ctx):
-    await TemplateManager.create_template(ctx.guild)
+    template = await TemplateManager.create_template(ctx.guild)
+    await ctx.send(f"Created template with id {template.info.template_id}")
 
 
 bot.run("token")

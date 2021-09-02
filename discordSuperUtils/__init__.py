@@ -11,7 +11,7 @@ from .Infractions import InfractionManager
 from .InviteTracker import InviteTracker
 from .Kick import KickManager
 from .Leveling import LevelingManager, RoleManager
-from .Music import MusicManager
+from .Music import *
 from .Mute import MuteManager
 from .Paginator import PageManager, generate_embeds
 from .Prefix import PrefixManager
