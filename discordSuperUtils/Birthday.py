@@ -14,6 +14,13 @@ from discord.ext import commands
 from .Base import DatabaseChecker
 
 
+class PartialBirthdayMember:
+    def __init__(self, member: discord.Member, birthday_date: datetime, timezone: str):
+        self.member = member
+        self.birthday_date = birthday_date
+        self.timezone = timezone
+
+
 class BirthdayMember:
     def __init__(self, database, table: str, member: discord.Member):
         self.database = database
@@ -31,6 +38,11 @@ class BirthdayMember:
     async def timezone(self) -> str:
         timezone_data = await self.database.select(self.table, ["timezone"], self.__checks)
         return timezone_data["timezone"]
+
+    async def delete(self) -> PartialBirthdayMember:
+        partial = PartialBirthdayMember(self.member, await self.birthday_date(), await self.timezone())
+        await self.database.delete(self.table, self.__checks)
+        return partial
 
     async def set_birthday_date(self, timestamp: float) -> None:
         await self.database.update(self.table, {"utc_birthday": timestamp}, self.__checks)
@@ -50,7 +62,7 @@ class BirthdayMember:
 class BirthdayManager(DatabaseChecker):
     def __init__(self, bot: commands.Bot):
         super().__init__([
-            {'guild': 'snowflake', 'member': 'snowflake', 'utc_birhtday': 'snowflake', 'timezone': 'string'}
+            {'guild': 'snowflake', 'member': 'snowflake', 'utc_birthday': 'snowflake', 'timezone': 'string'}
         ], ['birthdays'])
         self.bot = bot
         self.add_event(self.on_database_connect)

@@ -111,6 +111,28 @@ async def birthday(ctx, member: discord.Member = None):
 
 
 @bot.command()
+async def delete_birthday(ctx):
+    # You can make the command admin-only, take the member as a parameter etc.
+
+    birthday_member = await BirthdayManager.get_birthday(ctx.author)
+    if not birthday_member:
+        await ctx.send("You do not have a birthday!")
+        return
+
+    birthday_partial = await birthday_member.delete()
+
+    embed = discord.Embed(
+        title=f"Deleted {ctx.author}'s Birthday.",
+        color=0x00ff00
+    )
+
+    embed.add_field(name="Date of Birth", value=str(birthday_partial.birthday_date), inline=False)
+    embed.add_field(name="Timezone", value=birthday_partial.timezone, inline=False)
+
+    await ctx.send(embed=embed)
+
+
+@bot.command()
 async def setup_birthday(ctx):
     questions = [
         "What year where you born in?",
