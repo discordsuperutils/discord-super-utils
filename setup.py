@@ -20,7 +20,7 @@ setup(
               'paginator', 'economy', 'reaction', 'reaction roles', 'database', 'database manager'],
     install_requires=[
         'youtube-dl',
-        'discord.py'
+        'discord.py',
         'Pillow',
         'requests',
         'spotipy',
