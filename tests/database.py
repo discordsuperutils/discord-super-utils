@@ -13,7 +13,7 @@ async def start_testing():
     tester.add_test(check_table_and_delete, [], ())
     tester.add_test(check_insert, [{"id": 1}])
     tester.add_test(check_update, [{"id": 2}])
-    tester.add_test(check_execute, [{"id": 1}], ignored_exception=NotImplemented)
+    tester.add_test(check_execute, [{"id": 1}], ignored_exception=NotImplementedError)
     await tester.run()
 
 

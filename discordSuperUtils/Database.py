@@ -159,7 +159,7 @@ class _MongoDatabase(Database):
                       sql_query: str,
                       values: List[Any],
                       fetchall: bool = True) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
-        raise NotImplemented("NoSQL databases cannot execute sql queries.")
+        raise NotImplementedError("NoSQL databases cannot execute sql queries.")
 
 
 class _SqlDatabase(Database):
