@@ -1,4 +1,4 @@
-<h1 align="center">discordSuperUtils-splitted</h1>
+<h1 align="center">discord-super-utils</h1>
 
 <p align="center">
   <a href="https://codefactor.io/repository/github/discordsuperutils/discord-super-utils/"><img src="https://img.shields.io/codefactor/grade/github/discordsuperutils/discord-super-utils?style=flat-square" /></a>
@@ -15,13 +15,6 @@
     <br/>
    <b>The documentation is not done. if you have any questions, feel free to ask them in our <a href="https://discord.gg/zhwcpTBBeC">discord server.</a></b>
 </p>
-
-Information
--------------
-
-I have recently left the discordSuperUtils organization because of issues with the team that wont be listed here.
-
-Maybe this fork will merge with discordSuperUtils one day.
 
 Features
 -------------
@@ -257,5 +250,5 @@ Known Issues
 Support
 --------------
 
-- **[Support Server](#)**
+- **[Support Server](https://discord.gg/zhwcpTBBeC)**
 - **[Documentation](https://discord-super-utils.gitbook.io/discord-super-utils/)**
