@@ -6,9 +6,9 @@ README = f.read()
 setup(
     name='discordSuperUtils',
     packages=['discordSuperUtils'],
-    package_data={"discordSuperUtils.assets": ["*"]},
+    package_data={"discordSuperUtils.assets": ["*"], '': ["*.png", "*.ttf"]},
     include_package_data=True,
-    version='0.1.4',
+    version='0.1.6',
     license='MIT',
     description='Discord Bot Development made easy!',
     long_description=README,
@@ -20,13 +20,13 @@ setup(
               'paginator', 'economy', 'reaction', 'reaction roles', 'database', 'database manager'],
     install_requires=[
         'youtube-dl',
-        'discord.py'
+        'discord.py',
         'Pillow',
         'requests',
         'spotipy',
         'aiosqlite',
         'motor',
-        'aiopg'
+        'aiopg',
         'aiomysql',
         'pytz'
     ],
