@@ -1,17 +1,15 @@
 import asyncio
 
-import aiosqlite
-
 import discordSuperUtils.Base
 from tester import Tester
 
 
 async def get_database():
-    return discordSuperUtils.DatabaseManager.connect(await aiosqlite.connect("/home/adam7100/PycharmProjects/discord-super-utils/examples/main.sqlite"))
+    return discordSuperUtils.DatabaseManager.connect(...)
 
 
 async def start_testing():
-    tester = Tester(gather=False)
+    tester = Tester(gather=False)  # Database tester should not use gather mode because if it does the tests don't work
     tester.add_test(check_table_and_delete, [], ())
     tester.add_test(check_insert, [{"id": 1}])
     tester.add_test(check_update, [{"id": 2}])
