@@ -10,13 +10,20 @@ import discord
 from discord.ext import commands
 
 
+__all__ = ("CommandResponseGenerator", "DefaultResponseGenerator", "InvalidGenerator", "CommandHinter")
+
+
 class CommandResponseGenerator(ABC):
+    __slots__ = ()
+
     @abstractmethod
     def generate(self, invalid_command: str, suggestions: List[str]) -> Union[str, discord.Embed]:
         pass
 
 
 class DefaultResponseGenerator(CommandResponseGenerator):
+    __slots__ = ()
+
     def generate(self, invalid_command: str, suggestions: List[str]) -> discord.Embed:
         embed = discord.Embed(
             title="Invalid command!",
@@ -31,12 +38,16 @@ class DefaultResponseGenerator(CommandResponseGenerator):
 
 
 class InvalidGenerator(Exception):
+    __slots__ = ("generator",)
+
     def __init__(self, generator):
         self.generator = generator
         super().__init__(f"Generator of type {type(self.generator)!r} is not supported.")
 
 
 class CommandHinter:
+    __slots__ = ("bot", "generator")
+
     def __init__(self,
                  bot: commands.Bot,
                  generator=None):

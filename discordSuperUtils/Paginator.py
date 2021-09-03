@@ -2,6 +2,9 @@ import asyncio
 from math import ceil
 
 import discord
+from discord_components import ActionRow, Button, ButtonStyle, DiscordComponents
+
+__all__ = ("generate_embeds", "EmojiError", "PageManager", "ButtonsPageManager")
 
 
 def generate_embeds(list_to_generate, title, description, fields=25, color=0xff0000, string_format='{}'):
@@ -34,11 +37,102 @@ def generate_embeds(list_to_generate, title, description, fields=25, color=0xff0
     return embeds
 
 
+class ButtonError(Exception):
+    __slots__ = ()
+
+
 class EmojiError(Exception):
-    pass
+    __slots__ = ()
+
+
+class ButtonsPageManager:
+    __slots__ = ("ctx", "messages", "timeout", "buttons", "public", "index", "button_color")
+
+    def __init__(self, ctx, messages, timeout=60, buttons=None, public=False, index=0, button_color=ButtonStyle.red):
+        self.ctx = ctx
+        self.messages = messages
+        self.timeout = timeout
+        self.buttons = buttons if buttons is not None else ["⏪", "◀️", "▶️", "⏩"]
+        self.public = public
+        self.index = index
+        self.button_color = button_color
+
+    async def run(self):
+        if len(self.buttons) != 4:
+            raise ButtonError(f"Passed {len(self.buttons)} buttons when 4 are needed.")
+
+        self.index = 0 if not -1 < self.index < len(self.messages) else self.index
+
+        DiscordComponents(self.ctx.bot)
+
+        components = ActionRow(
+            [
+                Button(
+                    style=self.button_color,
+                    label=button,
+                    custom_id=button
+                )
+                for button in self.buttons
+            ]
+        )
+
+        message_to_send = self.messages[self.index]
+        # message_to_send must be of type embed, sadly, discord_components breaks the Messageable.send method
+        message = await self.ctx.send(embed=message_to_send, components=components)
+
+        while True:
+            try:
+                interaction = await self.ctx.bot.wait_for('button_click',
+                                                          check=lambda i: i.message == message,
+                                                          timeout=30)
+
+                if interaction.user.bot:
+                    continue
+
+                if interaction.user != self.ctx.author and not self.public:
+                    continue
+
+            except asyncio.TimeoutError:
+                break
+
+            if interaction.custom_id == self.buttons[0]:
+                self.index = 0
+
+            elif interaction.custom_id == self.buttons[1]:
+                if self.index > 0:
+                    self.index -= 1
+
+            elif interaction.custom_id == self.buttons[2]:
+                if self.index < len(self.messages) - 1:
+                    self.index += 1
+
+            elif interaction.custom_id == self.buttons[3]:
+                self.index = len(self.messages) - 1
+
+            message_to_send = self.messages[self.index]
+
+            for button in components[0]:
+                button.disabled = False
+
+            if self.index == len(self.messages) - 1:
+                components[0][2].disabled = True
+                components[0][3].disabled = True
+
+            if self.index == 0:
+                components[0][0].disabled = True
+                components[0][1].disabled = True
+
+            await interaction.respond(
+                type=7,  # Cannot find a proper enum :)
+                content="",
+                embed=message_to_send,
+                components=components
+            )
 
 
 class PageManager:
+    __slots__ = ("ctx", "messages", "timeout", "emojis", "public", "index")
+
     def __init__(self, ctx, messages, timeout=60, emojis=None, public=False, index=0):
         self.ctx = ctx
         self.messages = messages

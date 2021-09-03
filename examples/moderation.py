@@ -10,10 +10,11 @@ bot = commands.Bot(command_prefix="-", intents=discord.Intents.all())
 InfractionManager = discordSuperUtils.InfractionManager(bot)
 BanManager = discordSuperUtils.BanManager(bot)
 KickManager = discordSuperUtils.KickManager(bot)
-MuteManager = discordSuperUtils.MuteManager(bot)  # undone, do not recommend using
+MuteManager = discordSuperUtils.MuteManager(bot)
 
 InfractionManager.add_punishments([
     discordSuperUtils.Punishment(KickManager, punish_after=3),
+    discordSuperUtils.Punishment(MuteManager, punish_after=4),
     discordSuperUtils.Punishment(BanManager, punish_after=5)
 ])
 

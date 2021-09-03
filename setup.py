@@ -28,6 +28,7 @@ setup(
         'motor',
         'aiopg',
         'aiomysql',
+        'discord_components',
         'pytz'
     ],
     classifiers=[  # Optional

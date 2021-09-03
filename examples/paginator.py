@@ -18,10 +18,13 @@ async def paginator(ctx):
             title='Data (1/2)',
             description="Hello world"
         ),
-        "Hello world"
+        discord.Embed(
+            title='Data (2/2)',
+            description="Hello world"
+        )
     ]
 
-    await discordSuperUtils.PageManager(ctx, messages).run()
+    await discordSuperUtils.ButtonsPageManager(ctx, messages).run()
 
 
 bot.run("token")

@@ -13,7 +13,7 @@ from .Kick import KickManager
 from .Leveling import LevelingManager, RoleManager
 from .Music import *
 from .Mute import MuteManager
-from .Paginator import PageManager, generate_embeds
+from .Paginator import PageManager, generate_embeds, ButtonsPageManager
 from .Prefix import PrefixManager
 from .Punishments import Punishment
 from .ReactionRoles import ReactionManager
