@@ -54,7 +54,7 @@ async def get_guild_templates(ctx):
 async def get_templates(ctx):
     templates = await TemplateManager.get_templates()
     await ctx.send(templates)
-    # Remember you can format these templates into embeds etc..
+    # Remember you can format these templates into embeds etc...
 
 
 @bot.command()
