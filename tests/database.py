@@ -1,18 +1,21 @@
 import asyncio
 
+import aiosqlite
+
 import discordSuperUtils.Base
 from tester import Tester
 
 
 async def get_database():
-    return discordSuperUtils.DatabaseManager.connect(...)
+    return discordSuperUtils.DatabaseManager.connect(await aiosqlite.connect("/home/adam7100/PycharmProjects/discord-super-utils/examples/main.sqlite"))
 
 
 async def start_testing():
-    tester = Tester()
+    tester = Tester(gather=False)
     tester.add_test(check_table_and_delete, [], ())
     tester.add_test(check_insert, [{"id": 1}])
     tester.add_test(check_update, [{"id": 2}])
+    tester.add_test(check_execute, [{"id": 1}], ignored_exception=NotImplemented)
     await tester.run()
 
 
@@ -47,6 +50,16 @@ async def check_update():
     await database.insert("database_testing", {'id': 1})
     await database.update("database_testing", {"id": 2}, {"id": 1})
     select = await database.select("database_testing", [], fetchall=True)
+
+    remove_id(select)
+    return select
+
+
+async def check_execute():
+    await check_table_and_delete()
+
+    await database.insert("database_testing", {'id': 1})
+    select = await database.execute("SELECT * FROM database_testing WHERE id = 1", fetchall=True)
 
     remove_id(select)
     return select

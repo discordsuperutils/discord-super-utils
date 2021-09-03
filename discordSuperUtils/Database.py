@@ -5,7 +5,8 @@ from typing import (
     Dict,
     Any,
     Optional,
-    List
+    List,
+    Union
 )
 
 import aiomysql
@@ -71,6 +72,13 @@ class Database(ABC):
                      keys: List[str],
                      checks: Optional[Dict[str, Any]] = None,
                      fetchall: Optional[bool] = False):
+        pass
+
+    @abstractmethod
+    async def execute(self,
+                      sql_query: str,
+                      values: List[Any],
+                      fetchall: bool = True) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
         pass
 
 
@@ -146,6 +154,12 @@ class _MongoDatabase(Database):
                 result = None
 
         return result
+
+    async def execute(self,
+                      sql_query: str,
+                      values: List[Any],
+                      fetchall: bool = True) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
+        raise NotImplemented("NoSQL databases cannot execute sql queries.")
 
 
 class _SqlDatabase(Database):
@@ -282,6 +296,22 @@ class _SqlDatabase(Database):
         columns = [x[0] for x in cursor.description]
 
         result = await cursor.fetchall() if fetchall else await cursor.fetchone()
+        if not result:
+            return result
+
+        return [dict(zip(columns, x)) for x in result] if fetchall else dict(zip(columns, result))
+
+    @with_cursor
+    @with_commit
+    async def execute(self,
+                      cursor,
+                      sql_query: str,
+                      values: List[Any] = None,
+                      fetchall: bool = True) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
+        await cursor.execute(sql_query, values if values is not None else [])
+
+        result = await cursor.fetchall() if fetchall else await cursor.fetchone()
+        columns = [x[0] for x in cursor.description]
         if not result:
             return result
 

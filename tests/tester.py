@@ -28,8 +28,9 @@ class Test:
 
 
 class Tester:
-    def __init__(self):
+    def __init__(self, gather: bool = True):
         self.tests = []
+        self.gather = gather
 
         self._thread = Thread(target=self._handle_ui)
 
@@ -78,4 +79,9 @@ class Tester:
 
         self._thread.start()
 
-        await asyncio.gather(*[x.run() for x in self.tests])
+        if self.gather:
+            await asyncio.gather(*[x.run() for x in self.tests])
+            return
+
+        for x in self.tests:
+            await x.run()
