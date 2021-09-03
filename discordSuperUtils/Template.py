@@ -7,7 +7,9 @@ from typing import (
     List,
     Dict,
     Any,
-    TYPE_CHECKING, Optional
+    TYPE_CHECKING,
+    Optional,
+    Union
 )
 
 import discord
@@ -26,6 +28,7 @@ __all__ = (
     "TemplateCategory",
     "TemplateTextChannel",
     "TemplateVoiceChannel",
+    "PartialTemplate",
     "Template",
     "TemplateManager"
 )
@@ -41,7 +44,16 @@ class DictionaryConvertible(ABC):
 
 
 class TemplateInfo(DictionaryConvertible):
-    __slots__ = ("template_id", "guild", "afk_timeout", "mfa_level", "verification_level", "explict_content_filter")
+    __slots__ = (
+        "template_id",
+        "guild",
+        "afk_timeout",
+        "mfa_level",
+        "verification_level",
+        "explict_content_filter",
+        "system_channel",
+        "afk_channel"
+    )
 
     def __init__(self,
                  template_id: str,
@@ -49,19 +61,23 @@ class TemplateInfo(DictionaryConvertible):
                  afk_timeout: int,
                  mfa_level: int,
                  verification_level: VerificationLevel,
-                 explict_content_filter: int):
+                 explict_content_filter: int,
+                 system_channel: int,
+                 afk_channel: int):
         self.template_id = template_id
         self.guild = guild
         self.afk_timeout = afk_timeout
         self.mfa_level = mfa_level
         self.verification_level = verification_level
         self.explict_content_filter = explict_content_filter
+        self.system_channel = system_channel
+        self.afk_channel = afk_channel
 
     def __repr__(self):
-        return f"<TemplateInfo guild={self.guild} mfa_level={self.mfa_level}>"
+        return f"<TemplateInfo id={self.template_id} guild={self.guild} mfa_level={self.mfa_level}>"
 
     def __str__(self):
-        return f"<TemplateInfo guild={self.guild}>"
+        return f"<TemplateInfo id={self.template_id} guild={self.guild}>"
 
     @classmethod
     def from_dict(cls, convert_from: Dict[str, Any]) -> TemplateInfo:
@@ -102,7 +118,7 @@ class TemplateTextChannel(DictionaryConvertible):
                  slowmode: int,
                  nsfw: bool,
                  channel_id: int,
-                 overwrites: Dict[int, int]):
+                 overwrites: Dict[int, discord.PermissionOverwrite]):
         self.name = name
         self.position = position
         self.category = category
@@ -121,7 +137,6 @@ class TemplateTextChannel(DictionaryConvertible):
     @classmethod
     def from_dict(cls, convert_from: Dict[str, Any]) -> TemplateTextChannel:
         convert_from["nsfw"] = bool(convert_from["nsfw"])
-        print(convert_from)
 
         return cls(*list(convert_from.values())[1:])
 
@@ -136,7 +151,7 @@ class TemplateVoiceChannel(DictionaryConvertible):
                  bitrate: int,
                  user_limit: int,
                  channel_id: int,
-                 overwrites: Dict[int, int]):
+                 overwrites: Dict[int, discord.PermissionOverwrite]):
         self.name = name
         self.position = position
         self.category = category
@@ -201,7 +216,7 @@ class TemplateRole(DictionaryConvertible):
         return cls(*list(convert_from.values())[1:])
 
 
-class Template:
+class PartialTemplate:
     __slots__ = ("info", "categories", "text_channels", "voice_channels", "roles")
 
     def __init__(self,
@@ -216,26 +231,74 @@ class Template:
         self.voice_channels = voice_channels
         self.roles = roles
 
+
+class Template:
+    __slots__ = ("database", "tables", "info", "categories", "text_channels", "voice_channels", "roles")
+
+    def __init__(self,
+                 database: Database,
+                 tables: Dict[str, str],
+                 info: TemplateInfo,
+                 categories: List[TemplateCategory],
+                 text_channels: List[TemplateTextChannel],
+                 voice_channels: List[TemplateVoiceChannel],
+                 roles: List[TemplateRole]):
+        self.database = database
+        self.tables = tables
+        self.info = info
+        self.categories = categories
+        self.text_channels = text_channels
+        self.voice_channels = voice_channels
+        self.roles = roles
+
     def __repr__(self):
         return f"<Template template={self.info} categories={self.categories} text_channels={self.text_channels}>"
 
     def __str__(self):
         return f"Template template={self.info}"
 
-    async def apply_settings(self, guild: discord.Guild, reason: str) -> None:
+    async def delete(self) -> PartialTemplate:
+        checks = {"id": self.info.template_id}
+
+        partial = PartialTemplate(self.info, self.categories, self.text_channels, self.voice_channels, self.roles)
+        await self.database.delete(self.tables["templates"], checks)
+        await self.database.delete(self.tables["categories"], checks)
+        await self.database.delete(self.tables["text_channels"], checks)
+        await self.database.delete(self.tables["voice_channels"], checks)
+        await self.database.delete(self.tables["roles"], checks)
+        await self.database.delete(self.tables["overwrites"], checks)
+        return partial
+
+    @staticmethod
+    def format_overwrites(overwrites: Dict[int, discord.PermissionOverwrite],
+                          roles: Dict[int, discord.Role]) -> Dict[discord.Role, discord.PermissionOverwrite]:
+        result_overwrites = {}
+
+        for role in roles:
+            if role in overwrites:
+                result_overwrites[roles[role]] = overwrites[role]
+
+        return result_overwrites
+
+    async def apply_settings(self,
+                             guild: discord.Guild,
+                             reason: str,
+                             channels: Dict[int, Union[discord.VoiceChannel, discord.TextChannel]]) -> None:
         await guild.edit(
             afk_timeout=self.info.afk_timeout,
             verification_level=self.info.verification_level,
             explicit_content_filter=self.info.explict_content_filter,
+            afk_channel=channels.get(self.info.afk_channel),
+            system_channel=channels.get(self.info.system_channel),
             reason=reason
         )
 
     async def apply_roles(self, guild: discord.Guild, reason: str) -> Dict[int, discord.Role]:
         roles = await asyncio.gather(
             *[
-                await guild.default_role.edit(permissions=role.permissions, reason=reason)
+                guild.default_role.edit(permissions=role.permissions, reason=reason)
                 if role.default_role else
-                await guild.create_role(**role.get_raw())
+                guild.create_role(**role.get_raw())
                 for role in reversed(self.roles)
             ]
         )
@@ -246,7 +309,7 @@ class Template:
     async def apply_categories(self, guild: discord.Guild, reason: str) -> Dict[int, discord.CategoryChannel]:
         categories = await asyncio.gather(
             *[
-                await guild.create_category_channel(name=category.name, reason=reason)
+                guild.create_category_channel(name=category.name, reason=reason)
                 for category in self.categories
             ]
         )
@@ -256,32 +319,39 @@ class Template:
     async def apply_channels(self,
                              guild: discord.Guild,
                              reason: str,
-                             categories: Dict[int, discord.CategoryChannel]) -> None:
-        await asyncio.gather(*[await guild.create_text_channel(
+                             categories: Dict[int, discord.CategoryChannel],
+                             roles: Dict[int, discord.Role]) -> Dict[int, discord.TextChannel]:
+        text_channels = await asyncio.gather(*[guild.create_text_channel(
             name=channel.name,
             position=channel.position,
             slowmode_delay=channel.slowmode,
             topic=channel.topic,
             nsfw=channel.nsfw,
             category=categories.get(channel.category),
+            overwrites=self.format_overwrites(channel.overwrites, roles),
             reason=reason) for channel in self.text_channels])
+
+        return dict(zip((channel.channel_id for channel in self.text_channels), text_channels))
 
     async def apply_voice_channels(self,
                                    guild: discord.Guild,
                                    reason: str,
-                                   categories: Dict[int, discord.CategoryChannel]) -> None:
-        await asyncio.gather(*[await guild.create_voice_channel(
+                                   categories: Dict[int, discord.CategoryChannel],
+                                   roles: Dict[int, discord.Role]) -> Dict[int, discord.VoiceChannel]:
+        voice_channels = await asyncio.gather(*[guild.create_voice_channel(
             name=channel.name,
             position=channel.position,
             category=categories.get(channel.category),
             bitrate=channel.bitrate,
             user_limit=channel.user_limit,
+            overwrites=self.format_overwrites(channel.overwrites, roles),
             reason=reason) for channel in self.voice_channels])
+
+        return dict(zip((channel.channel_id for channel in self.voice_channels), voice_channels))
 
     async def apply(self, guild: discord.Guild) -> None:
         roles_to_delete = list(filter(
-            lambda r: not r.managed and guild.default_role != r and guild.me.top_role.position > r.position,
-            guild.roles
+            lambda r: not r.managed and guild.default_role != r and guild.me.top_role.position > r.position, guild.roles
         ))
 
         reason = f"Applying template {self.info.template_id}"
@@ -289,25 +359,33 @@ class Template:
         await asyncio.gather(*[role.delete(reason=reason) for role in roles_to_delete])
         await asyncio.gather(*[channel.delete(reason=reason) for channel in guild.channels])
 
-        await self.apply_settings(guild, reason)
-        await self.apply_roles(guild, reason)
+        roles = await self.apply_roles(guild, reason)
         categories = await self.apply_categories(guild, reason)
-        await self.apply_channels(guild, reason, categories)
-        await self.apply_voice_channels(guild, reason, categories)
+        text_channels = await self.apply_channels(guild, reason, categories, roles)
+        voice_channels = await self.apply_voice_channels(guild, reason, categories, roles)
+        await self.apply_settings(guild, reason, {**text_channels, **voice_channels})
 
     @staticmethod
-    def get_overwrite(overwrites: List[Dict[str, Any]], overwrite_object: int) -> Dict[int, int]:
+    def get_overwrite(overwrites: List[Dict[str, Any]],
+                      overwrite_object: int) -> Dict[int, discord.PermissionOverwrite]:
         result_overwrites = {}
 
         for overwrite in overwrites:
             if overwrite["overwrite_object"] == overwrite_object:
-                result_overwrites[overwrite["overwrite_key"]] = overwrite["overwrite_value"]
+                result_overwrites[overwrite["overwrite_key"]] = discord.PermissionOverwrite.from_pair(
+                    discord.Permissions(overwrite["overwrite_pair"]),
+                    discord.Permissions(overwrite["overwrite_second_pair"])
+                )
 
         return result_overwrites
 
     @classmethod
-    async def get_template(cls, database: Database, tables: Dict[str, str], template_id: str) -> Template:
+    async def get_template(cls, database: Database, tables: Dict[str, str], template_id: str) -> Optional[Template]:
         checks = {'id': template_id}
+
+        raw_info = await database.select(tables["templates"], [], checks)
+        if not raw_info:
+            return None
 
         raw_categories = await database.select(tables["categories"], [], checks, fetchall=True)
         raw_text_channels = await database.select(tables["text_channels"], [], checks, fetchall=True)
@@ -316,7 +394,9 @@ class Template:
         overwrites = await database.select(tables["overwrites"], [], checks, fetchall=True)
 
         return cls(
-            TemplateInfo.from_dict(await database.select(tables["templates"], [], checks)),
+            database,
+            tables,
+            TemplateInfo.from_dict(raw_info),
             [TemplateCategory.from_dict(dict(x, **{"overwrites": cls.get_overwrite(overwrites, x["category_id"])}))
              for x in raw_categories],
             [TemplateTextChannel.from_dict(dict(x, **{"overwrites": cls.get_overwrite(overwrites, x["channel_id"])}))
@@ -339,7 +419,9 @@ class TemplateManager(DatabaseChecker):
                     "afk_timeout": "number",
                     "mfa_level": "smallnumber",
                     "verification_level": "smallnumber",
-                    "explict_content_filter": "smallnumber"
+                    "explict_content_filter": "smallnumber",
+                    "system_channel": "snowflake",
+                    "afk_channel": "snowflake"
                 },
                 {
                     'id': "string",
@@ -381,12 +463,20 @@ class TemplateManager(DatabaseChecker):
                     "id": "string",
                     "overwrite_object": "snowflake",
                     "overwrite_key": "snowflake",
-                    "overwrite_value": "number"
+                    "overwrite_pair": "number",
+                    "overwrite_second_pair": "number"
                 }
             ],
             ['templates', 'categories', 'text_channels', 'voice_channels', 'roles', 'overwrites']
         )
         self.bot = bot
+
+    async def get_templates(self, guild: discord.Guild = None) -> List[Template]:
+        return [await Template.get_template(self.database, self.tables, template["id"])
+                for template in await self.database.select(self.tables["templates"],
+                                                           ['id'],
+                                                           {'guild': guild.id} if guild else {},
+                                                           fetchall=True)]
 
     async def get_template(self, template_id: str) -> Optional[Template]:
         return await Template.get_template(self.database, self.tables, template_id)
@@ -396,14 +486,15 @@ class TemplateManager(DatabaseChecker):
                                overwrites_object: int,
                                overwrites: discord.PermissionOverwrite) -> None:
         for x, y in overwrites.items():
-            value = [pair.value for pair in y.pair() if pair.value > 0][0]
+            pairs = [pair.value for pair in y.pair()]
 
             await self.database.insert(self.tables["overwrites"],
                                        {
                                            "id": template_id,
                                            "overwrite_object": overwrites_object,
                                            "overwrite_key": x.id,
-                                           "overwrite_value": value
+                                           "overwrite_pair": pairs[0],
+                                           "overwrite_second_pair": pairs[1]
                                        })
 
     async def create_template(self, guild: discord.Guild) -> Template:
@@ -416,7 +507,9 @@ class TemplateManager(DatabaseChecker):
                                        'afk_timeout': guild.afk_timeout,
                                        'mfa_level': guild.mfa_level,
                                        'verification_level': guild.verification_level.value,
-                                       'explict_content_filter': guild.explicit_content_filter.value
+                                       'explict_content_filter': guild.explicit_content_filter.value,
+                                       "system_channel": guild.system_channel and guild.system_channel.id,
+                                       "afk_channel": guild.afk_channel and guild.afk_channel.id
                                    })
 
         for category in guild.categories:
