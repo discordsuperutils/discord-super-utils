@@ -98,15 +98,18 @@ class MuteManager(DatabaseChecker, Punisher):
         muted_role = discord.utils.get(member.guild.roles, name="Muted")
         if not muted_role:
             muted_role = await member.guild.create_role(name="Muted",
-                                                        permissions=discord.Permissions(send_messages=False))
+                                                        permissions=discord.Permissions(send_messages=False,
+                                                                                        speak=False))
 
         if muted_role in member.roles:
             raise AlreadyMuted(f"{member} is already muted.")
 
         await member.add_roles(muted_role, reason=reason)
 
-        for channel in member.guild.channels:
-            await channel.set_permissions(muted_role, send_messages=False)
+        await asyncio.gather(*[
+            channel.set_permissions(muted_role, send_messages=False, speak=False)
+            for channel in member.guild.channels
+        ])
 
         if time_of_mute <= 0:
             return
