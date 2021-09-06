@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import re
 from abc import ABC, abstractmethod
+from datetime import timedelta
 from typing import (
     TYPE_CHECKING,
     Union,
@@ -58,6 +60,7 @@ class DefaultMessageResponseGenerator(MessageResponseGenerator):
         """
         This function filters a message and return a bool representing if the message contains a URL
         or a discord invite.
+        Returns false automatically if the member is an administrator.
 
         :param message: The message to filter.
         :type message: discord.Message
@@ -76,23 +79,53 @@ class MessageFilter(EventManager):
     Represents a discordSuperUtils message filter that filters messages and finds inappropriate content.
     """
 
-    __slots__ = ("bot", "generator", "_member_cache", "punishments")
+    __slots__ = ("bot", "generator", "_member_cache", "punishments", "wipe_cache_delay")
 
-    def __init__(self, bot: commands.Bot, generator: MessageResponseGenerator = None, delete_message: bool = True):
+    def __init__(self,
+                 bot: commands.Bot,
+                 generator: MessageResponseGenerator = None,
+                 delete_message: bool = True,
+                 wipe_cache_delay: timedelta = timedelta(minutes=5)):
         super().__init__()
         self.bot = bot
         self.generator = generator if generator is not None else DefaultMessageResponseGenerator
         self.delete_message = delete_message
+        self.wipe_cache_delay = wipe_cache_delay
         self._member_cache = {}
         self.punishments = []
 
+        self.bot.loop.create_task(self.__wipe_cache())
         self.bot.add_listener(self.__handle_messages, 'on_message')
         self.bot.add_listener(self.__handle_messages, 'on_message_edit')
+
+    async def __wipe_cache(self):
+        """
+        This function is responsible for wiping the member cache.
+
+        :return:
+        """
+
+        while not self.bot.is_closed():
+            await asyncio.sleep(self.wipe_cache_delay.total_seconds())
+
+            self._member_cache = {}
 
     def add_punishments(self, punishments: List[Punishment]) -> None:
         self.punishments = punishments
 
     async def __handle_messages(self, message, edited_message=None):
+        """
+        This function is the main logic of the MessageFilter,
+        Handled events: on_message, on_message_edit
+
+        :param message: The on_message message passed by the event.
+        :type message: discord.Message
+        :param edited_message: The edited messages passed by the on_message_edit event, this function will use this
+        incase it is not None.
+        :type edited_message: discord.Message
+        :return:
+        """
+
         message = edited_message or message
 
         if not message.guild or message.author.bot:

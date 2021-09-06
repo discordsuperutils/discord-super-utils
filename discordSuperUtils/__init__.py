@@ -20,6 +20,7 @@ from .ReactionRoles import ReactionManager
 from .Spotify import SpotifyClient
 from .Template import TemplateManager
 from .MessageFilter import MessageFilter, MessageResponseGenerator
+from .Antispam import SpamDetectionGenerator, SpamManager
 
 __title__ = "discordSuperUtils"
 __version__ = "0.1.6"
