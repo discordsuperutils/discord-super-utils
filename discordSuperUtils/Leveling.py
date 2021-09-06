@@ -185,18 +185,15 @@ class LevelingManager(DatabaseChecker):
                                                           ['interval'],
                                                           {'guild': message.guild.id})
                     interval = interval["interval"] if interval else self.default_role_interval
-                    print(role_ids, interval)
 
                     if role_ids:
                         member_level = await member_account.level()
 
                         if member_level % interval == 0 and member_level // interval <= len(role_ids):
-                            print("got")
                             roles = [message.guild.get_role(role_id) for role_id in
                                      role_ids][:await member_account.level() // interval]
                             roles.reverse()
                             roles = [role for role in roles if role]
-                            print(roles)
 
                 await self.call_event('on_level_up', message, member_account, roles)
 
