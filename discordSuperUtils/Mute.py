@@ -1,19 +1,20 @@
 from __future__ import annotations
 
+import asyncio
+from datetime import datetime
 from typing import (
     TYPE_CHECKING,
     Union,
     Optional
 )
 
+import discord
 import discord.utils
-from datetime import datetime
-import asyncio
+
 from .Base import DatabaseChecker
 from .Punishments import Punisher
 
 if TYPE_CHECKING:
-    import discord
     from discord.ext import commands
     from .Punishments import Punishment
 

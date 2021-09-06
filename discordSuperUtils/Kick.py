@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import discord
+
 from .Base import EventManager
 from .Punishments import Punisher
 
 if TYPE_CHECKING:
     from discord.ext import commands
-    import discord
     from .Punishments import Punishment
 
 

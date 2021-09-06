@@ -1,6 +1,6 @@
 import asyncio
 import inspect
-from typing import List
+from typing import List, Any
 
 import aiomysql
 import aiopg
@@ -18,6 +18,27 @@ COLUMN_TYPES = {
 
 class DatabaseNotConnected(Exception):
     """Raises an error when the user tries to use a method of a manager without a database connected to it."""
+
+
+class InvalidGenerator(Exception):
+    __slots__ = ("generator",)
+
+    def __init__(self, generator):
+        self.generator = generator
+        super().__init__(f"Generator of type {type(self.generator)!r} is not supported.")
+
+
+def get_generator_response(generator: Any, generator_type: Any, *args, **kwargs) -> Any:
+    if inspect.isclass(generator) and issubclass(generator, generator_type):
+        if inspect.ismethod(generator.generate):
+            return generator.generate(*args, **kwargs)
+
+        return generator().generate(*args, **kwargs)
+
+    if isinstance(generator, generator_type):
+        return generator.generate(*args, **kwargs)
+
+    raise InvalidGenerator(generator)
 
 
 def generate_column_types(types, database_type):

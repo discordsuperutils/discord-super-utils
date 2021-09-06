@@ -1,4 +1,3 @@
-import inspect
 from abc import ABC, abstractmethod
 from difflib import SequenceMatcher
 from typing import (
@@ -9,8 +8,9 @@ from typing import (
 import discord
 from discord.ext import commands
 
+from .Base import get_generator_response
 
-__all__ = ("CommandResponseGenerator", "DefaultResponseGenerator", "InvalidGenerator", "CommandHinter")
+__all__ = ("CommandResponseGenerator", "DefaultResponseGenerator", "CommandHinter")
 
 
 class CommandResponseGenerator(ABC):
@@ -35,14 +35,6 @@ class DefaultResponseGenerator(CommandResponseGenerator):
             embed.add_field(name=f"**{index + 1}.**", value=f"**`{suggestion}`**", inline=False)
 
         return embed
-
-
-class InvalidGenerator(Exception):
-    __slots__ = ("generator",)
-
-    def __init__(self, generator):
-        self.generator = generator
-        super().__init__(f"Generator of type {type(self.generator)!r} is not supported.")
 
 
 class CommandHinter:
@@ -71,18 +63,6 @@ class CommandHinter:
 
         return names
 
-    def _generate_message(self, command_used: str, suggestions: List[str]) -> Union[discord.Embed, str]:
-        if inspect.isclass(self.generator) and issubclass(self.generator, CommandResponseGenerator):
-            if inspect.ismethod(self.generator.generate):
-                return self.generator.generate(command_used, suggestions)
-
-            return self.generator().generate(command_used, suggestions)
-
-        if isinstance(self.generator, CommandResponseGenerator):
-            return self.generator.generate(command_used, suggestions)
-
-        raise InvalidGenerator(self.generator)
-
     async def __handle_hinter(self, ctx: commands.Context, error) -> None:
         if isinstance(error, commands.CommandNotFound):
             command_similarity = {}
@@ -91,7 +71,9 @@ class CommandHinter:
             for command in self.command_names:
                 command_similarity[SequenceMatcher(None, command, command_used).ratio()] = command
 
-            generated_message = self._generate_message(command_used,
+            generated_message = get_generator_response(self.generator,
+                                                       CommandResponseGenerator,
+                                                       command_used,
                                                        [x[1] for x in sorted(command_similarity.items(), reverse=True)])
 
             if isinstance(generated_message, discord.Embed):
