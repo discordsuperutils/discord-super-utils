@@ -10,7 +10,7 @@ from .Imaging import ImageManager, Backgrounds
 from .Infractions import InfractionManager
 from .InviteTracker import InviteTracker
 from .Kick import KickManager
-from .Leveling import LevelingManager, RoleManager
+from .Leveling import LevelingManager
 from .Music import *
 from .Mute import MuteManager
 from .Paginator import PageManager, generate_embeds, ButtonsPageManager

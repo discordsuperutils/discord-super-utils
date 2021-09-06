@@ -4,16 +4,14 @@ from discord.ext import commands
 import discordSuperUtils
 
 bot = commands.Bot(command_prefix='-', intents=discord.Intents.all())
-RoleManager = discordSuperUtils.RoleManager()
-LevelingManager = discordSuperUtils.LevelingManager(bot, RoleManager)
+LevelingManager = discordSuperUtils.LevelingManager(bot, award_role=True)
 ImageManager = discordSuperUtils.ImageManager()  # LevelingManager uses ImageManager to create the rank command.
 
 
 @bot.event
 async def on_ready():
     database = discordSuperUtils.DatabaseManager.connect(...)
-    await RoleManager.connect_to_database(database, ["xp_roles"])
-    await LevelingManager.connect_to_database(database, ["xp"])
+    await LevelingManager.connect_to_database(database, ["xp", "roles", "role_list"])
 
     print('Leveling manager is ready.', bot.user)
 
@@ -45,8 +43,12 @@ async def rank(ctx):
 
 
 @bot.command()
-async def set_roles(ctx, *roles: discord.Role):
-    await RoleManager.set_roles(ctx.guild, {"roles": roles})
+async def set_roles(ctx, interval: int, *roles: discord.Role):
+    await LevelingManager.set_interval(ctx.guild, interval)
+    await LevelingManager.set_roles(ctx.guild, roles)
+
+    await ctx.send(
+        f"Successfully set the interval to {interval} and role list to {', '.join(role.name for role in roles)}")
 
 
 @bot.command()

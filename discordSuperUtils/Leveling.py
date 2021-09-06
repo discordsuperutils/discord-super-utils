@@ -1,7 +1,17 @@
+from __future__ import annotations
+
 import math
 import time
+from typing import (
+    Iterable,
+    TYPE_CHECKING,
+    List
+)
 
 from .Base import DatabaseChecker
+
+if TYPE_CHECKING:
+    import discord
 
 
 class LevelingAccount:
@@ -52,61 +62,92 @@ class LevelingAccount:
         await self.database.update(self.table, {"level_up": value}, self.__checks)
 
 
-class RoleManager(DatabaseChecker):
-    def __init__(self, interval=5):
-        super().__init__([{'guild': 'snowflake', 'interval': 'smallnumber', 'roles': 'string'}], ['xp_roles'])
-        self.interval = interval
-
-    async def get_roles(self, guild):
-        self._check_database()
-
-        role_data = await self.database.select(self.tables["xp_roles"], ['interval', 'roles'], {'guild': guild.id})
-
-        if not role_data:
-            return []
-
-        roles = role_data["roles"]
-        if isinstance(roles, str):
-            role_data["roles"] = [int(role) for role in roles.split('\0') if role]
-
-        return role_data
-
-    async def set_roles(self, guild, data_to_set):
-        self._check_database()
-
-        default_values = {'guild': guild.id, 'interval': self.interval, 'roles': ''}
-
-        if 'roles' in data_to_set:
-            roles = data_to_set["roles"]
-            if not isinstance(roles, (list, tuple)):
-                raise TypeError("Roles must be of type list.")
-
-            data_to_set["roles"] = '\0'.join(str(role.id) for role in roles)
-
-        if 'interval' in data_to_set:
-            if not isinstance(data_to_set["interval"], int):
-                raise TypeError("Interval must be of type int.")
-
-        await self.database.updateorinsert(self.tables["xp_roles"],
-                                           data_to_set,
-                                           {'guild': guild.id},
-                                           dict(default_values, **data_to_set))
-
-
 class LevelingManager(DatabaseChecker):
-    def __init__(self, bot, role_manager=None, xp_on_message=5, rank_multiplier=1.5, xp_cooldown=60):
+    def __init__(self,
+                 bot,
+                 award_role: bool = False,
+                 default_role_interval: int = 5,
+                 xp_on_message=5,
+                 rank_multiplier=1.5,
+                 xp_cooldown=60):
         super().__init__([
-            {'guild': 'snowflake', 'member': 'snowflake', 'rank': 'number', 'xp': 'number', 'level_up': 'number'}
-        ], ['xp'])
+            {'guild': 'snowflake', 'member': 'snowflake', 'rank': 'number', 'xp': 'number', 'level_up': 'number'},
+            {'guild': 'snowflake', 'interval': 'smallnumber'},
+            {'guild': 'snowflake', 'role': 'snowflake'}
+        ], ['xp', 'roles', 'role_list'])
 
         self.bot = bot
+        self.award_role = award_role
+        self.default_role_interval = default_role_interval
         self.xp_on_message = xp_on_message
         self.rank_multiplier = rank_multiplier
         self.xp_cooldown = xp_cooldown
-        self.role_manager = role_manager
 
         self.cooldown_members = {}
         self.add_event(self.on_database_connect)
+
+    async def set_interval(self, guild: discord.Guild, interval: int = None) -> None:
+        """
+        Set the role interval of a guild.
+
+        :param interval: The interval to set.
+        :type interval: int
+        :param guild: The guild to set the role interval in.
+        :type guild: discord.Guild
+        :return:
+        :rtype: None
+        """
+
+        interval = interval if interval is not None else self.default_role_interval
+
+        if 0 >= interval:
+            raise ValueError("The interval must be greater than 0.")
+
+        sql_insert_data = {
+            'guild': guild.id,
+            'interval': interval
+        }
+
+        await self.database.updateorinsert(self.tables["roles"],
+                                           sql_insert_data,
+                                           {'guild': guild.id},
+                                           sql_insert_data)
+
+    async def get_roles(self, guild: discord.Guild) -> List[int]:
+        """
+        Returns the role IDs of the guild.
+
+        :param guild: The guild to get the roles from.
+        :type guild: discord.Guild
+        :return:
+        :rtype: List[int]
+        """
+
+        self._check_database()
+
+        return [role["role"] for role in await self.database.select(self.tables["role_list"],
+                                                                    ['role'],
+                                                                    {'guild': guild.id},
+                                                                    fetchall=True)]
+
+    async def set_roles(self, guild: discord.Guild, roles: Iterable[discord.Role]) -> None:
+        """
+        Sets the roles of the guild.
+
+        :param guild: The guild to set the roles in.
+        :type guild: discord.Guild
+        :param roles: The roles to set.
+        :type roles: Iterable[discord.Role]
+        :return:
+        :rtype: None
+        """
+
+        self._check_database()
+
+        await self.database.delete(self.tables["role_list"], {'guild': guild.id})
+
+        for role in roles:
+            await self.database.insert(self.tables["role_list"], {'guild': guild.id, "role": role.id})
 
     async def on_database_connect(self):
         self.bot.add_listener(self.__handle_experience, 'on_message')
@@ -138,15 +179,24 @@ class LevelingManager(DatabaseChecker):
 
             if leveled_up:
                 roles = []
-                if self.role_manager:
-                    role_data = await self.role_manager.get_roles(message.guild)
+                if self.award_role:
+                    role_ids = await self.get_roles(message.guild)
+                    interval = await self.database.select(self.tables['roles'],
+                                                          ['interval'],
+                                                          {'guild': message.guild.id})
+                    interval = interval["interval"] if interval else self.default_role_interval
+                    print(role_ids, interval)
 
-                    if role_data:
+                    if role_ids:
                         member_level = await member_account.level()
-                        if member_level % role_data["interval"] == 0 and member_level // role_data["interval"] <= len(role_data["roles"]):
-                            roles = [message.guild.get_role(role_id) for role_id in role_data["roles"][:await member_account.level() // role_data["interval"]]]
+
+                        if member_level % interval == 0 and member_level // interval <= len(role_ids):
+                            print("got")
+                            roles = [message.guild.get_role(role_id) for role_id in
+                                     role_ids][:await member_account.level() // interval]
                             roles.reverse()
                             roles = [role for role in roles if role]
+                            print(roles)
 
                 await self.call_event('on_level_up', message, member_account, roles)
 
