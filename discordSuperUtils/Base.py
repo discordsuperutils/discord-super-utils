@@ -108,16 +108,11 @@ class CogManager:
                     else:
                         listeners[listener_type] = [attr]
 
-            if not managers:
-                for attr in attribute_objects:
-                    if type(attr) in listeners:
-                        managers.append(attr)
-
+            managers = managers or [attr for attr in attribute_objects if type(attr) in listeners]
             for event_type in listeners:
                 for manager in managers:
-                    if isinstance(manager, event_type):
-                        for event in listeners[event_type]:
-                            manager.add_event(event)
+                    for event in listeners[event_type]:
+                        manager.add_event(event)
 
     @staticmethod
     def event(manager_type):
