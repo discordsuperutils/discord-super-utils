@@ -114,18 +114,6 @@ class SpamManager(EventManager):
         self.punishments = punishments
 
     async def __handle_messages(self, message, edited_message=None):
-        """
-        This function is the main logic of the SpamManager
-        Handled events: on_message, on_message_edit
-
-        :param message: The on_message message passed by the event.
-        :type message: discord.Message
-        :param edited_message: The edited messages passed by the on_message_edit event, this function will use this
-        incase it is not None.
-        :type edited_message: discord.Message
-        :return:
-        """
-
         message = edited_message or message
 
         if not message.guild or message.author.bot:
