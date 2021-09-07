@@ -48,16 +48,6 @@ class SpamDetectionGenerator(ABC):
 
 class DefaultSpamDetectionGenerator(SpamDetectionGenerator):
     def generate(self, last_messages: List[discord.Message]) -> Union[bool, Any]:
-        """
-        This function processes the last messages and returns a bool representing if the message is spam.
-        Returns false automatically if the member is an administrator.
-
-        :param last_messages: The last messages (5 is max).
-        :type last_messages: List[discord.Message]
-        :return: A boolean representing if the message is spam.
-        :rtype: Union[bool, Any]
-        """
-
         member = last_messages[0].author
         if member.guild_permissions.administrator:
             return False
