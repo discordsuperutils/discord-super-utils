@@ -14,6 +14,10 @@ if TYPE_CHECKING:
 
 
 class Punishment:
+    """
+    A punishment class that is used for punishing members.
+    """
+
     def __init__(self,
                  punishment_manager,
                  punish_after: int = 3,
@@ -29,10 +33,34 @@ class Punishment:
 
 
 def get_relevant_punishment(punishments: List[Punishment], punish_count: int) -> Optional[Punishment]:
+    """
+    Returns the punishment that is suitable for the punish count.
+
+    :param punishments: The punishments to pick from.
+    :type punishments: List[Punishment]
+    :param punish_count: The punishment count.
+    :type punish_count: int
+    :rtype: Optional[Punishment]
+    :return: The suitable punishment.
+    """
+
     return {x.punish_after: x for x in punishments}.get(punish_count)
 
 
 class Punisher(ABC):
     @abstractmethod
     async def punish(self, ctx: commands.Context, member: discord.Member, punishment: Punishment) -> None:
+        """
+        The manager's punish function.
+
+        :param ctx: The context of the punishments.
+        :type ctx: commands.Context
+        :param member: The member to punish.
+        :type member: discord.Member
+        :param punishment: The punishment to punish the member with.
+        :type punishment: Punishment
+        :rtype: None
+        :return: None
+        """
+
         pass

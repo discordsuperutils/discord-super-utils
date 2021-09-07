@@ -22,7 +22,14 @@ if TYPE_CHECKING:
     from discord.ext import commands
 
 
+__all__ = ("PartialInfraction", "Infraction", "InfractionManager")
+
+
 class PartialInfraction:
+    """
+    A partial infraction.
+    """
+
     def __init__(self, member: discord.Member, infraction_id: str, reason: str, date_of_infraction: datetime):
         self.member = member
         self.infraction_id = infraction_id
@@ -31,6 +38,10 @@ class PartialInfraction:
 
 
 class Infraction:
+    """
+    An infraction object.
+    """
+
     def __init__(self, database, table: str, member: discord.Member, infraction_id: str):
         self.member = member
         self.database = database
