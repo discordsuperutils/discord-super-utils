@@ -31,6 +31,9 @@ class UnsupportedDatabase(Exception):
 
 
 class Database(ABC):
+    def __init__(self, database):
+        self.database = database
+
     @abstractmethod
     async def close(self):
         pass
@@ -83,9 +86,6 @@ class Database(ABC):
 
 
 class _MongoDatabase(Database):
-    def __init__(self, database):
-        self.database = database
-
     def __str__(self):
         return f"<{self.__class__.__name__} '{self.name}'>"
 
@@ -197,7 +197,7 @@ class _SqlDatabase(Database):
         return inner
 
     def __init__(self, database):
-        self.database = database
+        super().__init__(database)
         self.place_holder = DATABASE_TYPES[type(database)]["placeholder"]
         self.cursor_context = DATABASE_TYPES[type(database)]['cursorcontext']
         self.commit_needed = DATABASE_TYPES[type(database)]['commit']

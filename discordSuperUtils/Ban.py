@@ -18,11 +18,16 @@ if TYPE_CHECKING:
     from discord.ext import commands
 
 
+__all__ = ("UnbanFailure", "BanManager")
+
+
 class UnbanFailure(Exception):
     """Raises an exception when the user tries to unban a discord.User without passing the guild."""
 
 
 class BanManager(DatabaseChecker, Punisher):
+    __slots__ = ("bot",)
+
     def __init__(self, bot: commands.Bot):
         super().__init__([{'guild': "snowflake", 'member': "snowflake", 'reason': "string", 'timestamp': "snowflake"}],
                          ['bans'])
