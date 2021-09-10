@@ -217,8 +217,7 @@ class MusicManager(EventManager):
             return
 
         if ctx.guild.id in self.queue:
-            for song in player:
-                self.queue[ctx.guild.id].add(song)
+            self.queue[ctx.guild.id] += player
         else:
             self.queue[ctx.guild.id] = QueueManager(0.1, player)
 
