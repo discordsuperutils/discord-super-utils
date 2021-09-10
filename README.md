@@ -245,7 +245,7 @@ Known Issues
 --------------
 
 - Removing an animated emoji wont be recognized as a reaction role, as it shows up as not animated for some reason, breaking the reaction matcher. (Discord API Related)
-- Spotify queueing is very slow. 
+- Spotify queueing is slow. 
 
 Support
 --------------

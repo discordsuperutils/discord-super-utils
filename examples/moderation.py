@@ -49,8 +49,12 @@ async def mute(ctx,
                member: discord.Member,
                time_of_mute: discordSuperUtils.TimeConvertor,
                reason: str = "No reason specified."):
-    await ctx.send(f"{member} has been muted. Reason: {reason}")
-    await MuteManager.mute(member, reason, time_of_mute)
+    try:
+        await MuteManager.mute(member, reason, time_of_mute)
+    except discordSuperUtils.AlreadyMuted:
+        await ctx.send(f"{member} is already muted.")
+    else:
+        await ctx.send(f"{member} has been muted. Reason: {reason}")
 
 
 @bot.command()

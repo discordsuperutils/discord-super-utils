@@ -5,7 +5,10 @@ from datetime import datetime
 from typing import (
     TYPE_CHECKING,
     Union,
-    Optional
+    Optional,
+    List,
+    Any,
+    Dict
 )
 
 import discord
@@ -19,11 +22,20 @@ if TYPE_CHECKING:
     from .Punishments import Punishment
 
 
+__all__ = ("AlreadyMuted", "MuteManager")
+
+
 class AlreadyMuted(Exception):
     """Raises an error when a user is already muted."""
 
 
 class MuteManager(DatabaseChecker, Punisher):
+    """
+    A MuteManager that handles mutes for guilds.
+    """
+
+    __slots__ = ("bot",)
+
     def __init__(self, bot: commands.Bot):
         super().__init__([
             {
@@ -42,16 +54,32 @@ class MuteManager(DatabaseChecker, Punisher):
         self.bot.loop.create_task(self.__check_mutes())
         self.bot.add_listener(self.on_member_join)
 
-    async def get_muted_members(self):
+    async def get_muted_members(self) -> List[Dict[str, Any]]:
         """
+        |coro|
+
         This function returns all the members that are supposed to be unmuted but are muted.
 
-        :return:
+        :return: The unmuted members.
+        :rtype: List[Dict[str, Any]]
         """
+
         return [x for x in await self.database.select(self.tables['mutes'], [], fetchall=True)
                 if x["timestamp_of_unmute"] <= datetime.utcnow().timestamp()]
 
-    async def on_member_join(self, member):
+    async def on_member_join(self, member: discord.Member) -> None:
+        """
+        |coro|
+
+        The on_member_join event callback.
+        Used so the member cant leave the guild, join back and be unmuted.
+
+        :param member: The member that joined.
+        :type member: discord.Member
+        :return: None
+        :rtype: None
+        """
+
         muted_members = [x for x in await self.database.select(self.tables['mutes'], ["timestamp_of_unmute", "member"],
                                                                {
                                                                    'guild': member.guild.id,
@@ -66,6 +94,15 @@ class MuteManager(DatabaseChecker, Punisher):
                 await member.add_roles(muted_role)
 
     async def __check_mutes(self) -> None:
+        """
+        |coro|
+
+        A loop that makes sure the members are unmuted when they are supposed to.
+
+        :return: None
+        :rtype: None
+        """
+
         await self.bot.wait_until_ready()
 
         while not self.bot.is_closed():
@@ -90,10 +127,74 @@ class MuteManager(DatabaseChecker, Punisher):
         else:
             await self.call_event("on_punishment", ctx, member, punishment)
 
+    @staticmethod
+    async def ensure_permissions(guild: discord.Guild, muted_role: discord.Role) -> None:
+        """
+        |coro|
+
+        This function loops through the guild's channels and ensures the muted_role is not allowed to
+        send messages or speak in that channel.
+
+        :param guild: The guild to get the channels from.
+        :type guild: discord.Guild
+        :param muted_role: The muted role.
+        :type muted_role: discord.Role
+        :return: None
+        """
+
+        channels_to_mute = [channel for channel in guild.channels
+                            if channel.overwrites_for(muted_role).send_messages is not False]
+        # Now, you might say what the heck, why don't you test if the value is True instead of checking if it
+        # is not False? I am doing it this way because permissions have 3 values,
+        # None, True and False.
+        # Now, lets say we have a permission that is set to None, if i test it for a False value, (if not value) it will
+        # return False which is incorrect and it should return True.
+
+        await asyncio.gather(*[
+            channel.set_permissions(muted_role, send_messages=False, speak=False)
+            for channel in channels_to_mute
+        ])
+
+    async def __handle_unmute(self, time_of_mute: Union[int, float], member: discord.Member, reason: str) -> None:
+        """
+        |coro|
+
+        A function that handles the member's unmute that runs separately from mute so it wont be blocked.
+
+        :param time_of_mute: The time until the member's unmute timestamp.
+        :type time_of_mute: Union[int, float]
+        :param member: The member to unmute.
+        :type member: discord.Member
+        :param reason: The reason of the mute.
+        :type reason: str
+        :return: None
+        """
+
+        await asyncio.sleep(time_of_mute)
+
+        if await self.unmute(member):
+            await self.call_event('on_unmute', member, reason)
+
     async def mute(self,
                    member: discord.Member,
                    reason: str = "No reason provided.",
                    time_of_mute: Union[int, float] = 0) -> None:
+        """
+        |coro|
+
+        Mutes a member.
+
+        :raises: AlreadyMuted: The member is already muted.
+        :param member: The member to mute.
+        :type member: discord.Member
+        :param reason: The reason of the mute.
+        :type reason: str
+        :param time_of_mute: The time of mute.
+        :type time_of_mute: Union[int, float]
+        :return: None,
+        :rtype: None
+        """
+
         self._check_database()
 
         muted_role = discord.utils.get(member.guild.roles, name="Muted")
@@ -107,10 +208,7 @@ class MuteManager(DatabaseChecker, Punisher):
 
         await member.add_roles(muted_role, reason=reason)
 
-        await asyncio.gather(*[
-            channel.set_permissions(muted_role, send_messages=False, speak=False)
-            for channel in member.guild.channels
-        ])
+        self.bot.loop.create_task(self.ensure_permissions(member.guild, muted_role))
 
         if time_of_mute <= 0:
             return
@@ -123,12 +221,20 @@ class MuteManager(DatabaseChecker, Punisher):
             'reason': reason
         })
 
-        await asyncio.sleep(time_of_mute)
-
-        if await self.unmute(member):
-            await self.call_event('on_unmute', member, reason)
+        self.bot.loop.create_task(self.__handle_unmute(time_of_mute, member, reason))
 
     async def unmute(self, member: discord.Member) -> Optional[bool]:
+        """
+        |coro|
+
+        Unmutes a member.
+
+        :param member: The member to unmute.
+        :type member: discord.Member
+        :rtype: Optional[bool]
+        :return: A bool indicating if the unmute was successful
+        """
+
         await self.database.delete(self.tables['mutes'], {'guild': member.guild.id, 'member': member.id})
         muted_role = discord.utils.get(member.guild.roles, name="Muted")
         if not muted_role:

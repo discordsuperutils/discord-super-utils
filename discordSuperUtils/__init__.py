@@ -12,7 +12,7 @@ from .InviteTracker import InviteTracker
 from .Kick import KickManager
 from .Leveling import LevelingManager
 from .Music import *
-from .Mute import MuteManager
+from .Mute import MuteManager, AlreadyMuted
 from .Paginator import PageManager, generate_embeds, ButtonsPageManager
 from .Prefix import PrefixManager
 from .Punishments import Punishment

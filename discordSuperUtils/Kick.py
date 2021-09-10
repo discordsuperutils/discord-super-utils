@@ -12,7 +12,16 @@ if TYPE_CHECKING:
     from .Punishments import Punishment
 
 
+__all__ = ("KickManager",)
+
+
 class KickManager(EventManager, Punisher):
+    """
+    A KickManager that manages kicks for guilds.
+    """
+
+    __slots__ = ("bot",)
+
     def __init__(self, bot: commands.Bot):
         super().__init__()
         self.bot = bot

@@ -57,17 +57,6 @@ class DefaultMessageResponseGenerator(MessageResponseGenerator):
                                    r"?:com|gg|io|li|me|net|org)(?:/(?:invite))?/([a-z0-9-.]+)")
 
     def generate(self, message: discord.Message) -> Union[bool, Any]:
-        """
-        This function filters a message and return a bool representing if the message contains a URL
-        or a discord invite.
-        Returns false automatically if the member is an administrator.
-
-        :param message: The message to filter.
-        :type message: discord.Message
-        :return: A boolean representing if the message contains inappropriate content.
-        :rtype: Union[bool, Any]
-        """
-
         if message.author.guild_permissions.administrator:
             return False
 

@@ -48,16 +48,6 @@ class SpamDetectionGenerator(ABC):
 
 class DefaultSpamDetectionGenerator(SpamDetectionGenerator):
     def generate(self, last_messages: List[discord.Message]) -> Union[bool, Any]:
-        """
-        This function processes the last messages and returns a bool representing if the message is spam.
-        Returns false automatically if the member is an administrator.
-
-        :param last_messages: The last messages (5 is max).
-        :type last_messages: List[discord.Message]
-        :return: A boolean representing if the message is spam.
-        :rtype: Union[bool, Any]
-        """
-
         member = last_messages[0].author
         if member.guild_permissions.administrator:
             return False
@@ -124,18 +114,6 @@ class SpamManager(EventManager):
         self.punishments = punishments
 
     async def __handle_messages(self, message, edited_message=None):
-        """
-        This function is the main logic of the SpamManager
-        Handled events: on_message, on_message_edit
-
-        :param message: The on_message message passed by the event.
-        :type message: discord.Message
-        :param edited_message: The edited messages passed by the on_message_edit event, this function will use this
-        incase it is not None.
-        :type edited_message: discord.Message
-        :return:
-        """
-
         message = edited_message or message
 
         if not message.guild or message.author.bot:

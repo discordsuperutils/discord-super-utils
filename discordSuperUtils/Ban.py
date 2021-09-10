@@ -5,7 +5,10 @@ from datetime import datetime
 from typing import (
     TYPE_CHECKING,
     Union,
-    Optional
+    Optional,
+    List,
+    Dict,
+    Any
 )
 
 import discord
@@ -18,11 +21,20 @@ if TYPE_CHECKING:
     from discord.ext import commands
 
 
+__all__ = ("UnbanFailure", "BanManager")
+
+
 class UnbanFailure(Exception):
     """Raises an exception when the user tries to unban a discord.User without passing the guild."""
 
 
 class BanManager(DatabaseChecker, Punisher):
+    """
+    A BanManager that manages guild bans.
+    """
+
+    __slots__ = ("bot",)
+
     def __init__(self, bot: commands.Bot):
         super().__init__([{'guild': "snowflake", 'member': "snowflake", 'reason': "string", 'timestamp': "snowflake"}],
                          ['bans'])
@@ -33,16 +45,29 @@ class BanManager(DatabaseChecker, Punisher):
     async def on_database_connect(self):
         self.bot.loop.create_task(self.__check_bans())
 
-    async def get_banned_members(self):
+    async def get_banned_members(self) -> List[Dict[str, Any]]:
         """
+        |coro|
+
         This function returns all the members that are supposed to be unbanned but are banned.
 
-        :return:
+        :return: The list of unbanned members.
+        :rtype: List[Dict[str, Any]]
         """
+
         return [x for x in await self.database.select(self.tables['bans'], [], fetchall=True)
                 if x["timestamp"] <= datetime.utcnow().timestamp()]
 
     async def __check_bans(self) -> None:
+        """
+        |coro|
+
+        A loop that ensures that members are unbanned when they need to.
+
+        :return: None
+        :rtype: None
+        """
+
         await self.bot.wait_until_ready()
 
         while not self.bot.is_closed():
@@ -71,6 +96,19 @@ class BanManager(DatabaseChecker, Punisher):
 
     @staticmethod
     async def get_ban(member: Union[discord.Member, discord.User], guild: discord.Guild) -> Optional[discord.User]:
+        """
+        |coro|
+
+        This function returns the user object of the member if he is banned from the guild.
+
+        :param member: The banned member.
+        :type member: discord.Member
+        :param guild: The guild.
+        :type guild: discord.Guild
+        :return: The user object if found.
+        :rtype: Optional[discord.User]
+        """
+
         banned = await guild.bans()
         for x in banned:
             if x.user.id == member.id:
@@ -93,6 +131,21 @@ class BanManager(DatabaseChecker, Punisher):
                   member: discord.Member,
                   reason: str = "No reason provided.",
                   time_of_ban: Union[int, float] = 0) -> None:
+        """
+        |coro|
+
+        Bans the member from the guild.
+
+        :param member: The member to ban.
+        :type member: discord.Member
+        :param reason: The reason of the ban.
+        :type reason: str
+        :param time_of_ban: The time of ban.
+        :type time_of_ban: Union[int, float]
+        :return: None
+        :rtype: None
+        """
+
         self._check_database()
 
         await member.ban(reason=reason)
