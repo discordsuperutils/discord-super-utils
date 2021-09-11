@@ -1,68 +1,190 @@
 from __future__ import annotations
 
-from discordSuperUtils.Base import EventManager
-from .Interaction import Interaction
-from .http import http
-import asyncio
 import inspect
-import discord
 from typing import (
-    TYPE_CHECKING,
-    Union,
-    Optional
+    Dict,
+    Any,
+    List,
+    Callable
 )
 
-if TYPE_CHECKING:
-    from discord.ext import commands
+from discord.ext import commands
+
+from .Interaction import Interaction, OptionType
+from .http import HTTPClient
+from ..Base import EventManager, maybe_coroutine
+
+# discord.ext.commands is not type hinted in order to use the converters.
+
+__all__ = ("SlashManager",)
 
 
 class SlashManager(EventManager):
-    def __init__(self, bot: Union[discord.Client, commands.Bot], update_commands: Optional[bool] = True):
+    """
+    Represents a SlashManager that manages slash commands.
+    """
+
+    __slots__ = ("bot", "http", "commands")
+
+    def __init__(self, bot: commands.Bot):
         super().__init__()
         self.bot = bot
-        self.update_commands = update_commands
-        self._ws = self.bot.ws
-        self.httpsession = http()
-        self.bot.add_listener(self.__dispatch_event, 'on_socket_response')
+        self.http = None
         self.commands = {}
-        self.add_event(self.process_commands, 'on_interaction')
 
-    async def process_commands(self, interaction):
-        print(interaction.event)
+        self.bot.add_listener(self.__dispatch_event, 'on_socket_response')
+
+        self.bot.loop.create_task(self.__initialize_http())
+
+    async def __initialize_http(self) -> None:
+        """
+        |coro|
+
+        Sets the SlashManager's http object when the bot is ready.
+
+        :return: None
+        :rtype: None
+        """
+
+        await self.bot.wait_until_ready()
+
+        self.http = HTTPClient("Bot " + self.bot.http.token)
+
+    async def process_command(self, interaction: Interaction) -> None:
+        """
+        |coro|
+
+        Processes the command.
+
+        :param interaction: The interaction to process the command from
+        :type interaction: Interaction
+        :return: None
+        :rtype: None
+        """
+
+        converters = {
+            6: [self.bot.get_user, self.bot.fetch_user],
+            7: [interaction.guild and interaction.guild.get_channel],
+            8: [interaction.guild and interaction.guild.get_role]
+        }
+
         data = interaction.data['data']
         name = data['name']
-        args = [interaction]
-        args.append(arg['value'] for arg in data['options'])
-        args = tuple(args)
-        print(args)
-        await self.commands[name](*args) # this is broken u gotta figure out how to call the command func idk i am stupid but print the event youll see
 
-    async def __dispatch_event(self, event):
+        user_arguments = []
+
+        if 'options' in data:
+            for argument in data['options']:
+                arg_type = argument['type']
+                if arg_type not in converters:
+                    user_arguments.append(argument['value'])
+                    continue
+
+                result_fetch = argument['value']
+                for converter in converters[arg_type]:
+                    convert_result = await maybe_coroutine(converter, int(argument['value']))
+
+                    if convert_result:
+                        result_fetch = convert_result
+                        break
+
+                user_arguments.append(result_fetch)
+
+        args = [interaction] + user_arguments
+        await self.commands[name](*args)
+
+    async def __dispatch_event(self, event: Dict[str, Any]) -> None:
+        """
+        |coro|
+
+        Adds the on_interaction event to the SlashManager
+        This function is the callback of on_socket_response.
+
+        :param event: The socket response.
+        :type event: Dict[str, Any]
+        :return: None
+        :rtype: None
+        """
+
         if event['t'] == "INTERACTION_CREATE":
-            await self.call_event('on_interaction', Interaction(event, self.bot))
+            interaction = Interaction(
+                self.bot,
+                event,
+                self.http
+            )
 
-    async def add_global_command(self, data):
-        headers = {"Authorization": f"Bot gotta put token here lol idk howe to fetvch"}
-        return await self.httpsession.add_global_slash_command(data=data, headers=headers,
-                                                               applicationid="idk how to fetch either")
+            await self.call_event('on_interaction', interaction)
+            await self.process_command(interaction)
 
-    def make_json(self, params: list):
-        return [{"name": param, "description": "test choice", "type": 3} for param in params]
+    async def add_global_command(self, payload: Dict[str, Any]) -> None:
+        """
+        |coro|
 
-    def command(self):
+        Adds a global command from the payload.
+
+        :param payload: The command options.
+        :type payload: Dict[str, Any]
+        :return: None
+        :rtype: None
+        """
+
+        await self.bot.wait_until_ready()
+
+        await self.http.add_slash_command(payload, self.bot.user.id)
+
+    @staticmethod
+    def parameters_to_dict(parameters) -> List[Dict[str, Any]]:
+        """
+        |coro|
+
+        Converts signature parameters to their slash command JSON form.
+
+        :param parameters: The parameters
+        :return: The parameters JSON form.
+        :rtype: List[Dict[str, Any]]
+        """
+
+        result_parameters = []
+
+        for parameter in parameters:
+            annotation = parameter.annotation
+
+            result_parameters.append(
+                {
+                    "name": parameter.name,
+                    "type": annotation.value if isinstance(annotation, OptionType) else 3,
+                    "description": '-',
+                    "required": True
+                }
+            )
+
+        return result_parameters
+
+    def command(self, name: str = None, description: str = "No description") -> Callable:
+        """
+        The command initializer decorator.
+
+        :param name: The command name.
+        :type name: str
+        :param description: The command description
+        :type description: str
+        :return: The inner function.
+        :rtype: Callable
+        """
 
         def inner(func):
-            print(func.__name__)
+            command_name = name or func.__name__
+
             sig = inspect.signature(func)
-            params = list(dict(sig.parameters).keys())
-            params.pop(0)
-            data = {
-                "name": func.__name__,
-                "description": "Slash command by DSU (beta)",
-                "options": self.make_json(params)
+
+            command_initializer = {
+                "name": command_name,
+                "type": OptionType.SUB_COMMAND.value,
+                "description": description,
+                "options": self.parameters_to_dict(list(sig.parameters.values())[1:])
             }
-            self.commands[func.__name__] = func
-            replyu = asyncio.run(self.add_global_command(data))
-            print(data)
-            print(replyu)
+
+            self.commands[command_name] = func
+            self.bot.loop.create_task(self.add_global_command(command_initializer))
+
         return inner

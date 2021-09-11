@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-from typing import List, Any, Iterable, Optional, TYPE_CHECKING, Union, Tuple, Callable, Dict
+from typing import List, Any, Iterable, Optional, TYPE_CHECKING, Union, Tuple, Callable, Dict, Awaitable
 
 import aiomysql
 import aiopg
@@ -20,6 +20,7 @@ __all__ = (
     "DatabaseNotConnected",
     "InvalidGenerator",
     "get_generator_response",
+    "maybe_coroutine",
     "generate_column_types",
     "questionnaire",
     "EventManager",
@@ -50,6 +51,29 @@ class InvalidGenerator(Exception):
     def __init__(self, generator):
         self.generator = generator
         super().__init__(f"Generator of type {type(self.generator)!r} is not supported.")
+
+
+async def maybe_coroutine(function: Callable, *args, **kwargs) -> Any:
+    """
+    |coro|
+
+    Returns the coroutine version of the function.
+
+    :param function: The function to convert.
+    :type function: Union[Awaitable, Callable]
+    :param args: The arguments.
+    :param kwargs: The key arguments:
+    :return: The coroutine version of the function.
+    :rtype: Awaitable
+    """
+
+    value = function(*args, **kwargs)
+
+    if inspect.isawaitable(value):
+        return await value
+
+    else:
+        return value
 
 
 def get_generator_response(generator: Any, generator_type: Any, *args, **kwargs) -> Any:

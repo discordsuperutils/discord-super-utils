@@ -62,5 +62,3 @@ class Punisher(ABC):
         :rtype: None
         :return: None
         """
-
-        pass

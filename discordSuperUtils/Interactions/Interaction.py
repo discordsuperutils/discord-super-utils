@@ -1,42 +1,90 @@
 from __future__ import annotations
 
-from typing import Optional, TYPE_CHECKING, Union, Any
+from enum import Enum
+from typing import (
+    TYPE_CHECKING
+)
 
-import discord
-from discord.ext import commands
-from .http import http
-import aiohttp
-import asyncio
+if TYPE_CHECKING:
+    from discord.ext import commands
+    from .http import HTTPClient
+
+
+__all__ = ("Interaction", "OptionType", "RespondType")
+
+
+class RespondType(Enum):
+    """Respond Types :)"""
+
+
+class OptionType(Enum):
+    SUB_COMMAND = 1
+    SUB_COMMAND_GROUP = 2
+    STRING = 3
+    INTEGER = 4
+    BOOLEAN = 5
+    USER = 6
+    CHANNEL = 7
+    ROLE = 8
+    MENTIONABLE = 9
+    NUMBER = 10
 
 
 class Interaction:
-    def __init__(self, interaction, bot):
-        self.__bot: Union[commands.Bot, discord.Client] = bot
-        self.httpsession = http()
-        self.event = interaction
-        self.data = interaction['d']
+    """
+    Represents a slash interaction.
+    """
+
+    __slots__ = ("bot", "http", "raw", "data", "args", "id", "token")
+
+    def __init__(self,
+                 bot: commands.Bot,
+                 raw_interaction,
+                 http: HTTPClient):
+        self.bot: commands.Bot = bot
+        self.http = http
+        self.raw = raw_interaction
+        self.data = raw_interaction['d']
         self.args = self.data['data']
         self.id = self.data['id']
         self.token = self.data['token']
 
     @property
-    def guild(self) -> Optional[discord.Guild]:
-        return self.__bot.get_guild(self.data['guild_id'])
+    def author(self):
+        """Not done."""
 
     @property
-    def author(self) -> Optional[discord.Member]:
-        return self.guild.get_member(self.data['member']['user']['id'])
+    def guild(self):
+        """Not done."""
 
     @property
-    def channel(self) -> Optional[discord.TextChannel]:
-        return self.guild.get_channel(self.data['channel_id'])
+    def channel(self):
+        """Not done."""
 
-    async def reply(self, text: str) -> Any:
-        url = f"https://discord.com/api/v8/interactions/{self.id}/{self.token}/callback"
-        data = {
+    def __str__(self):
+        return f"<{self.__class__.__name__} guild={self.guild}, author={self.author}>"
+
+    def __repr__(self):
+        return f"<{self.__str__()}, channel={self.channel}>"
+
+    async def reply(self, text: str) -> None:
+        """
+        |coro|
+
+        Reply to an interaction.
+
+        :param text: The text to send.
+        :type text: str
+        :return: The message
+        :rtype: None
+        """
+
+        url = f"https://discord.com/api/v9/interactions/{self.id}/{self.token}/callback"
+        payload = {
             "type": 4,
             "data": {
                 "content": text
             }
         }
-        await self.httpsession.send(url, data=data)
+
+        await self.http.request("POST", url, payload=payload)  # Message not done.
