@@ -70,7 +70,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
 
     @commands.command()
     async def history(self, ctx):
-        embeds = discordSuperUtils.generate_embeds(await MusicManager.history(self.MusicManager, ctx),
+        embeds = discordSuperUtils.generate_embeds(await self.MusicManager.history(ctx),
                                                    "Song History",
                                                    "Shows all played songs",
                                                    25,
@@ -85,9 +85,9 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
 
     @commands.command()
     async def queue(self, ctx):
-        embeds = discordSuperUtils.generate_embeds(await MusicManager.get_queue(self.MusicManager, ctx),
+        embeds = discordSuperUtils.generate_embeds(await self.MusicManager.get_queue(ctx),
                                                    "Queue",
-                                                   f"Now Playing: {await MusicManager.now_playing(ctx)}",
+                                                   f"Now Playing: {await self.MusicManager.now_playing(ctx)}",
                                                    25,
                                                    string_format="Title: {}")
         page_manager = PageManager(ctx, embeds, public=True)
