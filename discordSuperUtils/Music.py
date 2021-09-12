@@ -6,6 +6,7 @@ from typing import Optional
 
 import aiohttp
 import discord
+from discord.ext import commands
 import youtube_dl
 
 from .Base import EventManager
@@ -87,7 +88,7 @@ class Player(discord.PCMVolumeTransformer):
         return [x[0] for x in players if x]
 
     @classmethod
-    async def make_player(cls, query: str, playlist=True):
+    async def make_player(cls, query: str, playlist=True) -> list:
         data = await MusicManager.fetch_data(query)
         if data is None:
             return []
@@ -112,13 +113,13 @@ class QueueManager:
         self.loop = Loops.NO_LOOP
         self.now_playing = None
 
-    def add(self, player):
+    async def add(self, player):
         self.queue.append(player)
 
-    def clear(self):
+    async def clear(self):
         self.queue.clear()
 
-    def remove(self, index):
+    async def remove(self, index):
         return self.queue.pop(index)
 
 
@@ -179,23 +180,22 @@ class MusicManager(EventManager):
 
         return True
 
-    def __check_queue(self, ctx):
+    async def __check_queue(self, ctx):
         try:
             if not ctx.voice_client or not ctx.voice_client.is_connected():
                 return
 
             if self.queue[ctx.guild.id].loop == Loops.LOOP:
-                song = self.queue[ctx.guild.id].now_playing
-                player = Player(discord.FFmpegPCMAudio(song.url, **self.FFMPEG_OPTIONS), data=song.data)
+                song: Player = self.queue[ctx.guild.id].now_playing
+                player = (await Player.make_player(song.url, playlist=False))[0]
 
             elif self.queue[ctx.guild.id].loop == Loops.QUEUE_LOOP:
-                player = self.queue[ctx.guild.id].remove(0)
-                self.queue[ctx.guild.id].add(player)
-
-                player = Player(discord.FFmpegPCMAudio(player.url, **self.FFMPEG_OPTIONS), data=player.data)
+                song = await self.queue[ctx.guild.id].remove(0)
+                player = (await Player.make_player(song.url, playlist=False))[0]
+                await self.queue[ctx.guild.id].add(player)
 
             else:
-                player = self.queue[ctx.guild.id].remove(0)
+                player = await self.queue[ctx.guild.id].remove(0)
 
             self.queue[ctx.guild.id].now_playing = player
 
@@ -203,7 +203,9 @@ class MusicManager(EventManager):
                 return
 
             player.volume = self.queue[ctx.guild.id].volume
-            ctx.voice_client.play(player, after=lambda x: self.__check_queue(ctx))
+            ctx.voice_client.play(player, after=lambda x: self.bot.loop.create_task(
+                self.__check_queue(ctx))
+                                  )
             player.start_timestamp = time.time()
 
             if self.queue[ctx.guild.id].loop == Loops.NO_LOOP:
@@ -249,7 +251,7 @@ class MusicManager(EventManager):
             return
 
         if ctx.guild.id in self.queue:
-            self.queue[ctx.guild.id].queue += player
+            await self.queue[ctx.guild.id].add(player)
         else:
             self.queue[ctx.guild.id] = QueueManager(0.1, player)
 
@@ -283,7 +285,7 @@ class MusicManager(EventManager):
             return True
 
         if not ctx.voice_client.is_playing():
-            self.__check_queue(ctx)
+            await self.__check_queue(ctx)
             return True
 
     async def pause(self, ctx):
@@ -295,7 +297,7 @@ class MusicManager(EventManager):
             return
 
         (await self.now_playing(ctx)).last_pause_timestamp = time.time()
-        ctx.voice_client.pause()
+        self.bot.loop.run_in_executor(None, ctx.voice_client.pause())
         self.bot.loop.create_task(self.__ensure_activity(ctx))
         return True
 
@@ -307,7 +309,7 @@ class MusicManager(EventManager):
             await self.call_event('on_music_error', ctx, NotPaused("Player is not paused"))
             return
 
-        ctx.voice_client.resume()
+        self.bot.loop.run_in_executor(None, ctx.voice_client.resume())
 
         now_playing = await self.now_playing(ctx)
         now_playing.start_timestamp += time.time() - now_playing.last_pause_timestamp
@@ -337,7 +339,7 @@ class MusicManager(EventManager):
                 self.queue[ctx.guild.id].queue += removed_songs
 
         player = self.queue[ctx.guild.id].queue[0]
-        ctx.voice_client.stop()
+        self.bot.loop.run_in_executor(None, ctx.voice_client.stop())
         return player
 
     async def volume(self, ctx, volume: int = None):
@@ -411,3 +413,17 @@ class MusicManager(EventManager):
             return
 
         return self.queue[ctx.guild.id].queue
+
+    async def clear_queue(self, ctx: commands.Context) -> None:
+        """
+        |coro|
+
+        Clears the ctx's guild's Queue
+
+        :parameter ctx: Context object to fetch the guild from
+        :type ctx: commands.Context
+        :return: None
+        :rtype: None
+        """
+
+        await self.queue[ctx.guild.id].clear()
