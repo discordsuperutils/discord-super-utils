@@ -72,8 +72,7 @@ async def maybe_coroutine(function: Callable, *args, **kwargs) -> Any:
     if inspect.isawaitable(value):
         return await value
 
-    else:
-        return value
+    return value
 
 
 def get_generator_response(generator: Any, generator_type: Any, *args, **kwargs) -> Any:
