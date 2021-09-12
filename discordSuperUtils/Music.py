@@ -11,29 +11,6 @@ import youtube_dl
 from .Base import EventManager
 from .Spotify import SpotifyClient
 
-# just some options etc.
-
-ytdl_opts = {
-    'format': 'bestaudio/best',
-    'restrictfilenames': True,
-    'noplaylist': False,
-    'nocheckcertificate': True,
-    'ignoreerrors': False,
-    'logtostderr': False,
-    'quiet': True,
-    'no_warnings': True,
-    'default_search': 'auto'
-}
-
-ffmpeg_options = {
-    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'
-}
-
-ytdl = youtube_dl.YoutubeDL(ytdl_opts)
-spotify_reg = re.compile("^https://open.spotify.com/")
-
-
-# errors/exceptions
 
 class NotPlaying(Exception):
     """Raises error when client is not playing"""
@@ -119,11 +96,12 @@ class Player(discord.PCMVolumeTransformer):
             if not playlist:
                 data = data['entries'][0]
             else:
-                return [cls(discord.FFmpegPCMAudio(player['url'],
-                                                   **ffmpeg_options), data=player) for player in data['entries']]
+                return [cls(
+                    discord.FFmpegPCMAudio(player['url'],
+                                           **MusicManager.FFMPEG_OPTIONS), data=player) for player in data['entries']]
 
         filename = data['url']
-        return [cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)]
+        return [cls(discord.FFmpegPCMAudio(filename, **MusicManager.FFMPEG_OPTIONS), data=data)]
 
 
 class QueueManager:
@@ -145,6 +123,20 @@ class QueueManager:
 
 
 class MusicManager(EventManager):
+    FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
+    SPOTIFY_RE = re.compile("^https://open.spotify.com/")
+    YTDL = youtube_dl.YoutubeDL({
+        'format': 'bestaudio/best',
+        'restrictfilenames': True,
+        'noplaylist': False,
+        'nocheckcertificate': True,
+        'ignoreerrors': False,
+        'logtostderr': False,
+        'quiet': True,
+        'no_warnings': True,
+        'default_search': 'auto'
+    })
+
     def __init__(self, bot, spotify_support=True, inactivity_timeout: int = 60, **kwargs):
         super().__init__()
         self.bot = bot
@@ -194,13 +186,13 @@ class MusicManager(EventManager):
 
             if self.queue[ctx.guild.id].loop == Loops.LOOP:
                 song = self.queue[ctx.guild.id].now_playing
-                player = Player(discord.FFmpegPCMAudio(song.url, **ffmpeg_options), data=song.data)
+                player = Player(discord.FFmpegPCMAudio(song.url, **self.FFMPEG_OPTIONS), data=song.data)
 
             elif self.queue[ctx.guild.id].loop == Loops.QUEUE_LOOP:
                 player = self.queue[ctx.guild.id].remove(0)
                 self.queue[ctx.guild.id].add(player)
 
-                player = Player(discord.FFmpegPCMAudio(player.url, **ffmpeg_options), data=player.data)
+                player = Player(discord.FFmpegPCMAudio(player.url, **self.FFMPEG_OPTIONS), data=player.data)
 
             else:
                 player = self.queue[ctx.guild.id].remove(0)
@@ -240,12 +232,12 @@ class MusicManager(EventManager):
     async def fetch_data(query: str):
         try:
             loop = asyncio.get_event_loop()
-            return await loop.run_in_executor(None, lambda: ytdl.extract_info(query, download=False))
+            return await loop.run_in_executor(None, lambda: MusicManager.YTDL.extract_info(query, download=False))
         except youtube_dl.utils.DownloadError:
             return None
 
     async def create_player(self, query):
-        if spotify_reg.match(query) and self.spotify_support:
+        if self.SPOTIFY_RE.match(query) and self.spotify_support:
             return await Player.make_multiple_players([song for song in await self.spotify.get_songs(query)])
 
         return await Player.make_player(query)
