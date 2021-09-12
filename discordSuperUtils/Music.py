@@ -233,7 +233,8 @@ class MusicManager(EventManager):
         if ctx.voice_client.is_paused():
             start_timestamp = player.start_timestamp + time.time() - player.last_pause_timestamp
 
-        return min(time.time() - start_timestamp, player.duration)
+        time_played = time.time() - start_timestamp
+        return min(time_played, time_played if player.duration == "LIVE" else player.duration)
 
     @staticmethod
     async def fetch_data(query: str):
