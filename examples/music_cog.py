@@ -22,6 +22,15 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     async def on_play(self, ctx, player):
         await ctx.send(f"Now playing: {player}")
 
+    @discordSuperUtils.CogManager.event(discordSuperUtils.MusicManager)
+    async def on_queue_end(self, ctx):
+        print(f"The queue has ended in {ctx}")
+        # You could wait and check activity, etc...
+
+    @discordSuperUtils.CogManager.event(discordSuperUtils.MusicManager)
+    async def on_inactivity_disconnect(self, ctx):
+        print(f"I have left {ctx} due to inactivity..")
+
     @commands.Cog.listener()
     async def on_ready(self):
         print('Music manager is ready.', self.bot.user)
@@ -53,6 +62,16 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
                 await ctx.send("Added to queue")
         else:
             await ctx.send("Query not found.")
+
+    @commands.command()
+    async def pause(self, ctx):
+        if await self.MusicManager.pause(ctx):
+            await ctx.send("Player paused.")
+
+    @commands.command()
+    async def resume(self, ctx):
+        if await self.MusicManager.resume(ctx):
+            await ctx.send("Player resumed.")
 
     @commands.command()
     async def volume(self, ctx, volume: int):

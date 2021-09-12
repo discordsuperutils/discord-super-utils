@@ -7,12 +7,23 @@ client_id = ...
 client_secret = ...
 
 bot = commands.Bot(command_prefix='-')
-MusicManager = MusicManager(bot, client_id=client_id, client_secret=client_secret)
+MusicManager = MusicManager(bot, client_id=client_id, client_secret=client_secret, inactivity_timeout=30)
 
 
 @MusicManager.event()
 async def on_music_error(ctx, error):
     raise error  # add your error handling here! Errors are listed in the documentation.
+
+
+@MusicManager.event()
+async def on_queue_end(ctx):
+    print(f"The queue has ended in {ctx}")
+    # You could wait and check activity, etc...
+
+
+@MusicManager.event()
+async def on_inactivity_disconnect(ctx):
+    print(f"I have left {ctx} due to inactivity..")
 
 
 @MusicManager.event()
@@ -56,6 +67,18 @@ async def play(ctx, *, query: str):
 
     else:
         await ctx.send("Query not found.")
+
+
+@bot.command()
+async def pause(ctx):
+    if await MusicManager.pause(ctx):
+        await ctx.send("Player paused.")
+
+
+@bot.command()
+async def resume(ctx):
+    if await MusicManager.resume(ctx):
+        await ctx.send("Player resumed.")
 
 
 @bot.command()

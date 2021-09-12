@@ -140,15 +140,32 @@ class QueueManager:
 
 
 class MusicManager(EventManager):
-    def __init__(self, bot, spotify_support=True, **kwargs):
+    def __init__(self, bot, spotify_support=True, inactivity_timeout: int = 60, **kwargs):
         super().__init__()
         self.bot = bot
-        self.queue = {}
+
         self.client_id = kwargs.get('client_id')
         self.client_secret = kwargs.get('client_secret')
         self.spotify_support = spotify_support
+        self.inactivity_timeout = inactivity_timeout
+
+        self.queue = {}
+
         if spotify_support:
             self.spotify = SpotifyClient(client_id=self.client_id, client_secret=self.client_secret)
+
+    async def __ensure_activity(self, ctx):
+        if self.inactivity_timeout is None:
+            return
+
+        await asyncio.sleep(self.inactivity_timeout)
+
+        if not ctx.voice_client:
+            return
+
+        if ctx.voice_client.is_connected() and not ctx.voice_client.is_playing():
+            await ctx.voice_client.disconnect()
+            await self.call_event("on_inactivity_disconnect", ctx)
 
     async def __check_connection(self, ctx, check_playing: bool = False, check_queue: bool = False) -> Optional[bool]:
         if not ctx.voice_client or not ctx.voice_client.is_connected():
@@ -167,6 +184,9 @@ class MusicManager(EventManager):
 
     def __check_queue(self, ctx):
         try:
+            if not ctx.voice_client or not ctx.voice_client.is_connected():
+                return
+
             if self.queue[ctx.guild.id].loop == Loops.LOOP:
                 song = self.queue[ctx.guild.id].now_playing
                 player = Player(discord.FFmpegPCMAudio(song.url, **ffmpeg_options), data=song.data)
@@ -194,7 +214,7 @@ class MusicManager(EventManager):
                     self.call_event('on_play', ctx, player)
                 )
         except (IndexError, KeyError):
-            return
+            self.bot.loop.create_task(self.call_event("on_queue_end", ctx))
 
     @staticmethod
     async def fetch_data(query: str):
@@ -217,7 +237,7 @@ class MusicManager(EventManager):
             return
 
         if ctx.guild.id in self.queue:
-            self.queue[ctx.guild.id] += player
+            self.queue[ctx.guild.id].queue += player
         else:
             self.queue[ctx.guild.id] = QueueManager(0.1, player)
 
@@ -263,6 +283,7 @@ class MusicManager(EventManager):
             return
 
         ctx.voice_client.pause()
+        self.bot.loop.create_task(self.__ensure_activity(ctx))
         return True
 
     async def resume(self, ctx):
