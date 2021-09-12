@@ -297,7 +297,7 @@ class MusicManager(EventManager):
             return
 
         (await self.now_playing(ctx)).last_pause_timestamp = time.time()
-        self.bot.loop.run_in_executor(None, ctx.voice_client.pause())
+        ctx.voice_client.pause()
         self.bot.loop.create_task(self.__ensure_activity(ctx))
         return True
 
@@ -309,7 +309,7 @@ class MusicManager(EventManager):
             await self.call_event('on_music_error', ctx, NotPaused("Player is not paused"))
             return
 
-        self.bot.loop.run_in_executor(None, ctx.voice_client.resume())
+        ctx.voice_client.resume()
 
         now_playing = await self.now_playing(ctx)
         now_playing.start_timestamp += time.time() - now_playing.last_pause_timestamp
@@ -339,7 +339,7 @@ class MusicManager(EventManager):
                 self.queue[ctx.guild.id].queue += removed_songs
 
         player = self.queue[ctx.guild.id].queue[0]
-        self.bot.loop.run_in_executor(None, ctx.voice_client.stop())
+        ctx.voice_client.stop()
         return player
 
     async def volume(self, ctx, volume: int = None):
