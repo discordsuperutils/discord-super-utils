@@ -1,16 +1,20 @@
+from __future__ import annotations
+
 import asyncio
 import re
 import time
 from enum import Enum
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 import aiohttp
 import discord
-from discord.ext import commands
 import youtube_dl
 
 from .Base import EventManager
 from .Spotify import SpotifyClient
+
+if TYPE_CHECKING:
+    from discord.ext import commands
 
 
 class NotPlaying(Exception):
@@ -113,13 +117,13 @@ class QueueManager:
         self.loop = Loops.NO_LOOP
         self.now_playing = None
 
-    async def add(self, player):
+    def add(self, player):
         self.queue.append(player)
 
-    async def clear(self):
+    def clear(self):
         self.queue.clear()
 
-    async def remove(self, index):
+    def remove(self, index):
         return self.queue.pop(index)
 
 
@@ -186,16 +190,16 @@ class MusicManager(EventManager):
                 return
 
             if self.queue[ctx.guild.id].loop == Loops.LOOP:
-                song: Player = self.queue[ctx.guild.id].now_playing
+                song = self.queue[ctx.guild.id].now_playing
                 player = (await Player.make_player(song.url, playlist=False))[0]
 
             elif self.queue[ctx.guild.id].loop == Loops.QUEUE_LOOP:
-                song = await self.queue[ctx.guild.id].remove(0)
+                song = self.queue[ctx.guild.id].remove(0)
                 player = (await Player.make_player(song.url, playlist=False))[0]
-                await self.queue[ctx.guild.id].add(player)
+                self.queue[ctx.guild.id].add(player)
 
             else:
-                player = await self.queue[ctx.guild.id].remove(0)
+                player = self.queue[ctx.guild.id].remove(0)
 
             self.queue[ctx.guild.id].now_playing = player
 
@@ -203,9 +207,7 @@ class MusicManager(EventManager):
                 return
 
             player.volume = self.queue[ctx.guild.id].volume
-            ctx.voice_client.play(player, after=lambda x: self.bot.loop.create_task(
-                self.__check_queue(ctx))
-                                  )
+            ctx.voice_client.play(player, after=lambda x: self.bot.loop.create_task(self.__check_queue(ctx)))
             player.start_timestamp = time.time()
 
             if self.queue[ctx.guild.id].loop == Loops.NO_LOOP:
@@ -251,7 +253,7 @@ class MusicManager(EventManager):
             return
 
         if ctx.guild.id in self.queue:
-            await self.queue[ctx.guild.id].add(player)
+            self.queue[ctx.guild.id].queue += player
         else:
             self.queue[ctx.guild.id] = QueueManager(0.1, player)
 
@@ -262,12 +264,12 @@ class MusicManager(EventManager):
             return
 
         try:
-            await self.queue[ctx.guild.id].remove(index)
+            self.queue[ctx.guild.id].remove(index)
         except IndexError:
             await self.call_event('on_music_error', ctx, QueueError("Failure when removing player from queue"))
 
     async def lyrics(self, ctx, query=None):
-        query = self.now_playing(ctx) if query is None else query
+        query = await self.now_playing(ctx) if query is None else query
         url = f"https://some-random-api.ml/lyrics?title={query}"
 
         async with aiohttp.ClientSession() as session:
@@ -426,4 +428,4 @@ class MusicManager(EventManager):
         :rtype: None
         """
 
-        await self.queue[ctx.guild.id].clear()
+        self.queue[ctx.guild.id].clear()
