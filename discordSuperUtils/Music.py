@@ -1,5 +1,6 @@
 import asyncio
 import re
+import time
 from enum import Enum
 from typing import Optional
 
@@ -92,6 +93,10 @@ class Player(discord.PCMVolumeTransformer):
         self.title = data.get('title')
         self.stream_url = data.get('url')
         self.url = data.get('webpage_url')
+
+        self.start_timestamp = 0
+        self.last_pause_timestamp = 0
+
         self.duration = data.get('duration') if data.get('duration') != 0 else "LIVE"
 
     def __str__(self):
@@ -207,6 +212,7 @@ class MusicManager(EventManager):
 
             player.volume = self.queue[ctx.guild.id].volume
             ctx.voice_client.play(player, after=lambda x: self.__check_queue(ctx))
+            player.start_timestamp = time.time()
 
             if self.queue[ctx.guild.id].loop == Loops.NO_LOOP:
                 self.queue[ctx.guild.id].history.append(player)
@@ -214,7 +220,20 @@ class MusicManager(EventManager):
                     self.call_event('on_play', ctx, player)
                 )
         except (IndexError, KeyError):
+            if ctx.guild.id in self.queue:
+                self.queue[ctx.guild.id].now_playing = None
+
             self.bot.loop.create_task(self.call_event("on_queue_end", ctx))
+
+    async def get_player_played_duration(self, ctx, player):
+        if not await self.__check_connection(ctx):
+            return
+
+        start_timestamp = player.start_timestamp
+        if ctx.voice_client.is_paused():
+            start_timestamp = player.start_timestamp + time.time() - player.last_pause_timestamp
+
+        return min(time.time() - start_timestamp, player.duration)
 
     @staticmethod
     async def fetch_data(query: str):
@@ -282,6 +301,7 @@ class MusicManager(EventManager):
             await self.call_event('on_music_error', ctx, AlreadyPaused("Player is already paused."))
             return
 
+        (await self.now_playing(ctx)).last_pause_timestamp = time.time()
         ctx.voice_client.pause()
         self.bot.loop.create_task(self.__ensure_activity(ctx))
         return True
@@ -295,6 +315,10 @@ class MusicManager(EventManager):
             return
 
         ctx.voice_client.resume()
+
+        now_playing = await self.now_playing(ctx)
+        now_playing.start_timestamp += time.time() - now_playing.last_pause_timestamp
+
         return True
 
     async def skip(self, ctx, index=None):
@@ -361,10 +385,14 @@ class MusicManager(EventManager):
         return self.queue[ctx.guild.id].history
 
     async def now_playing(self, ctx):
-        if not await self.__check_connection(ctx, check_playing=True, check_queue=True):
+        if not await self.__check_connection(ctx, check_queue=True):
             return
 
-        return self.queue[ctx.guild.id].now_playing
+        now_playing = self.queue[ctx.guild.id].now_playing
+        if not now_playing and not ctx.voice_client.is_paused():
+            await self.call_event('on_music_error', ctx, NotPlaying("Client is not playing anything currently"))
+
+        return now_playing
 
     async def queueloop(self, ctx):
         if not await self.__check_connection(ctx, check_playing=True, check_queue=True):

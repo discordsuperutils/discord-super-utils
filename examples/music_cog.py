@@ -43,7 +43,11 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     @commands.command()
     async def np(self, ctx):
         if player := await self.MusicManager.now_playing(ctx):
-            await ctx.send(f"Now Playing: {player}")
+            duration_played = await MusicManager.get_player_played_duration(ctx, player)
+            # You can format it, of course.
+
+            await ctx.send(f"Currently playing: {player}, \n"
+                           f"Duration: {duration_played}/{player.duration}")
 
     @commands.command()
     async def join(self, ctx):

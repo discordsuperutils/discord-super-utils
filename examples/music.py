@@ -45,7 +45,11 @@ async def leave(ctx):
 @bot.command()
 async def np(ctx):
     if player := await MusicManager.now_playing(ctx):
-        await ctx.send(f"Currently playing: {player}")
+        duration_played = await MusicManager.get_player_played_duration(ctx, player)
+        # You can format it, of course.
+
+        await ctx.send(f"Currently playing: {player}, \n"
+                       f"Duration: {duration_played}/{player.duration}")
 
 
 @bot.command()
