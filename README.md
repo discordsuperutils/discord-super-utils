@@ -39,6 +39,7 @@ Features
 - Modern Punishment Manager (Kick, Ban, Infractions, Mutes)
 - Modern Template Manager.
 - Modern CogManager that supports usage of managers in discord cogs.
+- Modern MessageFilter and AntiSpam.
 - And many more!
 (MORE COMING SOON!)
 
@@ -63,16 +64,14 @@ from discord.ext import commands
 import discordSuperUtils
 
 bot = commands.Bot(command_prefix='-', intents=discord.Intents.all())
-RoleManager = discordSuperUtils.RoleManager()
-LevelingManager = discordSuperUtils.LevelingManager(bot, RoleManager)
+LevelingManager = discordSuperUtils.LevelingManager(bot, award_role=True)
 ImageManager = discordSuperUtils.ImageManager()  # LevelingManager uses ImageManager to create the rank command.
 
 
 @bot.event
 async def on_ready():
     database = discordSuperUtils.DatabaseManager.connect(...)
-    await RoleManager.connect_to_database(database, ["xp_roles"])
-    await LevelingManager.connect_to_database(database, ["xp"])
+    await LevelingManager.connect_to_database(database, ["xp", "roles", "role_list"])
 
     print('Leveling manager is ready.', bot.user)
 
@@ -104,8 +103,12 @@ async def rank(ctx):
 
 
 @bot.command()
-async def set_roles(ctx, *roles: discord.Role):
-    await RoleManager.set_roles(ctx.guild, {"roles": roles})
+async def set_roles(ctx, interval: int, *roles: discord.Role):
+    await LevelingManager.set_interval(ctx.guild, interval)
+    await LevelingManager.set_roles(ctx.guild, roles)
+
+    await ctx.send(
+        f"Successfully set the interval to {interval} and role list to {', '.join(role.name for role in roles)}")
 
 
 @bot.command()
@@ -138,12 +141,23 @@ client_id = ...
 client_secret = ...
 
 bot = commands.Bot(command_prefix='-')
-MusicManager = MusicManager(bot, client_id=client_id, client_secret=client_secret)
+MusicManager = MusicManager(bot, client_id=client_id, client_secret=client_secret, inactivity_timeout=30)
 
 
 @MusicManager.event()
 async def on_music_error(ctx, error):
     raise error  # add your error handling here! Errors are listed in the documentation.
+
+
+@MusicManager.event()
+async def on_queue_end(ctx):
+    print(f"The queue has ended in {ctx}")
+    # You could wait and check activity, etc...
+
+
+@MusicManager.event()
+async def on_inactivity_disconnect(ctx):
+    print(f"I have left {ctx} due to inactivity..")
 
 
 @MusicManager.event()
@@ -165,7 +179,11 @@ async def leave(ctx):
 @bot.command()
 async def np(ctx):
     if player := await MusicManager.now_playing(ctx):
-        await ctx.send(f"Currently playing: {player}")
+        duration_played = await MusicManager.get_player_played_duration(ctx, player)
+        # You can format it, of course.
+
+        await ctx.send(f"Currently playing: {player}, \n"
+                       f"Duration: {duration_played}/{player.duration}")
 
 
 @bot.command()
@@ -187,6 +205,18 @@ async def play(ctx, *, query: str):
 
     else:
         await ctx.send("Query not found.")
+
+
+@bot.command()
+async def pause(ctx):
+    if await MusicManager.pause(ctx):
+        await ctx.send("Player paused.")
+
+
+@bot.command()
+async def resume(ctx):
+    if await MusicManager.resume(ctx):
+        await ctx.send("Player resumed.")
 
 
 @bot.command()
