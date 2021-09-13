@@ -64,7 +64,7 @@ async def play(ctx, *, query: str):
         player = await MusicManager.create_player(query)
 
     if player:
-        await MusicManager.queue_add(player=player, ctx=ctx)
+        await MusicManager.queue_add(players=player, ctx=ctx)
 
         if not await MusicManager.play(ctx):
             await ctx.send("Added to queue")
