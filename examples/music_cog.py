@@ -60,7 +60,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
             player = await self.MusicManager.create_player(query)
 
         if player:
-            await self.MusicManager.queue_add(player=player, ctx=ctx)
+            await self.MusicManager.queue_add(players=player, ctx=ctx)
 
             if not await self.MusicManager.play(ctx):
                 await ctx.send("Added to queue")
