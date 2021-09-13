@@ -4,7 +4,14 @@ import asyncio
 import re
 import time
 from enum import Enum
-from typing import Optional, TYPE_CHECKING
+from typing import (
+    Optional,
+    TYPE_CHECKING,
+    Iterable,
+    List,
+    Union,
+    Any
+)
 
 import aiohttp
 import discord
@@ -15,6 +22,24 @@ from .Spotify import SpotifyClient
 
 if TYPE_CHECKING:
     from discord.ext import commands
+
+__all__ = (
+    "NotPlaying",
+    "AlreadyPlaying",
+    "NotConnected",
+    "NotPaused",
+    "QueueEmpty",
+    "AlreadyConnected",
+    "AlreadyPaused",
+    "QueueError",
+    "SkipError",
+    "UserNotConnected",
+    "InvalidSkipIndex",
+    "Loops",
+    "Player",
+    "QueueManager",
+    "MusicManager"
+)
 
 
 class NotPlaying(Exception):
@@ -68,6 +93,12 @@ class Loops(Enum):
 
 
 class Player(discord.PCMVolumeTransformer):
+    """
+    Represents a music player.
+    """
+
+    __slots__ = ("data", "title", "stream_url", "url", "start_timestamp", "last_pause_timestamp", "duration")
+
     def __init__(self, source, *, data, volume=0.1):
         super().__init__(source, volume)
 
@@ -85,14 +116,37 @@ class Player(discord.PCMVolumeTransformer):
         return self.title
 
     @staticmethod
-    async def make_multiple_players(songs):
-        tasks = [Player.make_player(song, playlist=False) for song in songs]
-        players = await asyncio.gather(*tasks)
+    async def make_multiple_players(songs: Iterable[str]) -> List[Player]:
+        """
+        |coro|
 
-        return [x[0] for x in players if x]
+        Returns a list of players from a iterable of queries.
+
+        :param songs: The queries.
+        :type songs: Iterable[str]
+        :return: The list of created players.
+        :rtype: List[Player]
+        """
+
+        tasks = [Player.make_player(song, playlist=False) for song in songs]
+        return [x[0] for x in await asyncio.gather(*tasks) if x]
 
     @classmethod
-    async def make_player(cls, query: str, playlist=True) -> list:
+    async def make_player(cls, query: str, playlist: bool = True) -> List[Player]:
+        """
+        |coro|
+
+        Returns a list of players from the query.
+        The list will contain the first video incase it is not a playlist.
+
+        :param query: The query.
+        :type query: str
+        :param playlist: A bool indicating if the function should fetch playlists or get the first video.
+        :type playlist: bool
+        :return: The list of created players.
+        :rtype: List[Player]
+        """
+
         data = await MusicManager.fetch_data(query)
         if data is None:
             return []
@@ -110,24 +164,55 @@ class Player(discord.PCMVolumeTransformer):
 
 
 class QueueManager:
-    def __init__(self, volume, queue):
+    __slots__ = ("queue", "volume", "history", "loop", "now_playing")
+
+    def __init__(self, volume: float, queue: List[Player]):
         self.queue = queue
         self.volume = volume
         self.history = []
         self.loop = Loops.NO_LOOP
         self.now_playing = None
 
-    def add(self, player):
+    def add(self, player: Player) -> None:
+        """
+        Adds a player to the queue.
+
+        :param player: The player to add.
+        :type player: Player
+        :return: None
+        :rtype: None
+        """
+
         self.queue.append(player)
 
-    def clear(self):
+    def clear(self) -> None:
+        """
+        Clears the queue.
+
+        :return: None
+        :rtype: None
+        """
+
         self.queue.clear()
 
-    def remove(self, index):
+    def remove(self, index: int) -> Union[Player, Any]:
+        """
+        Removes and element from the queue at the specified index, and returns the element's value.
+
+        :param index: The index.
+        :type index: int
+        :return: The element's value
+        :rtype: Union[Player, Any]
+        """
+
         return self.queue.pop(index)
 
 
 class MusicManager(EventManager):
+    """
+    Represents a MusicManager.
+    """
+
     FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
     SPOTIFY_RE = re.compile("^https://open.spotify.com/")
     YTDL = youtube_dl.YoutubeDL({
@@ -142,7 +227,9 @@ class MusicManager(EventManager):
         'default_search': 'auto'
     })
 
-    def __init__(self, bot, spotify_support=True, inactivity_timeout: int = 60, **kwargs):
+    __slots__ = ("bot", "client_id", "client_secret", "spotify_support", "inactivity_timeout", "queue", "spotify")
+
+    def __init__(self, bot: commands.Bot, spotify_support: bool = True, inactivity_timeout: int = 60, **kwargs):
         super().__init__()
         self.bot = bot
 
@@ -156,7 +243,19 @@ class MusicManager(EventManager):
         if spotify_support:
             self.spotify = SpotifyClient(client_id=self.client_id, client_secret=self.client_secret)
 
-    async def __ensure_activity(self, ctx):
+    async def __ensure_activity(self, ctx: commands.Context) -> None:
+        """
+        |coro|
+
+        Waits the inactivity timeout and ensures the voice client in ctx is playing a song.
+        If no song is playing, it disconnects and calls the on_inactivity_timeout event.
+
+        :param ctx: The context.
+        :type ctx: commands.Context
+        :return: None
+        :rtype: None
+        """
+
         if self.inactivity_timeout is None:
             return
 
@@ -169,7 +268,25 @@ class MusicManager(EventManager):
             await ctx.voice_client.disconnect()
             await self.call_event("on_inactivity_disconnect", ctx)
 
-    async def __check_connection(self, ctx, check_playing: bool = False, check_queue: bool = False) -> Optional[bool]:
+    async def __check_connection(self,
+                                 ctx: commands.Context,
+                                 check_playing: bool = False,
+                                 check_queue: bool = False) -> Optional[bool]:
+        """
+        |coro|
+
+        Checks the connection state of the voice client in ctx.
+
+        :param ctx: The context.
+        :type ctx: commands.Context
+        :param check_playing: A bool indicating if the function should check if a song is playing.
+        :type check_playing: bool
+        :param check_queue: A bool indicating if the function should check if a queue exists.
+        :type check_queue: bool
+        :return: True if all the checks passed.
+        :rtype: bool
+        """
+
         if not ctx.voice_client or not ctx.voice_client.is_connected():
             await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
             return
@@ -184,7 +301,18 @@ class MusicManager(EventManager):
 
         return True
 
-    async def __check_queue(self, ctx):
+    async def __check_queue(self, ctx: commands.Context) -> None:
+        """
+        |coro|
+
+        Plays the next song in the queue, handles looping and queue looping.
+
+        :param ctx: The context of the voice client.
+        :type ctx: commands.Contet
+        :return: None
+        :rtype: None
+        """
+
         try:
             if not ctx.voice_client or not ctx.voice_client.is_connected():
                 return
@@ -212,16 +340,28 @@ class MusicManager(EventManager):
 
             if self.queue[ctx.guild.id].loop == Loops.NO_LOOP:
                 self.queue[ctx.guild.id].history.append(player)
-                self.bot.loop.create_task(
-                    self.call_event('on_play', ctx, player)
-                )
+                await self.call_event('on_play', ctx, player)
+
         except (IndexError, KeyError):
             if ctx.guild.id in self.queue:
                 self.queue[ctx.guild.id].now_playing = None
 
-            self.bot.loop.create_task(self.call_event("on_queue_end", ctx))
+            await self.call_event("on_queue_end", ctx)
 
-    async def get_player_played_duration(self, ctx, player):
+    async def get_player_played_duration(self, ctx: commands.Context, player: Player) -> Optional[float]:
+        """
+        |coro|
+
+        Returns the played duration of a player.
+
+        :param ctx: The context.
+        :type ctx: commands.Context
+        :param player: The player.
+        :type player: Player
+        :return: The played duration of the player in seconds.
+        :rtype: Optional[float]
+        """
+
         if not await self.__check_connection(ctx):
             return
 
@@ -233,32 +373,79 @@ class MusicManager(EventManager):
         return min(time_played, time_played if player.duration == "LIVE" else player.duration)
 
     @staticmethod
-    async def fetch_data(query: str):
+    async def fetch_data(query: str) -> Optional[dict]:
+        """
+        |coro|
+
+        Fetches the YTDL data of the query.
+
+        :param query: The query.
+        :type query: str
+        :return: The YTDL data.
+        :rtype: Optional[dict]
+        """
+
         try:
             loop = asyncio.get_event_loop()
             return await loop.run_in_executor(None, lambda: MusicManager.YTDL.extract_info(query, download=False))
         except youtube_dl.utils.DownloadError:
             return None
 
-    async def create_player(self, query):
+    async def create_player(self, query: str) -> List[Player]:
+        """
+        |coro|
+
+        Creates a list of players from the query.
+        This function supports Spotify and all YTDL supported links.
+
+        :param query: The query.
+        :type query: str
+        :return: The list of players.
+        :rtype: List[Player]
+        """
+
         if self.SPOTIFY_RE.match(query) and self.spotify_support:
             return await Player.make_multiple_players([song for song in await self.spotify.get_songs(query)])
 
         return await Player.make_player(query)
 
-    async def queue_add(self, player, ctx):
-        """Adds specified player object to queue"""
+    async def queue_add(self, players: List[Player], ctx: commands.Context) -> None:
+        """
+        |coro|
+
+        Adds a list of players to the ctx queue.
+        If a queue does not exist in ctx, it creates one.
+
+        :param players: The list of players.
+        :type players: List[Player]
+        :param ctx: The context.
+        :type ctx: commands.Context
+        :return: None
+        :rtype: None
+        """
 
         if not await self.__check_connection(ctx):
             return
 
         if ctx.guild.id in self.queue:
-            self.queue[ctx.guild.id].queue += player
+            self.queue[ctx.guild.id].queue += players
         else:
-            self.queue[ctx.guild.id] = QueueManager(0.1, player)
+            self.queue[ctx.guild.id] = QueueManager(0.1, players)
 
-    async def queue_remove(self, ctx, index):
-        """Removed specified player object from queue"""
+    async def queue_remove(self, ctx: commands.Context, index: int) -> None:
+        """
+        |coro|
+
+        Removes a player from the queue in ctx at the specified index.
+        Calls on_music_error with QueueError if index is invalid.
+
+        :param ctx: The context.
+        :type ctx: commands.Context
+        :param index: The index.
+        :type index: int
+        :return: None
+        :rtype: None
+        """
 
         if not await self.__check_connection(ctx, check_queue=True):
             return
@@ -268,7 +455,20 @@ class MusicManager(EventManager):
         except IndexError:
             await self.call_event('on_music_error', ctx, QueueError("Failure when removing player from queue"))
 
-    async def lyrics(self, ctx, query=None):
+    async def lyrics(self, ctx: commands.Context, query: str = None) -> Optional[str]:
+        """
+        |coro|
+
+        Returns the lyrics from the query or the currently playing song.
+
+        :param ctx: The context.
+        :type ctx: commands.Context
+        :param query: The query.
+        :type query: str
+        :return: The lyrics.
+        :rtype: Optional[str]
+        """
+
         query = await self.now_playing(ctx) if query is None else query
         url = f"https://some-random-api.ml/lyrics?title={query}"
 
@@ -278,7 +478,20 @@ class MusicManager(EventManager):
 
             return request_json.get('lyrics', None)
 
-    async def play(self, ctx, player=None):
+    async def play(self, ctx: commands.Context, player: Player = None) -> Optional[bool]:
+        """
+        |coro|
+
+        Plays the player or the next song in the queue if the player is not passed.
+
+        :param ctx: The context.
+        :type ctx: commands.Context
+        :param player: The player.
+        :type player: Player
+        :return: A bool indicating if the play was successful
+        :rtype: Optional[bool]
+        """
+
         if not await self.__check_connection(ctx):
             return
 
@@ -290,7 +503,19 @@ class MusicManager(EventManager):
             await self.__check_queue(ctx)
             return True
 
-    async def pause(self, ctx):
+    async def pause(self, ctx: commands.Context) -> Optional[bool]:
+        """
+        |coro|
+
+        Pauses the currently playing song in ctx.
+        Calls on_music_error with AlreadyPaused if already paused.
+
+        :param ctx: The context.
+        :type ctx: commands.Context
+        :return: A bool indicating if the pause was successful
+        :rtype: Optional[bool]
+        """
+
         if not await self.__check_connection(ctx):
             return
 
@@ -303,7 +528,19 @@ class MusicManager(EventManager):
         self.bot.loop.create_task(self.__ensure_activity(ctx))
         return True
 
-    async def resume(self, ctx):
+    async def resume(self, ctx: commands.Context) -> Optional[bool]:
+        """
+        |coro|
+
+        Resumes the currently paused song in ctx.
+        Calls on_music_error with NotPaused if not paused.
+
+        :param ctx: The context.
+        :type ctx: commands.Context
+        :return: A bool indicating if the resume was successful
+        :rtype: Optional[bool]
+        """
+
         if not await self.__check_connection(ctx):
             return
 
@@ -318,7 +555,21 @@ class MusicManager(EventManager):
 
         return True
 
-    async def skip(self, ctx, index=None):
+    async def skip(self, ctx: commands.Context, index: int = None) -> Optional[Player]:
+        """
+        |coro|
+
+        Skips to the index in ctx.
+        Calls on_music_error with InvalidSkipIndex or SkipError.
+
+        :param index: The index to skip to.
+        :type index: int
+        :param ctx: The context.
+        :type ctx: commands.Context
+        :return: A bool indicating if the skip was successful
+        :rtype: Optional[Player]
+        """
+
         if not await self.__check_connection(ctx, True, check_queue=True):
             return
 
@@ -344,7 +595,21 @@ class MusicManager(EventManager):
         ctx.voice_client.stop()
         return player
 
-    async def volume(self, ctx, volume: int = None):
+    async def volume(self, ctx: commands.Context, volume: int = None) -> Optional[float]:
+        """
+        |coro|
+
+        Sets the volume in ctx.
+        Returns the current volume if volume is None.
+
+        :param volume: The volume to set.
+        :type volume: int
+        :param ctx: The context.
+        :type ctx: commands.Context
+        :return: The new volume.
+        :rtype: Optional[float]
+        """
+
         if not await self.__check_connection(ctx, True, check_queue=True):
             return
 
@@ -355,7 +620,19 @@ class MusicManager(EventManager):
         self.queue[ctx.guild.id].volume = volume / 100
         return ctx.voice_client.source.volume * 100
 
-    async def join(self, ctx):
+    async def join(self, ctx: commands.Context) -> Optional[bool]:
+        """
+        |coro|
+
+        Joins the ctx voice channel.
+        Calls on_music_error with AlreadyConnected or UserNotConnected.
+
+        :param ctx: The context.
+        :type ctx: commands.Context
+        :return: A bool indicating if the join was successful.
+        :rtype: Optional[bool]
+        """
+
         if ctx.voice_client and ctx.voice_client.is_connected():
             await self.call_event('on_music_error', ctx,
                                   AlreadyConnected("Client is already connected to a voice channel"))
@@ -368,20 +645,53 @@ class MusicManager(EventManager):
         await ctx.author.voice.channel.connect()
         return True
 
-    async def leave(self, ctx):
+    async def leave(self, ctx: commands.Context) -> Optional[bool]:
+        """
+        |coro|
+
+        Leaves the voice channel in ctx.
+
+        :param ctx: The context.
+        :type ctx: commands.Context
+        :return: A bool indicating if the disconnection was successful.
+        :rtype: Optional[bool]
+        """
+
         if not await self.__check_connection(ctx):
             return
 
         await ctx.voice_client.disconnect()
         return True
 
-    async def history(self, ctx):
+    async def history(self, ctx: commands.Context) -> Optional[List[Player]]:
+        """
+        |coro|
+
+        Returns a list of the played players.
+
+        :param ctx: The context.
+        :type ctx: commands.Context
+        :return: A list of played players.
+        :rtype: Optional[List[Player]]
+        """
+
         if not await self.__check_connection(ctx, check_queue=True):
             return
 
         return self.queue[ctx.guild.id].history
 
-    async def now_playing(self, ctx):
+    async def now_playing(self, ctx: commands.Context) -> Optional[Player]:
+        """
+        |coro|
+
+        Returns the currently playing player.
+
+        :param ctx: The context.
+        :type ctx: commands.Context
+        :return: The currently playing player.
+        :rtype: Optional[Player]
+        """
+
         if not await self.__check_connection(ctx, check_queue=True):
             return
 
@@ -391,7 +701,18 @@ class MusicManager(EventManager):
 
         return now_playing
 
-    async def queueloop(self, ctx):
+    async def queueloop(self, ctx: commands.Context) -> Optional[bool]:
+        """
+        |coro|
+
+        Toggles the queue loop.
+
+        :param ctx: The context
+        :type ctx: commands.Context
+        :return: A bool indicating if the queue loop is now enabled or disabled.
+        :rtype: Optional[bool]
+        """
+
         if not await self.__check_connection(ctx, check_playing=True, check_queue=True):
             return
 
@@ -403,14 +724,36 @@ class MusicManager(EventManager):
 
         return self.queue[ctx.guild.id].loop == Loops.QUEUE_LOOP
 
-    async def loop(self, ctx):
+    async def loop(self, ctx: commands.Context) -> Optional[bool]:
+        """
+        |coro|
+
+        Toggles the loop.
+
+        :param ctx: The context
+        :type ctx: commands.Context
+        :return: A bool indicating if the loop is now enabled or disabled.
+        :rtype: Optional[bool]
+        """
+
         if not await self.__check_connection(ctx, check_playing=True, check_queue=True):
             return
 
         self.queue[ctx.guild.id].loop = Loops.LOOP if self.queue[ctx.guild.id].loop != Loops.LOOP else Loops.NO_LOOP
         return self.queue[ctx.guild.id].loop == Loops.LOOP
 
-    async def get_queue(self, ctx):
+    async def get_queue(self, ctx: commands.Context) -> Optional[List[Player]]:
+        """
+        |coro|
+
+        Returns the queue of ctx.
+
+        :param ctx: The context.
+        :type ctx: commands.Context
+        :return: The queue.
+        :rtype: Optional[List[Player]]
+        """
+
         if not await self.__check_connection(ctx, check_queue=True):
             return
 
