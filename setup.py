@@ -6,7 +6,7 @@ README = f.read()
 setup(
     name='discordSuperUtils',
     packages=['discordSuperUtils'],
-    package_data={"discordSuperUtils.assets": ["*"], '': ["*.png", "*.ttf"]},
+    package_data={"discordSuperUtils.assets": ["*"], '': ["*.png", "*.ttf"], "discordSuperUtils.Interactions": ["*"]},
     include_package_data=True,
     version='0.1.7',
     license='MIT',
@@ -15,7 +15,7 @@ setup(
     long_description_content_type="text/markdown",
     author='koyashie07 and adam7100',
     url='https://github.com/discordsuperutils/discord-super-utils',
-    download_url='https://github.com/discordsuperutils/discord-super-utils/archive/refs/tags/v0.1.6.tar.gz',
+    download_url='https://github.com/discordsuperutils/discord-super-utils/archive/refs/tags/v0.1.7.tar.gz',
     keywords=['discord', 'easy', 'discord.py', 'music', 'download', 'links', 'images', 'videos', 'audio', 'bot',
               'paginator', 'economy', 'reaction', 'reaction roles', 'database', 'database manager'],
     install_requires=[
