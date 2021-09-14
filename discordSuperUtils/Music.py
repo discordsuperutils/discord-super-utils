@@ -243,7 +243,7 @@ class MusicManager(EventManager):
         if spotify_support:
             self.spotify = SpotifyClient(client_id=self.client_id, client_secret=self.client_secret)
 
-    async def __ensure_activity(self, ctx: commands.Context) -> None:
+    async def ensure_activity(self, ctx: commands.Context) -> None:
         """
         |coro|
 
@@ -525,7 +525,7 @@ class MusicManager(EventManager):
 
         (await self.now_playing(ctx)).last_pause_timestamp = time.time()
         ctx.voice_client.pause()
-        self.bot.loop.create_task(self.__ensure_activity(ctx))
+        self.bot.loop.create_task(self.ensure_activity(ctx))
         return True
 
     async def resume(self, ctx: commands.Context) -> Optional[bool]:
