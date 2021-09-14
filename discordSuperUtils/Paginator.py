@@ -2,7 +2,6 @@ import asyncio
 from math import ceil
 
 import discord
-from discord_components import ActionRow, Button, ButtonStyle, DiscordComponents
 
 __all__ = ("generate_embeds", "EmojiError", "PageManager", "ButtonsPageManager")
 
@@ -48,7 +47,7 @@ class EmojiError(Exception):
 class ButtonsPageManager:
     __slots__ = ("ctx", "messages", "timeout", "buttons", "public", "index", "button_color")
 
-    def __init__(self, ctx, messages, timeout=60, buttons=None, public=False, index=0, button_color=ButtonStyle.red):
+    def __init__(self, ctx, messages, timeout=60, buttons=None, public=False, index=0, button_color=None):
         self.ctx = ctx
         self.messages = messages
         self.timeout = timeout
@@ -63,12 +62,13 @@ class ButtonsPageManager:
 
         self.index = 0 if not -1 < self.index < len(self.messages) else self.index
 
+        from discord_components import ActionRow, Button, ButtonStyle, DiscordComponents
         DiscordComponents(self.ctx.bot)
 
         components = ActionRow(
             [
                 Button(
-                    style=self.button_color,
+                    style=self.button_color or ButtonStyle.red,
                     label=button,
                     custom_id=button
                 )
@@ -78,6 +78,7 @@ class ButtonsPageManager:
 
         message_to_send = self.messages[self.index]
         # message_to_send must be of type embed, sadly, discord_components breaks the Messageable.send method
+        # And breaks the file parameter, too
         message = await self.ctx.send(embed=message_to_send, components=components)
 
         while True:
