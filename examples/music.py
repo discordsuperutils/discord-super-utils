@@ -3,12 +3,17 @@ from discord.ext import commands
 import discordSuperUtils
 from discordSuperUtils import MusicManager
 
-client_id = ...
-client_secret = ...
+client_id = ""
+client_secret = ""
 
 bot = commands.Bot(command_prefix='-')
-MusicManager = MusicManager(bot, client_id=client_id, client_secret=client_secret, inactivity_timeout=30)
+MusicManager = MusicManager(bot, spotify_support=False)
 
+
+# MusicManager = MusicManager(bot, client_id=client_id,
+#                                   client_secret=client_secret, spotify_support=True)
+
+# if using spotify support use this instead ^^^
 
 @MusicManager.event()
 async def on_music_error(ctx, error):

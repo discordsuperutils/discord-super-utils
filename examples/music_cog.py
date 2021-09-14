@@ -12,6 +12,12 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
         # self.client_secret = ""
         # self.client_id = ""
         self.MusicManager = MusicManager(self.bot, spotify_support=False)
+
+        # self.MusicManager = MusicManager(bot, client_id=self.client_id,
+        #                                   client_secret=self.client_secret, spotify_support=True)
+
+        # if using spotify support use this instead ^^^
+
         super().__init__()
 
     @discordSuperUtils.CogManager.event(discordSuperUtils.MusicManager)
