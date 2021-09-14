@@ -23,6 +23,22 @@ from .Spotify import SpotifyClient
 if TYPE_CHECKING:
     from discord.ext import commands
 
+
+FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
+SPOTIFY_RE = re.compile("^https://open.spotify.com/")
+YTDL = youtube_dl.YoutubeDL({
+    'format': 'bestaudio/best',
+    'restrictfilenames': True,
+    'noplaylist': False,
+    'nocheckcertificate': True,
+    'ignoreerrors': False,
+    'logtostderr': False,
+    'quiet': True,
+    'no_warnings': True,
+    'default_search': 'auto'
+})
+
+
 __all__ = (
     "NotPlaying",
     "NotConnected",
@@ -152,10 +168,10 @@ class Player(discord.PCMVolumeTransformer):
             else:
                 return [cls(
                     discord.FFmpegPCMAudio(player['url'],
-                                           **MusicManager.FFMPEG_OPTIONS), data=player) for player in data['entries']]
+                                           **FFMPEG_OPTIONS), data=player) for player in data['entries']]
 
         filename = data['url']
-        return [cls(discord.FFmpegPCMAudio(filename, **MusicManager.FFMPEG_OPTIONS), data=data)]
+        return [cls(discord.FFmpegPCMAudio(filename, **FFMPEG_OPTIONS), data=data)]
 
 
 class QueueManager:
@@ -207,20 +223,6 @@ class MusicManager(EventManager):
     """
     Represents a MusicManager.
     """
-
-    FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
-    SPOTIFY_RE = re.compile("^https://open.spotify.com/")
-    YTDL = youtube_dl.YoutubeDL({
-        'format': 'bestaudio/best',
-        'restrictfilenames': True,
-        'noplaylist': False,
-        'nocheckcertificate': True,
-        'ignoreerrors': False,
-        'logtostderr': False,
-        'quiet': True,
-        'no_warnings': True,
-        'default_search': 'auto'
-    })
 
     __slots__ = ("bot", "client_id", "client_secret", "spotify_support", "inactivity_timeout", "queue", "spotify")
 
@@ -379,7 +381,7 @@ class MusicManager(EventManager):
 
         try:
             loop = asyncio.get_event_loop()
-            return await loop.run_in_executor(None, lambda: MusicManager.YTDL.extract_info(query, download=False))
+            return await loop.run_in_executor(None, lambda: YTDL.extract_info(query, download=False))
         except youtube_dl.utils.DownloadError:
             return None
 
@@ -396,7 +398,7 @@ class MusicManager(EventManager):
         :rtype: List[Player]
         """
 
-        if self.SPOTIFY_RE.match(query) and self.spotify_support:
+        if SPOTIFY_RE.match(query) and self.spotify_support:
             return await Player.make_multiple_players([song for song in await self.spotify.get_songs(query)])
 
         return await Player.make_player(query)
@@ -657,7 +659,7 @@ class MusicManager(EventManager):
             return
 
         channel = ctx.voice_client.channel
-        await channel.disconnect()
+        await ctx.voice_client.disconnect()
         return channel
 
     async def history(self, ctx: commands.Context) -> Optional[List[Player]]:
