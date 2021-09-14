@@ -404,7 +404,7 @@ class MusicManager(EventManager):
 
         return await Player.make_player(query)
 
-    async def queue_add(self, players: List[Player], ctx: commands.Context) -> None:
+    async def queue_add(self, players: List[Player], ctx: commands.Context) -> Optional[bool]:
         """
         |coro|
 
@@ -415,8 +415,8 @@ class MusicManager(EventManager):
         :type players: List[Player]
         :param ctx: The context.
         :type ctx: commands.Context
-        :return: None
-        :rtype: None
+        :return: A bool indicating if it was successful
+        :rtype: Optional[bool]
         """
 
         if not await self.__check_connection(ctx):
@@ -426,6 +426,8 @@ class MusicManager(EventManager):
             self.queue[ctx.guild.id].queue += players
         else:
             self.queue[ctx.guild.id] = QueueManager(0.1, players)
+
+        return True
 
     async def queue_remove(self, ctx: commands.Context, index: int) -> None:
         """
