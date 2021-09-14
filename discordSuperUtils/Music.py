@@ -338,9 +338,6 @@ class MusicManager(EventManager):
                 await self.call_event('on_play', ctx, player)
 
         except (IndexError, KeyError):
-            if ctx.guild.id in self.queue:
-                self.queue[ctx.guild.id].now_playing = None
-
             await self.call_event("on_queue_end", ctx)
 
     async def get_player_played_duration(self, ctx: commands.Context, player: Player) -> Optional[float]:
@@ -580,6 +577,7 @@ class MusicManager(EventManager):
 
         if len(self.queue[ctx.guild.id].queue) <= skip_index:
             await self.call_event('on_music_error', ctx, SkipError("No song to skip to."))
+            return
 
         if skip_index > 0:
             removed_songs = self.queue[ctx.guild.id].queue[:skip_index]
@@ -695,7 +693,7 @@ class MusicManager(EventManager):
             return
 
         now_playing = self.queue[ctx.guild.id].now_playing
-        if not now_playing and not ctx.voice_client.is_paused():
+        if not ctx.voice_client.is_playing() and not ctx.voice_client.is_paused():
             await self.call_event('on_music_error', ctx, NotPlaying("Client is not playing anything currently"))
 
         return now_playing
