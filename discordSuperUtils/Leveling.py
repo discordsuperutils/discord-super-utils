@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     import discord
 
 
-class LevellingAccount:
+class LevelingAccount:
     def __init__(self, database, table, guild: int, member: int, rank_multiplier=1.5):
         self.database = database
         self.table = table
@@ -27,7 +27,7 @@ class LevellingAccount:
 
     @property
     def __checks(self):
-        return LevellingManager.generate_checks(self.guild, self.member)
+        return LevelingManager.generate_checks(self.guild, self.member)
 
     async def xp(self):
         xp_data = await self.database.select(self.table, ['xp'], self.__checks)
@@ -62,7 +62,7 @@ class LevellingAccount:
         await self.database.update(self.table, {"level_up": value}, self.__checks)
 
 
-class LevellingManager(DatabaseChecker):
+class LevelingManager(DatabaseChecker):
     def __init__(self,
                  bot,
                  award_role: bool = False,
@@ -221,7 +221,7 @@ class LevellingManager(DatabaseChecker):
                                                  True)
 
         if member_data:
-            return LevellingAccount(self.database, self.tables['xp'], member.guild.id, member.id, self.rank_multiplier)
+            return LevelingAccount(self.database, self.tables['xp'], member.guild.id, member.id, self.rank_multiplier)
 
         return None
 
@@ -230,7 +230,7 @@ class LevellingManager(DatabaseChecker):
 
         guild_info = await self.database.select(self.tables['xp'], [], {'guild': guild.id}, True)
 
-        members = [LevellingAccount(self.database,
+        members = [LevelingAccount(self.database,
                                     self.tables['xp'],
                                     member_info['guild'],
                                     member_info['member'],

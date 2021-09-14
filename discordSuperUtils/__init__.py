@@ -13,7 +13,7 @@ from .Interactions.Interaction import Interaction, OptionType
 from .Interactions.client import SlashManager
 from .InviteTracker import InviteTracker
 from .Kick import KickManager
-from .Levelling import LevellingManager
+from .Leveling import LevelingManager
 from .MessageFilter import MessageFilter, MessageResponseGenerator
 from .Music import *
 from .Mute import MuteManager, AlreadyMuted
