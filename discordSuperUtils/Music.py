@@ -25,7 +25,6 @@ if TYPE_CHECKING:
 
 __all__ = (
     "NotPlaying",
-    "AlreadyPlaying",
     "NotConnected",
     "NotPaused",
     "QueueEmpty",
@@ -44,10 +43,6 @@ __all__ = (
 
 class NotPlaying(Exception):
     """Raises error when client is not playing"""
-
-
-class AlreadyPlaying(Exception):
-    """Raises error when player is already playing"""
 
 
 class NotConnected(Exception):
