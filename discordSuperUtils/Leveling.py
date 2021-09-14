@@ -15,30 +15,28 @@ if TYPE_CHECKING:
 
 
 class LevelingAccount:
-    def __init__(self, database, table, guild: int, member: int, rank_multiplier=1.5):
-        self.database = database
-        self.table = table
-        self.guild = guild
+    def __init__(self, leveling_manager: LevelingManager, member: discord.Member):
+        self.leveling_manager = leveling_manager
+        self.table = self.leveling_manager.tables["xp"]
         self.member = member
-        self.rank_multiplier = rank_multiplier
 
     def __str__(self):
-        return f"<Account MEMBER={self.member}, GUILD={self.guild}>"
+        return f"<Account MEMBER={self.member}, GUILD={self.member.guild}>"
 
     @property
     def __checks(self):
-        return LevelingManager.generate_checks(self.guild, self.member)
+        return LevelingManager.generate_checks(self.member)
 
     async def xp(self):
-        xp_data = await self.database.select(self.table, ['xp'], self.__checks)
+        xp_data = await self.leveling_manager.database.select(self.table, ['xp'], self.__checks)
         return xp_data["xp"]
 
     async def level(self):
-        rank_data = await self.database.select(self.table, ['rank'], self.__checks)
+        rank_data = await self.leveling_manager.database.select(self.table, ['rank'], self.__checks)
         return rank_data["rank"]
 
     async def next_level(self):
-        level_up_data = await self.database.select(self.table, ['level_up'], self.__checks)
+        level_up_data = await self.leveling_manager.database.select(self.table, ['level_up'], self.__checks)
         return level_up_data["level_up"]
 
     async def percentage_next_level(self):
@@ -50,16 +48,16 @@ class LevelingAccount:
 
     async def initial_rank_xp(self):
         next_level = await self.next_level()
-        return 0 if next_level == 50 else next_level / self.rank_multiplier
+        return 0 if next_level == 50 else next_level / self.leveling_manager.rank_multiplier
 
     async def set_xp(self, value):
-        await self.database.update(self.table, {"xp": value}, self.__checks)
+        await self.leveling_manager.database.update(self.table, {"xp": value}, self.__checks)
 
     async def set_level(self, value):
-        await self.database.update(self.table, {"rank": value}, self.__checks)
+        await self.leveling_manager.database.update(self.table, {"rank": value}, self.__checks)
 
     async def set_next_level(self, value):
-        await self.database.update(self.table, {"level_up": value}, self.__checks)
+        await self.leveling_manager.database.update(self.table, {"level_up": value}, self.__checks)
 
 
 class LevelingManager(DatabaseChecker):
@@ -153,8 +151,8 @@ class LevelingManager(DatabaseChecker):
         self.bot.add_listener(self.__handle_experience, 'on_message')
 
     @staticmethod
-    def generate_checks(guild: int, member: int):
-        return {'guild': guild, 'member': member}
+    def generate_checks(member: discord.Member):
+        return {'guild': member.guild.id, 'member': member.id}
 
     async def __handle_experience(self, message):
         self._check_database()
@@ -173,7 +171,7 @@ class LevelingManager(DatabaseChecker):
 
             leveled_up = False
             while await member_account.xp() >= await member_account.next_level():
-                await member_account.set_next_level(await member_account.next_level() * member_account.rank_multiplier)
+                await member_account.set_next_level(await member_account.next_level() * self.rank_multiplier)
                 await member_account.set_level(await member_account.level() + 1)
                 leveled_up = True
 
@@ -210,31 +208,34 @@ class LevelingManager(DatabaseChecker):
                                                       [member.guild.id, member.id, 1, 0, 50]
                                                   )
                                               ),
-                                              self.generate_checks(member.guild.id, member.id))
+                                              self.generate_checks(member))
 
     async def get_account(self, member):
         self._check_database()
 
         member_data = await self.database.select(self.tables["xp"],
                                                  [],
-                                                 self.generate_checks(member.guild.id, member.id),
+                                                 self.generate_checks(member),
                                                  True)
 
         if member_data:
-            return LevelingAccount(self.database, self.tables['xp'], member.guild.id, member.id, self.rank_multiplier)
+            return LevelingAccount(self, member)
 
         return None
 
-    async def get_leaderboard(self, guild):
+    async def get_leaderboard(self, guild: discord.Guild):
         self._check_database()
 
-        guild_info = await self.database.select(self.tables['xp'], [], {'guild': guild.id}, True)
+        guild_info = sorted(
+            await self.database.select(self.tables['xp'], [], {'guild': guild.id}, True),
+            key=lambda x: x["xp"],
+            reverse=True
+        )
 
-        members = [LevelingAccount(self.database,
-                                    self.tables['xp'],
-                                    member_info['guild'],
-                                    member_info['member'],
-                                    rank_multiplier=self.rank_multiplier)
-                   for member_info in sorted(guild_info, key=lambda x: x["xp"], reverse=True)]
+        members = []
+        for member_info in guild_info:
+            member = guild.get_member(member_info['member'])
+            if member:
+                members.append(LevelingAccount(self, member))
 
         return members
