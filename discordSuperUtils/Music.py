@@ -620,7 +620,7 @@ class MusicManager(EventManager):
         self.queue[ctx.guild.id].volume = volume / 100
         return ctx.voice_client.source.volume * 100
 
-    async def join(self, ctx: commands.Context) -> Optional[bool]:
+    async def join(self, ctx: commands.Context) -> Optional[discord.VoiceChannel]:
         """
         |coro|
 
@@ -629,8 +629,8 @@ class MusicManager(EventManager):
 
         :param ctx: The context.
         :type ctx: commands.Context
-        :return: A bool indicating if the join was successful.
-        :rtype: Optional[bool]
+        :return: The voice channel it joined.
+        :rtype: Optional[discord.VoiceChannel]
         """
 
         if ctx.voice_client and ctx.voice_client.is_connected():
@@ -642,10 +642,11 @@ class MusicManager(EventManager):
             await self.call_event('on_music_error', ctx, UserNotConnected("User is not connected to a voice channel"))
             return
 
-        await ctx.author.voice.channel.connect()
-        return True
+        channel = ctx.author.voice.channel
+        await channel.connect()
+        return channel
 
-    async def leave(self, ctx: commands.Context) -> Optional[bool]:
+    async def leave(self, ctx: commands.Context) -> Optional[discord.VoiceChannel]:
         """
         |coro|
 
@@ -653,15 +654,16 @@ class MusicManager(EventManager):
 
         :param ctx: The context.
         :type ctx: commands.Context
-        :return: A bool indicating if the disconnection was successful.
-        :rtype: Optional[bool]
+        :return: The voice channel it left.
+        :rtype: Optional[discord.VoiceChannel]
         """
 
         if not await self.__check_connection(ctx):
             return
 
-        await ctx.voice_client.disconnect()
-        return True
+        channel = ctx.voice_client.channel
+        await channel.disconnect()
+        return channel
 
     async def history(self, ctx: commands.Context) -> Optional[List[Player]]:
         """
