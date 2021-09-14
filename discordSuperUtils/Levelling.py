@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     import discord
 
 
-class LevelingAccount:
+class LevellingAccount:
     def __init__(self, database, table, guild: int, member: int, rank_multiplier=1.5):
         self.database = database
         self.table = table
@@ -27,7 +27,7 @@ class LevelingAccount:
 
     @property
     def __checks(self):
-        return LevelingManager.generate_checks(self.guild, self.member)
+        return LevellingManager.generate_checks(self.guild, self.member)
 
     async def xp(self):
         xp_data = await self.database.select(self.table, ['xp'], self.__checks)
@@ -62,7 +62,7 @@ class LevelingAccount:
         await self.database.update(self.table, {"level_up": value}, self.__checks)
 
 
-class LevelingManager(DatabaseChecker):
+class LevellingManager(DatabaseChecker):
     def __init__(self,
                  bot,
                  award_role: bool = False,
@@ -221,7 +221,7 @@ class LevelingManager(DatabaseChecker):
                                                  True)
 
         if member_data:
-            return LevelingAccount(self.database, self.tables['xp'], member.guild.id, member.id, self.rank_multiplier)
+            return LevellingAccount(self.database, self.tables['xp'], member.guild.id, member.id, self.rank_multiplier)
 
         return None
 
@@ -230,11 +230,11 @@ class LevelingManager(DatabaseChecker):
 
         guild_info = await self.database.select(self.tables['xp'], [], {'guild': guild.id}, True)
 
-        members = [LevelingAccount(self.database,
-                                   self.tables['xp'],
-                                   member_info['guild'],
-                                   member_info['member'],
-                                   rank_multiplier=self.rank_multiplier)
+        members = [LevellingAccount(self.database,
+                                    self.tables['xp'],
+                                    member_info['guild'],
+                                    member_info['member'],
+                                    rank_multiplier=self.rank_multiplier)
                    for member_info in sorted(guild_info, key=lambda x: x["xp"], reverse=True)]
 
         return members

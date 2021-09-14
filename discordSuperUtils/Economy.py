@@ -1,4 +1,8 @@
 import discord
+from typing import (
+    List,
+    Optional
+)
 
 from .Base import DatabaseChecker
 
@@ -47,7 +51,7 @@ class EconomyManager(DatabaseChecker):
     def generate_checks(guild: int, member: int):
         return {'guild': guild, 'member': member}
 
-    async def create_account(self, member: discord.Member):
+    async def create_account(self, member: discord.Member) -> None:
         self._check_database()
 
         await self.database.insertifnotexists(self.tables['economy'],
@@ -58,7 +62,7 @@ class EconomyManager(DatabaseChecker):
                                                },
                                               self.generate_checks(member.guild.id, member.id))
 
-    async def get_account(self, member: discord.Member):
+    async def get_account(self, member: discord.Member) -> Optional[EconomyAccount]:
         self._check_database()
 
         member_data = await self.database.select(self.tables['economy'],
@@ -71,7 +75,7 @@ class EconomyManager(DatabaseChecker):
 
         return None
 
-    async def get_leaderboard(self, guild):
+    async def get_leaderboard(self, guild) -> List[EconomyAccount]:
         self._check_database()
 
         guild_info = await self.database.select(self.tables['economy'], [], {'guild': guild.id}, True)

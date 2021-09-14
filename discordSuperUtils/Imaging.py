@@ -125,7 +125,7 @@ class ImageManager:
                                   description: str,
                                   font_path: str = None,
                                   outline: int = 5,
-                                  transparency: int = 0):
+                                  transparency: int = 0) -> discord.File:
         result_bytes = BytesIO()
 
         card = Image.open(background.value).resize((1024, 500))

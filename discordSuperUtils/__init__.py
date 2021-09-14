@@ -13,7 +13,7 @@ from .Interactions.Interaction import Interaction, OptionType
 from .Interactions.client import SlashManager
 from .InviteTracker import InviteTracker
 from .Kick import KickManager
-from .Leveling import LevelingManager
+from .Levelling import LevellingManager
 from .MessageFilter import MessageFilter, MessageResponseGenerator
 from .Music import *
 from .Mute import MuteManager, AlreadyMuted
@@ -25,6 +25,6 @@ from .Spotify import SpotifyClient
 from .Template import TemplateManager
 
 __title__ = "discordSuperUtils"
-__version__ = "0.1.6"
+__version__ = "0.1.7"
 __author__ = "Koyashie07 & Adam7100"
 __license__ = "MIT"
