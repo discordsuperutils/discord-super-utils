@@ -65,11 +65,14 @@ async def join(ctx):
 
 @bot.command()
 async def play(ctx, *, query: str):
-    async with ctx.typing():
-        player = await MusicManager.create_player(query)
+    if not ctx.voice_client or not ctx.voice_client.is_connected():
+        await MusicManager.join(ctx)
 
-    if player:
-        if await MusicManager.queue_add(players=player, ctx=ctx) and not await MusicManager.play(ctx):
+    async with ctx.typing():
+        players = await MusicManager.create_player(query, ctx.author)
+
+    if players:
+        if await MusicManager.queue_add(players=players, ctx=ctx) and not await MusicManager.play(ctx):
             await ctx.send("Added to queue")
 
     else:
@@ -107,11 +110,15 @@ async def queueloop(ctx):
 
 @bot.command()
 async def history(ctx):
-    embeds = discordSuperUtils.generate_embeds(await MusicManager.history(ctx),
+    formatted_history = [
+        f"Title: '{x.title}'\nRequester: {x.requester.mention}" for x in (await MusicManager.get_queue(ctx)).history
+    ]
+
+    embeds = discordSuperUtils.generate_embeds(formatted_history,
                                                "Song History",
                                                "Shows all played songs",
                                                25,
-                                               string_format="Title: {}")
+                                               string_format="{}")
 
     page_manager = discordSuperUtils.PageManager(ctx, embeds, public=True)
     await page_manager.run()
@@ -124,11 +131,15 @@ async def skip(ctx, index: int = None):
 
 @bot.command()
 async def queue(ctx):
-    embeds = discordSuperUtils.generate_embeds(await MusicManager.get_queue(ctx),
+    formatted_queue = [
+        f"Title: '{x.title}\nRequester: {x.requester.mention}" for x in (await MusicManager.get_queue(ctx)).queue
+    ]
+
+    embeds = discordSuperUtils.generate_embeds(formatted_queue,
                                                "Queue",
                                                f"Now Playing: {await MusicManager.now_playing(ctx)}",
                                                25,
-                                               string_format="Title: {}")
+                                               string_format="{}")
 
     page_manager = discordSuperUtils.PageManager(ctx, embeds, public=True)
     await page_manager.run()

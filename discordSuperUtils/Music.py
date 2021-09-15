@@ -110,10 +110,11 @@ class Player(discord.PCMVolumeTransformer):
 
     __slots__ = ("data", "title", "stream_url", "url", "start_timestamp", "last_pause_timestamp", "duration")
 
-    def __init__(self, source, *, data, volume=0.1):
+    def __init__(self, source, requester: discord.Member, *, data, volume=0.1):
         super().__init__(source, volume)
 
         self.data = data
+        self.requester = requester
         self.title = data.get('title')
         self.stream_url = data.get('url')
         self.url = data.get('webpage_url')
@@ -127,29 +128,33 @@ class Player(discord.PCMVolumeTransformer):
         return self.title
 
     @staticmethod
-    async def make_multiple_players(songs: Iterable[str]) -> List[Player]:
+    async def make_multiple_players(songs: Iterable[str], requester: discord.Member) -> List[Player]:
         """
         |coro|
 
         Returns a list of players from a iterable of queries.
 
+        :param requester: The requester.
+        :type requester: discord.Member
         :param songs: The queries.
         :type songs: Iterable[str]
         :return: The list of created players.
         :rtype: List[Player]
         """
 
-        tasks = [Player.make_player(song, playlist=False) for song in songs]
+        tasks = [Player.make_player(song, requester, playlist=False) for song in songs]
         return [x[0] for x in await asyncio.gather(*tasks) if x]
 
     @classmethod
-    async def make_player(cls, query: str, playlist: bool = True) -> List[Player]:
+    async def make_player(cls, query: str, requester: discord.Member, playlist: bool = True) -> List[Player]:
         """
         |coro|
 
         Returns a list of players from the query.
         The list will contain the first video incase it is not a playlist.
 
+        :param requester: The requester.
+        :type requester: discord.Member
         :param query: The query.
         :type query: str
         :param playlist: A bool indicating if the function should fetch playlists or get the first video.
@@ -168,10 +173,10 @@ class Player(discord.PCMVolumeTransformer):
             else:
                 return [cls(
                     discord.FFmpegPCMAudio(player['url'],
-                                           **FFMPEG_OPTIONS), data=player) for player in data['entries']]
+                                           **FFMPEG_OPTIONS), requester, data=player) for player in data['entries']]
 
         filename = data['url']
-        return [cls(discord.FFmpegPCMAudio(filename, **FFMPEG_OPTIONS), data=data)]
+        return [cls(discord.FFmpegPCMAudio(filename, **FFMPEG_OPTIONS), requester, data=data)]
 
 
 class QueueManager:
@@ -385,13 +390,15 @@ class MusicManager(EventManager):
         except youtube_dl.utils.DownloadError:
             return None
 
-    async def create_player(self, query: str) -> List[Player]:
+    async def create_player(self, query: str, requester: discord.Member) -> List[Player]:
         """
         |coro|
 
         Creates a list of players from the query.
         This function supports Spotify and all YTDL supported links.
 
+        :param requester: The requester.
+        :type requester: discord.Member
         :param query: The query.
         :type query: str
         :return: The list of players.
@@ -399,9 +406,12 @@ class MusicManager(EventManager):
         """
 
         if SPOTIFY_RE.match(query) and self.spotify_support:
-            return await Player.make_multiple_players([song for song in await self.spotify.get_songs(query)])
+            return await Player.make_multiple_players(
+                [song for song in await self.spotify.get_songs(query)],
+                requester
+            )
 
-        return await Player.make_player(query)
+        return await Player.make_player(query, requester)
 
     async def queue_add(self, players: List[Player], ctx: commands.Context) -> Optional[bool]:
         """
@@ -631,12 +641,15 @@ class MusicManager(EventManager):
         """
 
         if ctx.voice_client and ctx.voice_client.is_connected():
-            await self.call_event('on_music_error', ctx,
+            await self.call_event('on_music_error',
+                                  ctx,
                                   AlreadyConnected("Client is already connected to a voice channel"))
             return
 
         if not ctx.author.voice:
-            await self.call_event('on_music_error', ctx, UserNotConnected("User is not connected to a voice channel"))
+            await self.call_event('on_music_error',
+                                  ctx,
+                                  UserNotConnected("User is not connected to a voice channel"))
             return
 
         channel = ctx.author.voice.channel
@@ -661,23 +674,6 @@ class MusicManager(EventManager):
         channel = ctx.voice_client.channel
         await ctx.voice_client.disconnect()
         return channel
-
-    async def history(self, ctx: commands.Context) -> Optional[List[Player]]:
-        """
-        |coro|
-
-        Returns a list of the played players.
-
-        :param ctx: The context.
-        :type ctx: commands.Context
-        :return: A list of played players.
-        :rtype: Optional[List[Player]]
-        """
-
-        if not await self.__check_connection(ctx, check_queue=True):
-            return
-
-        return self.queue[ctx.guild.id].history
 
     async def now_playing(self, ctx: commands.Context) -> Optional[Player]:
         """
@@ -741,7 +737,7 @@ class MusicManager(EventManager):
         self.queue[ctx.guild.id].loop = Loops.LOOP if self.queue[ctx.guild.id].loop != Loops.LOOP else Loops.NO_LOOP
         return self.queue[ctx.guild.id].loop == Loops.LOOP
 
-    async def get_queue(self, ctx: commands.Context) -> Optional[List[Player]]:
+    async def get_queue(self, ctx: commands.Context) -> Optional[QueueManager]:
         """
         |coro|
 
@@ -750,24 +746,10 @@ class MusicManager(EventManager):
         :param ctx: The context.
         :type ctx: commands.Context
         :return: The queue.
-        :rtype: Optional[List[Player]]
+        :rtype: Optional[QueueManager]
         """
 
         if not await self.__check_connection(ctx, check_queue=True):
             return
 
-        return self.queue[ctx.guild.id].queue
-
-    async def clear_queue(self, ctx: commands.Context) -> None:
-        """
-        |coro|
-
-        Clears the ctx's guild's Queue
-
-        :parameter ctx: Context object to fetch the guild from
-        :type ctx: commands.Context
-        :return: None
-        :rtype: None
-        """
-
-        self.queue[ctx.guild.id].clear()
+        return self.queue[ctx.guild.id]
