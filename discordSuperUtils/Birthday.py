@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 from datetime import datetime, timedelta
 from typing import (
@@ -22,33 +24,33 @@ class PartialBirthdayMember:
 
 
 class BirthdayMember:
-    def __init__(self, database, table: str, member: discord.Member):
-        self.database = database
-        self.table = table
+    def __init__(self, birthday_manager: BirthdayManager, member: discord.Member):
+        self.birthday_manager = birthday_manager
         self.member = member
+        self.table = self.birthday_manager.tables['birthdays']
 
     @property
     def __checks(self) -> Dict[str, int]:
         return {'guild': self.member.guild.id, 'member': self.member.id}
 
     async def birthday_date(self) -> datetime:
-        birthday_data = await self.database.select(self.table, ["utc_birthday"], self.__checks)
+        birthday_data = await self.birthday_manager.database.select(self.table, ["utc_birthday"], self.__checks)
         return datetime.utcfromtimestamp(birthday_data["utc_birthday"])
 
     async def timezone(self) -> str:
-        timezone_data = await self.database.select(self.table, ["timezone"], self.__checks)
+        timezone_data = await self.birthday_manager.database.select(self.table, ["timezone"], self.__checks)
         return timezone_data["timezone"]
 
     async def delete(self) -> PartialBirthdayMember:
         partial = PartialBirthdayMember(self.member, await self.birthday_date(), await self.timezone())
-        await self.database.delete(self.table, self.__checks)
+        await self.birthday_manager.database.delete(self.table, self.__checks)
         return partial
 
     async def set_birthday_date(self, timestamp: float) -> None:
-        await self.database.update(self.table, {"utc_birthday": timestamp}, self.__checks)
+        await self.birthday_manager.database.update(self.table, {"utc_birthday": timestamp}, self.__checks)
 
     async def set_timezone(self, timezone: str) -> None:
-        await self.database.update(self.table, {"timezone": timezone}, self.__checks)
+        await self.birthday_manager.database.update(self.table, {"timezone": timezone}, self.__checks)
 
     async def age(self) -> int:
         current_birthday = await self.birthday_date()
@@ -89,7 +91,7 @@ class BirthdayManager(DatabaseChecker):
                                                  {'guild': member.guild.id, 'member': member.id}, True)
 
         if member_data:
-            return BirthdayMember(self.database, self.tables['birthdays'], member)
+            return BirthdayMember(self, member)
 
         return None
 
@@ -116,7 +118,7 @@ class BirthdayManager(DatabaseChecker):
             member = guild.get_member(birthday_member['member'])
 
             if member:
-                birthdays.append(BirthdayMember(self.database, self.tables['birthdays'], member))
+                birthdays.append(BirthdayMember(self, member))
 
         return birthdays
 
@@ -191,5 +193,5 @@ class BirthdayManager(DatabaseChecker):
 
                     if member:
                         await self.call_event("on_member_birthday", BirthdayMember(
-                            self.database, self.tables['birthdays'], member
+                            self, member
                         ))

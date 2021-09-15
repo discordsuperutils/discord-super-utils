@@ -71,10 +71,12 @@ class CommandHinter:
             for command in self.command_names:
                 command_similarity[SequenceMatcher(None, command, command_used).ratio()] = command
 
-            generated_message = get_generator_response(self.generator,
-                                                       CommandResponseGenerator,
-                                                       command_used,
-                                                       [x[1] for x in sorted(command_similarity.items(), reverse=True)])
+            generated_message = get_generator_response(
+                self.generator,
+                CommandResponseGenerator,
+                command_used,
+                [x[1] for x in sorted(command_similarity.items(), reverse=True)]
+            )
 
             if isinstance(generated_message, discord.Embed):
                 await ctx.send(embed=generated_message)
