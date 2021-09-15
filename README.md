@@ -137,12 +137,17 @@ from discord.ext import commands
 import discordSuperUtils
 from discordSuperUtils import MusicManager
 
-client_id = ...
-client_secret = ...
+client_id = ""
+client_secret = ""
 
 bot = commands.Bot(command_prefix='-')
-MusicManager = MusicManager(bot, client_id=client_id, client_secret=client_secret, inactivity_timeout=30)
+MusicManager = MusicManager(bot, spotify_support=False)
 
+
+# MusicManager = MusicManager(bot, client_id=client_id,
+#                                   client_secret=client_secret, spotify_support=True)
+
+# if using spotify support use this instead ^^^
 
 @MusicManager.event()
 async def on_music_error(ctx, error):
@@ -194,13 +199,14 @@ async def join(ctx):
 
 @bot.command()
 async def play(ctx, *, query: str):
+    if not ctx.voice_client or not ctx.voice_client.is_connected():
+        await MusicManager.join(ctx)
+
     async with ctx.typing():
-        player = await MusicManager.create_player(query)
+        players = await MusicManager.create_player(query, ctx.author)
 
-    if player:
-        await MusicManager.queue_add(player=player, ctx=ctx)
-
-        if not await MusicManager.play(ctx):
+    if players:
+        if await MusicManager.queue_add(players=players, ctx=ctx) and not await MusicManager.play(ctx):
             await ctx.send("Added to queue")
 
     else:
@@ -238,11 +244,15 @@ async def queueloop(ctx):
 
 @bot.command()
 async def history(ctx):
-    embeds = discordSuperUtils.generate_embeds(await MusicManager.history(ctx),
+    formatted_history = [
+        f"Title: '{x.title}'\nRequester: {x.requester.mention}" for x in (await MusicManager.get_queue(ctx)).history
+    ]
+
+    embeds = discordSuperUtils.generate_embeds(formatted_history,
                                                "Song History",
                                                "Shows all played songs",
                                                25,
-                                               string_format="Title: {}")
+                                               string_format="{}")
 
     page_manager = discordSuperUtils.PageManager(ctx, embeds, public=True)
     await page_manager.run()
@@ -255,11 +265,15 @@ async def skip(ctx, index: int = None):
 
 @bot.command()
 async def queue(ctx):
-    embeds = discordSuperUtils.generate_embeds(await MusicManager.get_queue(ctx),
+    formatted_queue = [
+        f"Title: '{x.title}\nRequester: {x.requester.mention}" for x in (await MusicManager.get_queue(ctx)).queue
+    ]
+
+    embeds = discordSuperUtils.generate_embeds(formatted_queue,
                                                "Queue",
                                                f"Now Playing: {await MusicManager.now_playing(ctx)}",
                                                25,
-                                               string_format="Title: {}")
+                                               string_format="{}")
 
     page_manager = discordSuperUtils.PageManager(ctx, embeds, public=True)
     await page_manager.run()
@@ -267,6 +281,7 @@ async def queue(ctx):
 
 bot.run("token")
 ```
+
 ![MusicManager Example](https://media.giphy.com/media/SF6K0zIVHl6RCQ0Aqk/giphy.gif)
 
 More examples are listed in the examples folder.
