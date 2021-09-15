@@ -310,7 +310,7 @@ class MusicManager(EventManager):
         Plays the next song in the queue, handles looping and queue looping.
 
         :param ctx: The context of the voice client.
-        :type ctx: commands.Contet
+        :type ctx: commands.Context
         :return: None
         :rtype: None
         """
@@ -321,11 +321,11 @@ class MusicManager(EventManager):
 
             if self.queue[ctx.guild.id].loop == Loops.LOOP:
                 song = self.queue[ctx.guild.id].now_playing
-                player = (await Player.make_player(song.url, playlist=False))[0]
+                player = (await Player.make_player(song.url, song.requester, playlist=False))[0]
 
             elif self.queue[ctx.guild.id].loop == Loops.QUEUE_LOOP:
                 song = self.queue[ctx.guild.id].remove(0)
-                player = (await Player.make_player(song.url, playlist=False))[0]
+                player = (await Player.make_player(song.url, song.requester, playlist=False))[0]
                 self.queue[ctx.guild.id].add(player)
 
             else:
