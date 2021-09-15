@@ -25,6 +25,6 @@ from .Spotify import SpotifyClient
 from .Template import TemplateManager
 
 __title__ = "discordSuperUtils"
-__version__ = "0.1.7"
+__version__ = "0.1.8"
 __author__ = "Koyashie07 & Adam7100"
 __license__ = "MIT"
