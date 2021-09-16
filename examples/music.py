@@ -2,6 +2,7 @@ from discord.ext import commands
 
 import discordSuperUtils
 from discordSuperUtils import MusicManager
+import discord
 
 client_id = ""
 client_secret = ""
@@ -80,6 +81,34 @@ async def play(ctx, *, query: str):
 
 
 @bot.command()
+async def lyrics(ctx, query: str = None):
+    if response := await MusicManager.lyrics(ctx, query):
+        title, author, query_lyrics = response
+
+        splitted = query_lyrics.split('\n')
+        res = []
+        current = ""
+        for i, split in enumerate(splitted):
+            if len(splitted) <= i + 1 or len(current) + len(splitted[i + 1]) > 1024:
+                res.append(current)
+                current = ""
+                continue
+            current += split + '\n'
+
+        page_manager = discordSuperUtils.PageManager(
+            ctx,
+            [discord.Embed(
+                title=f"Lyrics for '{title}' by '{author}', (Page {i + 1}/{len(res)})",
+                description=x
+            ) for i, x in enumerate(res)],
+            public=True
+        )
+        await page_manager.run()
+    else:
+        await ctx.send("No lyrics found.")
+
+
+@bot.command()
 async def pause(ctx):
     if await MusicManager.pause(ctx):
         await ctx.send("Player paused.")
@@ -143,6 +172,25 @@ async def queue(ctx):
 
     page_manager = discordSuperUtils.PageManager(ctx, embeds, public=True)
     await page_manager.run()
+
+
+@bot.command()
+async def ls(ctx):
+    if queue := await MusicManager.get_queue(ctx):
+        loop = queue.loop
+        loop_status = None
+
+        if loop == discordSuperUtils.Loops.LOOP:
+            loop_status = "Looping enabled."
+
+        elif loop == discordSuperUtils.Loops.QUEUE_LOOP:
+            loop_status = "Queue looping enabled."
+
+        elif loop == discordSuperUtils.Loops.NO_LOOP:
+            loop_status = "No loop enabled."
+
+        if loop_status:
+            await ctx.send(loop_status)
 
 
 bot.run("token")

@@ -10,7 +10,8 @@ from typing import (
     Iterable,
     List,
     Union,
-    Any
+    Any,
+    Tuple
 )
 
 import aiohttp
@@ -22,7 +23,6 @@ from .Spotify import SpotifyClient
 
 if TYPE_CHECKING:
     from discord.ext import commands
-
 
 FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
 SPOTIFY_RE = re.compile("^https://open.spotify.com/")
@@ -37,7 +37,6 @@ YTDL = youtube_dl.YoutubeDL({
     'no_warnings': True,
     'default_search': 'auto'
 })
-
 
 __all__ = (
     "NotPlaying",
@@ -169,11 +168,11 @@ class Player(discord.PCMVolumeTransformer):
 
         if 'entries' in data:
             if not playlist:
-                data = data['entries'][0]
+                if data['entries']:
+                    data = data['entries'][0]
             else:
-                return [cls(
-                    discord.FFmpegPCMAudio(player['url'],
-                                           **FFMPEG_OPTIONS), requester, data=player) for player in data['entries']]
+                return [cls(discord.FFmpegPCMAudio(player['url'], **FFMPEG_OPTIONS),
+                            requester, data=player) for player in data['entries']]
 
         filename = data['url']
         return [cls(discord.FFmpegPCMAudio(filename, **FFMPEG_OPTIONS), requester, data=data)]
@@ -223,6 +222,10 @@ class QueueManager:
 
         return self.queue.pop(index)
 
+    def clean_up(self):
+        pass
+        # TODO
+
 
 class MusicManager(EventManager):
     """
@@ -243,7 +246,7 @@ class MusicManager(EventManager):
         self.queue = {}
 
         if spotify_support:
-            self.spotify = SpotifyClient(client_id=self.client_id, client_secret=self.client_secret)
+            self.spotify = SpotifyClient(client_id=self.client_id, client_secret=self.client_secret, loop=self.bot.loop)
 
     async def ensure_activity(self, ctx: commands.Context) -> None:
         """
@@ -320,12 +323,12 @@ class MusicManager(EventManager):
                 return
 
             if self.queue[ctx.guild.id].loop == Loops.LOOP:
-                song = self.queue[ctx.guild.id].now_playing
-                player = (await Player.make_player(song.url, song.requester, playlist=False))[0]
+                player = self.queue[ctx.guild.id].now_playing
+                player.original = discord.FFmpegPCMAudio(player.stream_url, **FFMPEG_OPTIONS)
 
             elif self.queue[ctx.guild.id].loop == Loops.QUEUE_LOOP:
-                song = self.queue[ctx.guild.id].remove(0)
-                player = (await Player.make_player(song.url, song.requester, playlist=False))[0]
+                player = self.queue[ctx.guild.id].remove(0)
+                player.original = discord.FFmpegPCMAudio(player.stream_url, **FFMPEG_OPTIONS)
                 self.queue[ctx.guild.id].add(player)
 
             else:
@@ -346,6 +349,7 @@ class MusicManager(EventManager):
 
         except (IndexError, KeyError):
             await self.call_event("on_queue_end", ctx)
+            del self.queue[ctx.guild.id]
 
     async def get_player_played_duration(self, ctx: commands.Context, player: Player) -> Optional[float]:
         """
@@ -386,7 +390,16 @@ class MusicManager(EventManager):
 
         try:
             loop = asyncio.get_event_loop()
-            return await loop.run_in_executor(None, lambda: YTDL.extract_info(query, download=False))
+
+            fetched_data = await loop.run_in_executor(None, lambda: YTDL.extract_info(query, download=False))
+            if fetched_data:
+                fetched_data.pop('formats', None)
+
+                if 'entries' in fetched_data:
+                    for entry in fetched_data['entries']:
+                        entry.pop('formats', None)
+
+            return fetched_data
         except youtube_dl.utils.DownloadError:
             return None
 
@@ -461,7 +474,7 @@ class MusicManager(EventManager):
         except IndexError:
             await self.call_event('on_music_error', ctx, QueueError("Failure when removing player from queue"))
 
-    async def lyrics(self, ctx: commands.Context, query: str = None) -> Optional[str]:
+    async def lyrics(self, ctx: commands.Context, query: str = None) -> Optional[Tuple[str, str, str]]:
         """
         |coro|
 
@@ -471,18 +484,25 @@ class MusicManager(EventManager):
         :type ctx: commands.Context
         :param query: The query.
         :type query: str
-        :return: The lyrics.
-        :rtype: Optional[str]
+        :return: The lyrics and the song name.
+        :rtype: Optional[Tuple[str, str, str]]
         """
 
         query = await self.now_playing(ctx) if query is None else query
+        if not query:
+            return
+
         url = f"https://some-random-api.ml/lyrics?title={query}"
 
         async with aiohttp.ClientSession() as session:
             request = await session.get(url)
             request_json = await request.json()
 
-            return request_json.get('lyrics', None)
+            authors = request_json.get('author')
+            title = request_json.get('title')
+            lyrics = request_json.get("lyrics")
+
+            return (title, authors, lyrics) if lyrics else None
 
     async def play(self, ctx: commands.Context, player: Player = None) -> Optional[bool]:
         """
