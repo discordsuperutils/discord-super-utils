@@ -23,6 +23,7 @@ from .Punishments import Punishment
 from .ReactionRoles import ReactionManager
 from .Spotify import SpotifyClient
 from .Template import TemplateManager
+from .Youtube import YoutubeClient
 
 __title__ = "discordSuperUtils"
 __version__ = "0.1.9"
