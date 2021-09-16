@@ -78,6 +78,9 @@ class CommandHinter:
                 [x[1] for x in sorted(command_similarity.items(), reverse=True)]
             )
 
+            if not generated_message:
+                return
+
             if isinstance(generated_message, discord.Embed):
                 await ctx.send(embed=generated_message)
             elif isinstance(generated_message, str):
