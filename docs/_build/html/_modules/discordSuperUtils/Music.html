@@ -1,0 +1,852 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>discordSuperUtils.Music &#8212; discordSuperUtils 0.1.9 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for discordSuperUtils.Music</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span> <span class="nn">asyncio</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">Optional</span><span class="p">,</span>
+    <span class="n">TYPE_CHECKING</span><span class="p">,</span>
+    <span class="n">Iterable</span><span class="p">,</span>
+    <span class="n">List</span><span class="p">,</span>
+    <span class="n">Union</span><span class="p">,</span>
+    <span class="n">Any</span>
+<span class="p">)</span>
+
+<span class="kn">import</span> <span class="nn">aiohttp</span>
+<span class="kn">import</span> <span class="nn">discord</span>
+<span class="kn">import</span> <span class="nn">youtube_dl</span>
+
+<span class="kn">from</span> <span class="nn">.Base</span> <span class="kn">import</span> <span class="n">EventManager</span>
+<span class="kn">from</span> <span class="nn">.Spotify</span> <span class="kn">import</span> <span class="n">SpotifyClient</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">discord.ext</span> <span class="kn">import</span> <span class="n">commands</span>
+
+
+<span class="n">FFMPEG_OPTIONS</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;before_options&#39;</span><span class="p">:</span> <span class="s1">&#39;-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5&#39;</span><span class="p">,</span> <span class="s1">&#39;options&#39;</span><span class="p">:</span> <span class="s1">&#39;-vn&#39;</span><span class="p">}</span>
+<span class="n">SPOTIFY_RE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s2">&quot;^https://open.spotify.com/&quot;</span><span class="p">)</span>
+<span class="n">YTDL</span> <span class="o">=</span> <span class="n">youtube_dl</span><span class="o">.</span><span class="n">YoutubeDL</span><span class="p">({</span>
+    <span class="s1">&#39;format&#39;</span><span class="p">:</span> <span class="s1">&#39;bestaudio/best&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;restrictfilenames&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s1">&#39;noplaylist&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="s1">&#39;nocheckcertificate&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s1">&#39;ignoreerrors&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="s1">&#39;logtostderr&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="s1">&#39;quiet&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s1">&#39;no_warnings&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s1">&#39;default_search&#39;</span><span class="p">:</span> <span class="s1">&#39;auto&#39;</span>
+<span class="p">})</span>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">&quot;NotPlaying&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;NotConnected&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;NotPaused&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;QueueEmpty&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;AlreadyConnected&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;AlreadyPaused&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;QueueError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;SkipError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;UserNotConnected&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;InvalidSkipIndex&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Loops&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Player&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;QueueManager&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MusicManager&quot;</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="NotPlaying"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.NotPlaying">[docs]</a><span class="k">class</span> <span class="nc">NotPlaying</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Raises error when client is not playing&quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="NotConnected"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.NotConnected">[docs]</a><span class="k">class</span> <span class="nc">NotConnected</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Raises error when client is not connected to a voice channel&quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="NotPaused"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.NotPaused">[docs]</a><span class="k">class</span> <span class="nc">NotPaused</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Raises error when player is not paused&quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="QueueEmpty"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.QueueEmpty">[docs]</a><span class="k">class</span> <span class="nc">QueueEmpty</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Raises error when queue is empty&quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="AlreadyConnected"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.AlreadyConnected">[docs]</a><span class="k">class</span> <span class="nc">AlreadyConnected</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Raises error when client is already connected to voice&quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="AlreadyPaused"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.AlreadyPaused">[docs]</a><span class="k">class</span> <span class="nc">AlreadyPaused</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Raises error when player is already paused.&quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="QueueError"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.QueueError">[docs]</a><span class="k">class</span> <span class="nc">QueueError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Raises error when something is wrong with the queue&quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="SkipError"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.SkipError">[docs]</a><span class="k">class</span> <span class="nc">SkipError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Raises error when there is no song to skip to&quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="UserNotConnected"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.UserNotConnected">[docs]</a><span class="k">class</span> <span class="nc">UserNotConnected</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Raises error when user is not connected to channel&quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="InvalidSkipIndex"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.InvalidSkipIndex">[docs]</a><span class="k">class</span> <span class="nc">InvalidSkipIndex</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Raises error when the skip index is &lt; 0&quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="Loops"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.Loops">[docs]</a><span class="k">class</span> <span class="nc">Loops</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="n">NO_LOOP</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">LOOP</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">QUEUE_LOOP</span> <span class="o">=</span> <span class="mi">2</span></div>
+
+
+<div class="viewcode-block" id="Player"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.Player">[docs]</a><span class="k">class</span> <span class="nc">Player</span><span class="p">(</span><span class="n">discord</span><span class="o">.</span><span class="n">PCMVolumeTransformer</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Represents a music player.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;title&quot;</span><span class="p">,</span> <span class="s2">&quot;stream_url&quot;</span><span class="p">,</span> <span class="s2">&quot;url&quot;</span><span class="p">,</span> <span class="s2">&quot;start_timestamp&quot;</span><span class="p">,</span> <span class="s2">&quot;last_pause_timestamp&quot;</span><span class="p">,</span> <span class="s2">&quot;duration&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">requester</span><span class="p">:</span> <span class="n">discord</span><span class="o">.</span><span class="n">Member</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">volume</span><span class="o">=</span><span class="mf">0.1</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">volume</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">requester</span> <span class="o">=</span> <span class="n">requester</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">title</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;title&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stream_url</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;url&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">url</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;webpage_url&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_timestamp</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_pause_timestamp</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">duration</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;duration&#39;</span><span class="p">)</span> <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;duration&#39;</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;LIVE&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">title</span>
+
+<div class="viewcode-block" id="Player.make_multiple_players"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.Player.make_multiple_players">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">make_multiple_players</span><span class="p">(</span><span class="n">songs</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">requester</span><span class="p">:</span> <span class="n">discord</span><span class="o">.</span><span class="n">Member</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Player</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        |coro|</span>
+
+<span class="sd">        Returns a list of players from a iterable of queries.</span>
+
+<span class="sd">        :param requester: The requester.</span>
+<span class="sd">        :type requester: discord.Member</span>
+<span class="sd">        :param songs: The queries.</span>
+<span class="sd">        :type songs: Iterable[str]</span>
+<span class="sd">        :return: The list of created players.</span>
+<span class="sd">        :rtype: List[Player]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">tasks</span> <span class="o">=</span> <span class="p">[</span><span class="n">Player</span><span class="o">.</span><span class="n">make_player</span><span class="p">(</span><span class="n">song</span><span class="p">,</span> <span class="n">requester</span><span class="p">,</span> <span class="n">playlist</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="k">for</span> <span class="n">song</span> <span class="ow">in</span> <span class="n">songs</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">tasks</span><span class="p">)</span> <span class="k">if</span> <span class="n">x</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="Player.make_player"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.Player.make_player">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">make_player</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">requester</span><span class="p">:</span> <span class="n">discord</span><span class="o">.</span><span class="n">Member</span><span class="p">,</span> <span class="n">playlist</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Player</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        |coro|</span>
+
+<span class="sd">        Returns a list of players from the query.</span>
+<span class="sd">        The list will contain the first video incase it is not a playlist.</span>
+
+<span class="sd">        :param requester: The requester.</span>
+<span class="sd">        :type requester: discord.Member</span>
+<span class="sd">        :param query: The query.</span>
+<span class="sd">        :type query: str</span>
+<span class="sd">        :param playlist: A bool indicating if the function should fetch playlists or get the first video.</span>
+<span class="sd">        :type playlist: bool</span>
+<span class="sd">        :return: The list of created players.</span>
+<span class="sd">        :rtype: List[Player]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">MusicManager</span><span class="o">.</span><span class="n">fetch_data</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="s1">&#39;entries&#39;</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">playlist</span><span class="p">:</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;entries&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">[</span><span class="bp">cls</span><span class="p">(</span>
+                    <span class="n">discord</span><span class="o">.</span><span class="n">FFmpegPCMAudio</span><span class="p">(</span><span class="n">player</span><span class="p">[</span><span class="s1">&#39;url&#39;</span><span class="p">],</span>
+                                           <span class="o">**</span><span class="n">FFMPEG_OPTIONS</span><span class="p">),</span> <span class="n">requester</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">player</span><span class="p">)</span> <span class="k">for</span> <span class="n">player</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;entries&#39;</span><span class="p">]]</span>
+
+        <span class="n">filename</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;url&#39;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">cls</span><span class="p">(</span><span class="n">discord</span><span class="o">.</span><span class="n">FFmpegPCMAudio</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="o">**</span><span class="n">FFMPEG_OPTIONS</span><span class="p">),</span> <span class="n">requester</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">)]</span></div></div>
+
+
+<div class="viewcode-block" id="QueueManager"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.QueueManager">[docs]</a><span class="k">class</span> <span class="nc">QueueManager</span><span class="p">:</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;queue&quot;</span><span class="p">,</span> <span class="s2">&quot;volume&quot;</span><span class="p">,</span> <span class="s2">&quot;history&quot;</span><span class="p">,</span> <span class="s2">&quot;loop&quot;</span><span class="p">,</span> <span class="s2">&quot;now_playing&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">volume</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">queue</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Player</span><span class="p">]):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">queue</span> <span class="o">=</span> <span class="n">queue</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">volume</span> <span class="o">=</span> <span class="n">volume</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">loop</span> <span class="o">=</span> <span class="n">Loops</span><span class="o">.</span><span class="n">NO_LOOP</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">now_playing</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="QueueManager.add"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.QueueManager.add">[docs]</a>    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">player</span><span class="p">:</span> <span class="n">Player</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Adds a player to the queue.</span>
+
+<span class="sd">        :param player: The player to add.</span>
+<span class="sd">        :type player: Player</span>
+<span class="sd">        :return: None</span>
+<span class="sd">        :rtype: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">player</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="QueueManager.clear"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.QueueManager.clear">[docs]</a>    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Clears the queue.</span>
+
+<span class="sd">        :return: None</span>
+<span class="sd">        :rtype: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="QueueManager.remove"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.QueueManager.remove">[docs]</a>    <span class="k">def</span> <span class="nf">remove</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">Player</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Removes and element from the queue at the specified index, and returns the element&#39;s value.</span>
+
+<span class="sd">        :param index: The index.</span>
+<span class="sd">        :type index: int</span>
+<span class="sd">        :return: The element&#39;s value</span>
+<span class="sd">        :rtype: Union[Player, Any]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">index</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="MusicManager"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.MusicManager">[docs]</a><span class="k">class</span> <span class="nc">MusicManager</span><span class="p">(</span><span class="n">EventManager</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Represents a MusicManager.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;bot&quot;</span><span class="p">,</span> <span class="s2">&quot;client_id&quot;</span><span class="p">,</span> <span class="s2">&quot;client_secret&quot;</span><span class="p">,</span> <span class="s2">&quot;spotify_support&quot;</span><span class="p">,</span> <span class="s2">&quot;inactivity_timeout&quot;</span><span class="p">,</span> <span class="s2">&quot;queue&quot;</span><span class="p">,</span> <span class="s2">&quot;spotify&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bot</span><span class="p">:</span> <span class="n">commands</span><span class="o">.</span><span class="n">Bot</span><span class="p">,</span> <span class="n">spotify_support</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">inactivity_timeout</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">60</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bot</span> <span class="o">=</span> <span class="n">bot</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">client_id</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;client_id&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">client_secret</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;client_secret&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spotify_support</span> <span class="o">=</span> <span class="n">spotify_support</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inactivity_timeout</span> <span class="o">=</span> <span class="n">inactivity_timeout</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">queue</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">if</span> <span class="n">spotify_support</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">spotify</span> <span class="o">=</span> <span class="n">SpotifyClient</span><span class="p">(</span><span class="n">client_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">client_id</span><span class="p">,</span> <span class="n">client_secret</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">client_secret</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MusicManager.ensure_activity"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.MusicManager.ensure_activity">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">ensure_activity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">commands</span><span class="o">.</span><span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        |coro|</span>
+
+<span class="sd">        Waits the inactivity timeout and ensures the voice client in ctx is playing a song.</span>
+<span class="sd">        If no song is playing, it disconnects and calls the on_inactivity_timeout event.</span>
+
+<span class="sd">        :param ctx: The context.</span>
+<span class="sd">        :type ctx: commands.Context</span>
+<span class="sd">        :return: None</span>
+<span class="sd">        :rtype: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">inactivity_timeout</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inactivity_timeout</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span><span class="o">.</span><span class="n">is_connected</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span><span class="o">.</span><span class="n">is_playing</span><span class="p">():</span>
+            <span class="k">await</span> <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">call_event</span><span class="p">(</span><span class="s2">&quot;on_inactivity_disconnect&quot;</span><span class="p">,</span> <span class="n">ctx</span><span class="p">)</span></div>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">__check_connection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                 <span class="n">ctx</span><span class="p">:</span> <span class="n">commands</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span>
+                                 <span class="n">check_playing</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                                 <span class="n">check_queue</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        |coro|</span>
+
+<span class="sd">        Checks the connection state of the voice client in ctx.</span>
+
+<span class="sd">        :param ctx: The context.</span>
+<span class="sd">        :type ctx: commands.Context</span>
+<span class="sd">        :param check_playing: A bool indicating if the function should check if a song is playing.</span>
+<span class="sd">        :type check_playing: bool</span>
+<span class="sd">        :param check_queue: A bool indicating if the function should check if a queue exists.</span>
+<span class="sd">        :type check_queue: bool</span>
+<span class="sd">        :return: True if all the checks passed.</span>
+<span class="sd">        :rtype: bool</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span><span class="o">.</span><span class="n">is_connected</span><span class="p">():</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">call_event</span><span class="p">(</span><span class="s1">&#39;on_music_error&#39;</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">NotConnected</span><span class="p">(</span><span class="s2">&quot;Client is not connected to a voice channel&quot;</span><span class="p">))</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">check_playing</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span><span class="o">.</span><span class="n">is_playing</span><span class="p">():</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">call_event</span><span class="p">(</span><span class="s1">&#39;on_music_error&#39;</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">NotPlaying</span><span class="p">(</span><span class="s2">&quot;Client is not playing anything currently&quot;</span><span class="p">))</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">check_queue</span> <span class="ow">and</span> <span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">call_event</span><span class="p">(</span><span class="s1">&#39;on_music_error&#39;</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">QueueEmpty</span><span class="p">(</span><span class="s2">&quot;Queue is empty&quot;</span><span class="p">))</span>
+            <span class="k">return</span>
+
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">__check_queue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">commands</span><span class="o">.</span><span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        |coro|</span>
+
+<span class="sd">        Plays the next song in the queue, handles looping and queue looping.</span>
+
+<span class="sd">        :param ctx: The context of the voice client.</span>
+<span class="sd">        :type ctx: commands.Context</span>
+<span class="sd">        :return: None</span>
+<span class="sd">        :rtype: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span><span class="o">.</span><span class="n">is_connected</span><span class="p">():</span>
+                <span class="k">return</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">loop</span> <span class="o">==</span> <span class="n">Loops</span><span class="o">.</span><span class="n">LOOP</span><span class="p">:</span>
+                <span class="n">song</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">now_playing</span>
+                <span class="n">player</span> <span class="o">=</span> <span class="p">(</span><span class="k">await</span> <span class="n">Player</span><span class="o">.</span><span class="n">make_player</span><span class="p">(</span><span class="n">song</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="n">song</span><span class="o">.</span><span class="n">requester</span><span class="p">,</span> <span class="n">playlist</span><span class="o">=</span><span class="kc">False</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">loop</span> <span class="o">==</span> <span class="n">Loops</span><span class="o">.</span><span class="n">QUEUE_LOOP</span><span class="p">:</span>
+                <span class="n">song</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+                <span class="n">player</span> <span class="o">=</span> <span class="p">(</span><span class="k">await</span> <span class="n">Player</span><span class="o">.</span><span class="n">make_player</span><span class="p">(</span><span class="n">song</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="n">song</span><span class="o">.</span><span class="n">requester</span><span class="p">,</span> <span class="n">playlist</span><span class="o">=</span><span class="kc">False</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">player</span><span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">player</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">now_playing</span> <span class="o">=</span> <span class="n">player</span>
+
+            <span class="k">if</span> <span class="n">player</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span><span class="p">:</span>
+                <span class="k">return</span>
+
+            <span class="n">player</span><span class="o">.</span><span class="n">volume</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">volume</span>
+            <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span><span class="o">.</span><span class="n">play</span><span class="p">(</span><span class="n">player</span><span class="p">,</span> <span class="n">after</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">bot</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__check_queue</span><span class="p">(</span><span class="n">ctx</span><span class="p">)))</span>
+            <span class="n">player</span><span class="o">.</span><span class="n">start_timestamp</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">loop</span> <span class="o">==</span> <span class="n">Loops</span><span class="o">.</span><span class="n">NO_LOOP</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">player</span><span class="p">)</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">call_event</span><span class="p">(</span><span class="s1">&#39;on_play&#39;</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">player</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="p">(</span><span class="ne">IndexError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">call_event</span><span class="p">(</span><span class="s2">&quot;on_queue_end&quot;</span><span class="p">,</span> <span class="n">ctx</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MusicManager.get_player_played_duration"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.MusicManager.get_player_played_duration">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">get_player_played_duration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">commands</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">player</span><span class="p">:</span> <span class="n">Player</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        |coro|</span>
+
+<span class="sd">        Returns the played duration of a player.</span>
+
+<span class="sd">        :param ctx: The context.</span>
+<span class="sd">        :type ctx: commands.Context</span>
+<span class="sd">        :param player: The player.</span>
+<span class="sd">        :type player: Player</span>
+<span class="sd">        :return: The played duration of the player in seconds.</span>
+<span class="sd">        :rtype: Optional[float]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__check_connection</span><span class="p">(</span><span class="n">ctx</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="n">start_timestamp</span> <span class="o">=</span> <span class="n">player</span><span class="o">.</span><span class="n">start_timestamp</span>
+        <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span><span class="o">.</span><span class="n">is_paused</span><span class="p">():</span>
+            <span class="n">start_timestamp</span> <span class="o">=</span> <span class="n">player</span><span class="o">.</span><span class="n">start_timestamp</span> <span class="o">+</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">player</span><span class="o">.</span><span class="n">last_pause_timestamp</span>
+
+        <span class="n">time_played</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_timestamp</span>
+        <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="n">time_played</span><span class="p">,</span> <span class="n">time_played</span> <span class="k">if</span> <span class="n">player</span><span class="o">.</span><span class="n">duration</span> <span class="o">==</span> <span class="s2">&quot;LIVE&quot;</span> <span class="k">else</span> <span class="n">player</span><span class="o">.</span><span class="n">duration</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MusicManager.fetch_data"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.MusicManager.fetch_data">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">fetch_data</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        |coro|</span>
+
+<span class="sd">        Fetches the YTDL data of the query.</span>
+
+<span class="sd">        :param query: The query.</span>
+<span class="sd">        :type query: str</span>
+<span class="sd">        :return: The YTDL data.</span>
+<span class="sd">        :rtype: Optional[dict]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
+            <span class="k">return</span> <span class="k">await</span> <span class="n">loop</span><span class="o">.</span><span class="n">run_in_executor</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">YTDL</span><span class="o">.</span><span class="n">extract_info</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
+        <span class="k">except</span> <span class="n">youtube_dl</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">DownloadError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="MusicManager.create_player"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.MusicManager.create_player">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">create_player</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">requester</span><span class="p">:</span> <span class="n">discord</span><span class="o">.</span><span class="n">Member</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Player</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        |coro|</span>
+
+<span class="sd">        Creates a list of players from the query.</span>
+<span class="sd">        This function supports Spotify and all YTDL supported links.</span>
+
+<span class="sd">        :param requester: The requester.</span>
+<span class="sd">        :type requester: discord.Member</span>
+<span class="sd">        :param query: The query.</span>
+<span class="sd">        :type query: str</span>
+<span class="sd">        :return: The list of players.</span>
+<span class="sd">        :rtype: List[Player]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">SPOTIFY_RE</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">query</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">spotify_support</span><span class="p">:</span>
+            <span class="k">return</span> <span class="k">await</span> <span class="n">Player</span><span class="o">.</span><span class="n">make_multiple_players</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">song</span> <span class="k">for</span> <span class="n">song</span> <span class="ow">in</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">spotify</span><span class="o">.</span><span class="n">get_songs</span><span class="p">(</span><span class="n">query</span><span class="p">)],</span>
+                <span class="n">requester</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="k">await</span> <span class="n">Player</span><span class="o">.</span><span class="n">make_player</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">requester</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MusicManager.queue_add"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.MusicManager.queue_add">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">queue_add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">players</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Player</span><span class="p">],</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">commands</span><span class="o">.</span><span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        |coro|</span>
+
+<span class="sd">        Adds a list of players to the ctx queue.</span>
+<span class="sd">        If a queue does not exist in ctx, it creates one.</span>
+
+<span class="sd">        :param players: The list of players.</span>
+<span class="sd">        :type players: List[Player]</span>
+<span class="sd">        :param ctx: The context.</span>
+<span class="sd">        :type ctx: commands.Context</span>
+<span class="sd">        :return: A bool indicating if it was successful</span>
+<span class="sd">        :rtype: Optional[bool]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__check_connection</span><span class="p">(</span><span class="n">ctx</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">queue</span> <span class="o">+=</span> <span class="n">players</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">QueueManager</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">players</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+<div class="viewcode-block" id="MusicManager.queue_remove"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.MusicManager.queue_remove">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">queue_remove</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">commands</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        |coro|</span>
+
+<span class="sd">        Removes a player from the queue in ctx at the specified index.</span>
+<span class="sd">        Calls on_music_error with QueueError if index is invalid.</span>
+
+<span class="sd">        :param ctx: The context.</span>
+<span class="sd">        :type ctx: commands.Context</span>
+<span class="sd">        :param index: The index.</span>
+<span class="sd">        :type index: int</span>
+<span class="sd">        :return: None</span>
+<span class="sd">        :rtype: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__check_connection</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">check_queue</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">IndexError</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">call_event</span><span class="p">(</span><span class="s1">&#39;on_music_error&#39;</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">QueueError</span><span class="p">(</span><span class="s2">&quot;Failure when removing player from queue&quot;</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="MusicManager.lyrics"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.MusicManager.lyrics">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">lyrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">commands</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        |coro|</span>
+
+<span class="sd">        Returns the lyrics from the query or the currently playing song.</span>
+
+<span class="sd">        :param ctx: The context.</span>
+<span class="sd">        :type ctx: commands.Context</span>
+<span class="sd">        :param query: The query.</span>
+<span class="sd">        :type query: str</span>
+<span class="sd">        :return: The lyrics.</span>
+<span class="sd">        :rtype: Optional[str]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">query</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">now_playing</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span> <span class="k">if</span> <span class="n">query</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">query</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;https://some-random-api.ml/lyrics?title=</span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="k">async</span> <span class="k">with</span> <span class="n">aiohttp</span><span class="o">.</span><span class="n">ClientSession</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
+            <span class="n">request</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+            <span class="n">request_json</span> <span class="o">=</span> <span class="k">await</span> <span class="n">request</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+            <span class="k">return</span> <span class="n">request_json</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;lyrics&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MusicManager.play"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.MusicManager.play">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">play</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">commands</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">player</span><span class="p">:</span> <span class="n">Player</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        |coro|</span>
+
+<span class="sd">        Plays the player or the next song in the queue if the player is not passed.</span>
+
+<span class="sd">        :param ctx: The context.</span>
+<span class="sd">        :type ctx: commands.Context</span>
+<span class="sd">        :param player: The player.</span>
+<span class="sd">        :type player: Player</span>
+<span class="sd">        :return: A bool indicating if the play was successful</span>
+<span class="sd">        :rtype: Optional[bool]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__check_connection</span><span class="p">(</span><span class="n">ctx</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">player</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span><span class="o">.</span><span class="n">play</span><span class="p">(</span><span class="n">player</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span><span class="o">.</span><span class="n">is_playing</span><span class="p">():</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__check_queue</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span></div>
+
+<div class="viewcode-block" id="MusicManager.pause"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.MusicManager.pause">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">pause</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">commands</span><span class="o">.</span><span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        |coro|</span>
+
+<span class="sd">        Pauses the currently playing song in ctx.</span>
+<span class="sd">        Calls on_music_error with AlreadyPaused if already paused.</span>
+
+<span class="sd">        :param ctx: The context.</span>
+<span class="sd">        :type ctx: commands.Context</span>
+<span class="sd">        :return: A bool indicating if the pause was successful</span>
+<span class="sd">        :rtype: Optional[bool]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__check_connection</span><span class="p">(</span><span class="n">ctx</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span><span class="o">.</span><span class="n">is_paused</span><span class="p">():</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">call_event</span><span class="p">(</span><span class="s1">&#39;on_music_error&#39;</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">AlreadyPaused</span><span class="p">(</span><span class="s2">&quot;Player is already paused.&quot;</span><span class="p">))</span>
+            <span class="k">return</span>
+
+        <span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">now_playing</span><span class="p">(</span><span class="n">ctx</span><span class="p">))</span><span class="o">.</span><span class="n">last_pause_timestamp</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span><span class="o">.</span><span class="n">pause</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bot</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ensure_activity</span><span class="p">(</span><span class="n">ctx</span><span class="p">))</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+<div class="viewcode-block" id="MusicManager.resume"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.MusicManager.resume">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">resume</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">commands</span><span class="o">.</span><span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        |coro|</span>
+
+<span class="sd">        Resumes the currently paused song in ctx.</span>
+<span class="sd">        Calls on_music_error with NotPaused if not paused.</span>
+
+<span class="sd">        :param ctx: The context.</span>
+<span class="sd">        :type ctx: commands.Context</span>
+<span class="sd">        :return: A bool indicating if the resume was successful</span>
+<span class="sd">        :rtype: Optional[bool]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__check_connection</span><span class="p">(</span><span class="n">ctx</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span><span class="o">.</span><span class="n">is_paused</span><span class="p">():</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">call_event</span><span class="p">(</span><span class="s1">&#39;on_music_error&#39;</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">NotPaused</span><span class="p">(</span><span class="s2">&quot;Player is not paused&quot;</span><span class="p">))</span>
+            <span class="k">return</span>
+
+        <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span><span class="o">.</span><span class="n">resume</span><span class="p">()</span>
+
+        <span class="n">now_playing</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">now_playing</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span>
+        <span class="n">now_playing</span><span class="o">.</span><span class="n">start_timestamp</span> <span class="o">+=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">now_playing</span><span class="o">.</span><span class="n">last_pause_timestamp</span>
+
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+<div class="viewcode-block" id="MusicManager.skip"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.MusicManager.skip">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">skip</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">commands</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Player</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        |coro|</span>
+
+<span class="sd">        Skips to the index in ctx.</span>
+<span class="sd">        Calls on_music_error with InvalidSkipIndex or SkipError.</span>
+
+<span class="sd">        :param index: The index to skip to.</span>
+<span class="sd">        :type index: int</span>
+<span class="sd">        :param ctx: The context.</span>
+<span class="sd">        :type ctx: commands.Context</span>
+<span class="sd">        :return: A bool indicating if the skip was successful</span>
+<span class="sd">        :rtype: Optional[Player]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__check_connection</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">check_queue</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Created duplicate to make sure InvalidSkipIndex isn&#39;t raised when the user does pass an index and the queue</span>
+        <span class="c1"># is empty.</span>
+        <span class="n">skip_index</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">index</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">index</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="o">-</span><span class="mi">1</span> <span class="o">&lt;</span> <span class="n">skip_index</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">queue</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">index</span><span class="p">:</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">call_event</span><span class="p">(</span><span class="s1">&#39;on_music_error&#39;</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">InvalidSkipIndex</span><span class="p">(</span><span class="s2">&quot;Skip index invalid.&quot;</span><span class="p">))</span>
+                <span class="k">return</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">queue</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">skip_index</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">call_event</span><span class="p">(</span><span class="s1">&#39;on_music_error&#39;</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">SkipError</span><span class="p">(</span><span class="s2">&quot;No song to skip to.&quot;</span><span class="p">))</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">skip_index</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">removed_songs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">queue</span><span class="p">[:</span><span class="n">skip_index</span><span class="p">]</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">queue</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">skip_index</span><span class="p">:]</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">loop</span> <span class="o">==</span> <span class="n">Loops</span><span class="o">.</span><span class="n">QUEUE_LOOP</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">queue</span> <span class="o">+=</span> <span class="n">removed_songs</span>
+
+        <span class="n">player</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">player</span></div>
+
+<div class="viewcode-block" id="MusicManager.volume"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.MusicManager.volume">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">volume</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">commands</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">volume</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        |coro|</span>
+
+<span class="sd">        Sets the volume in ctx.</span>
+<span class="sd">        Returns the current volume if volume is None.</span>
+
+<span class="sd">        :param volume: The volume to set.</span>
+<span class="sd">        :type volume: int</span>
+<span class="sd">        :param ctx: The context.</span>
+<span class="sd">        :type ctx: commands.Context</span>
+<span class="sd">        :return: The new volume.</span>
+<span class="sd">        :rtype: Optional[float]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__check_connection</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">check_queue</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">volume</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">volume</span> <span class="o">*</span> <span class="mi">100</span>
+
+        <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">volume</span> <span class="o">=</span> <span class="n">volume</span> <span class="o">/</span> <span class="mi">100</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">volume</span> <span class="o">=</span> <span class="n">volume</span> <span class="o">/</span> <span class="mi">100</span>
+        <span class="k">return</span> <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">volume</span> <span class="o">*</span> <span class="mi">100</span></div>
+
+<div class="viewcode-block" id="MusicManager.join"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.MusicManager.join">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">join</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">commands</span><span class="o">.</span><span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">discord</span><span class="o">.</span><span class="n">VoiceChannel</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        |coro|</span>
+
+<span class="sd">        Joins the ctx voice channel.</span>
+<span class="sd">        Calls on_music_error with AlreadyConnected or UserNotConnected.</span>
+
+<span class="sd">        :param ctx: The context.</span>
+<span class="sd">        :type ctx: commands.Context</span>
+<span class="sd">        :return: The voice channel it joined.</span>
+<span class="sd">        :rtype: Optional[discord.VoiceChannel]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span> <span class="ow">and</span> <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span><span class="o">.</span><span class="n">is_connected</span><span class="p">():</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">call_event</span><span class="p">(</span><span class="s1">&#39;on_music_error&#39;</span><span class="p">,</span>
+                                  <span class="n">ctx</span><span class="p">,</span>
+                                  <span class="n">AlreadyConnected</span><span class="p">(</span><span class="s2">&quot;Client is already connected to a voice channel&quot;</span><span class="p">))</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ctx</span><span class="o">.</span><span class="n">author</span><span class="o">.</span><span class="n">voice</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">call_event</span><span class="p">(</span><span class="s1">&#39;on_music_error&#39;</span><span class="p">,</span>
+                                  <span class="n">ctx</span><span class="p">,</span>
+                                  <span class="n">UserNotConnected</span><span class="p">(</span><span class="s2">&quot;User is not connected to a voice channel&quot;</span><span class="p">))</span>
+            <span class="k">return</span>
+
+        <span class="n">channel</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">author</span><span class="o">.</span><span class="n">voice</span><span class="o">.</span><span class="n">channel</span>
+        <span class="k">await</span> <span class="n">channel</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">channel</span></div>
+
+<div class="viewcode-block" id="MusicManager.leave"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.MusicManager.leave">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">leave</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">commands</span><span class="o">.</span><span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">discord</span><span class="o">.</span><span class="n">VoiceChannel</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        |coro|</span>
+
+<span class="sd">        Leaves the voice channel in ctx.</span>
+
+<span class="sd">        :param ctx: The context.</span>
+<span class="sd">        :type ctx: commands.Context</span>
+<span class="sd">        :return: The voice channel it left.</span>
+<span class="sd">        :rtype: Optional[discord.VoiceChannel]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__check_connection</span><span class="p">(</span><span class="n">ctx</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="n">channel</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span><span class="o">.</span><span class="n">channel</span>
+        <span class="k">await</span> <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">channel</span></div>
+
+<div class="viewcode-block" id="MusicManager.now_playing"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.MusicManager.now_playing">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">now_playing</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">commands</span><span class="o">.</span><span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Player</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        |coro|</span>
+
+<span class="sd">        Returns the currently playing player.</span>
+
+<span class="sd">        :param ctx: The context.</span>
+<span class="sd">        :type ctx: commands.Context</span>
+<span class="sd">        :return: The currently playing player.</span>
+<span class="sd">        :rtype: Optional[Player]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__check_connection</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">check_queue</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="n">now_playing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">now_playing</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span><span class="o">.</span><span class="n">is_playing</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">ctx</span><span class="o">.</span><span class="n">voice_client</span><span class="o">.</span><span class="n">is_paused</span><span class="p">():</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">call_event</span><span class="p">(</span><span class="s1">&#39;on_music_error&#39;</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">NotPlaying</span><span class="p">(</span><span class="s2">&quot;Client is not playing anything currently&quot;</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">now_playing</span></div>
+
+<div class="viewcode-block" id="MusicManager.queueloop"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.MusicManager.queueloop">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">queueloop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">commands</span><span class="o">.</span><span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        |coro|</span>
+
+<span class="sd">        Toggles the queue loop.</span>
+
+<span class="sd">        :param ctx: The context</span>
+<span class="sd">        :type ctx: commands.Context</span>
+<span class="sd">        :return: A bool indicating if the queue loop is now enabled or disabled.</span>
+<span class="sd">        :rtype: Optional[bool]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__check_connection</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">check_playing</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">check_queue</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">loop</span> <span class="o">=</span> <span class="n">Loops</span><span class="o">.</span><span class="n">QUEUE_LOOP</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">loop</span> <span class="o">!=</span> <span class="n">Loops</span><span class="o">.</span><span class="n">QUEUE_LOOP</span> <span class="k">else</span> \
+            <span class="n">Loops</span><span class="o">.</span><span class="n">NO_LOOP</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">loop</span> <span class="o">==</span> <span class="n">Loops</span><span class="o">.</span><span class="n">QUEUE_LOOP</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">now_playing</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">loop</span> <span class="o">==</span> <span class="n">Loops</span><span class="o">.</span><span class="n">QUEUE_LOOP</span></div>
+
+<div class="viewcode-block" id="MusicManager.loop"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.MusicManager.loop">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">loop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">commands</span><span class="o">.</span><span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        |coro|</span>
+
+<span class="sd">        Toggles the loop.</span>
+
+<span class="sd">        :param ctx: The context</span>
+<span class="sd">        :type ctx: commands.Context</span>
+<span class="sd">        :return: A bool indicating if the loop is now enabled or disabled.</span>
+<span class="sd">        :rtype: Optional[bool]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__check_connection</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">check_playing</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">check_queue</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">loop</span> <span class="o">=</span> <span class="n">Loops</span><span class="o">.</span><span class="n">LOOP</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">loop</span> <span class="o">!=</span> <span class="n">Loops</span><span class="o">.</span><span class="n">LOOP</span> <span class="k">else</span> <span class="n">Loops</span><span class="o">.</span><span class="n">NO_LOOP</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">loop</span> <span class="o">==</span> <span class="n">Loops</span><span class="o">.</span><span class="n">LOOP</span></div>
+
+<div class="viewcode-block" id="MusicManager.get_queue"><a class="viewcode-back" href="../../source/discordSuperUtils.html#discordSuperUtils.Music.MusicManager.get_queue">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">get_queue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">commands</span><span class="o">.</span><span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">QueueManager</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        |coro|</span>
+
+<span class="sd">        Returns the queue of ctx.</span>
+
+<span class="sd">        :param ctx: The context.</span>
+<span class="sd">        :type ctx: commands.Context</span>
+<span class="sd">        :return: The queue.</span>
+<span class="sd">        :rtype: Optional[QueueManager]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">__check_connection</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">check_queue</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">guild</span><span class="o">.</span><span class="n">id</span><span class="p">]</span></div></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">discordSuperUtils</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, Adam7100 & Koyashie.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
