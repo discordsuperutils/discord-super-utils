@@ -2,13 +2,8 @@ Welcome to discordSuperUtils's documentation!
 =============================================
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-
-    index
-    installation
-
-    discordSuperUtils
+   :caption: Table of Contents
+   :name: mastertoc
 
 DSU (discord-super-utils) is a modern discord module including many useful managers and features that make discord bot programming in discord.py extremely easy.
 
