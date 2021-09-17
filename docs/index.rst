@@ -10,9 +10,6 @@ Welcome to discordSuperUtils's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   members
-   discordSuperUtils
-
 
 
 Indices and tables
