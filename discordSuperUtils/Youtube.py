@@ -131,6 +131,9 @@ class YoutubeClient:
         :return Dict[str, Any]: The video data.
         """
 
+        if not video_id:
+            return []
+
         if len(video_id) == 11:  # Video
             queries = [
                 {
