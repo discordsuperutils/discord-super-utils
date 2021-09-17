@@ -1,8 +1,8 @@
-discordSuperUtils package
-=========================
+.. _Modules:
 
-Submodules
-----------
+
+discordSuperUtils Modules
+=========================
 
 discordSuperUtils.Antispam module
 ---------------------------------
@@ -192,14 +192,6 @@ discordSuperUtils.Youtube module
 --------------------------------
 
 .. automodule:: discordSuperUtils.Youtube
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: discordSuperUtils
    :members:
    :undoc-members:
    :show-inheritance:
