@@ -6,6 +6,9 @@
 Welcome to discordSuperUtils's documentation!
 =============================================
 
+.. automodule:: discordSuperUtils
+   :members:
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
