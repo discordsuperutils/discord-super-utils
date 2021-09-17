@@ -16,27 +16,17 @@ from typing import (
 
 import aiohttp
 import discord
-import youtube_dl
 
 from .Base import EventManager
 from .Spotify import SpotifyClient
+from .Youtube import YoutubeClient
 
 if TYPE_CHECKING:
     from discord.ext import commands
 
 FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
 SPOTIFY_RE = re.compile("^https://open.spotify.com/")
-YTDL = youtube_dl.YoutubeDL({
-    'format': 'bestaudio/best',
-    'restrictfilenames': True,
-    'noplaylist': False,
-    'nocheckcertificate': True,
-    'ignoreerrors': False,
-    'logtostderr': False,
-    'quiet': True,
-    'no_warnings': True,
-    'default_search': 'auto'
-})
+YOUTUBE = YoutubeClient()
 
 __all__ = (
     "NotPlaying",
@@ -114,14 +104,15 @@ class Player(discord.PCMVolumeTransformer):
 
         self.data = data
         self.requester = requester
-        self.title = data.get('title')
+        self.title = data['videoDetails']['title']
         self.stream_url = data.get('url')
-        self.url = data.get('webpage_url')
+        self.url = 'https://youtube.com/watch/?v=' + data['videoDetails']['videoId']
 
         self.start_timestamp = 0
         self.last_pause_timestamp = 0
 
-        self.duration = data.get('duration') if data.get('duration') != 0 else "LIVE"
+        duration = int(data['videoDetails']['lengthSeconds'])
+        self.duration = duration if duration != 0 else "LIVE"
 
     def __str__(self):
         return self.title
@@ -163,19 +154,24 @@ class Player(discord.PCMVolumeTransformer):
         """
 
         data = await MusicManager.fetch_data(query)
-        if data is None:
+        if not data:
             return []
 
-        if 'entries' in data:
-            if not playlist:
-                if data['entries']:
-                    data = data['entries'][0]
-            else:
-                return [cls(discord.FFmpegPCMAudio(player['url'], **FFMPEG_OPTIONS),
-                            requester, data=player) for player in data['entries']]
+        players = []
+        for player in data:
+            stream_url = [x for x in sorted(player['streamingData']['adaptiveFormats'],
+                                            key=lambda x: x.get('averageBitrate', 0),
+                                            reverse=True) if 'audio/mp4' in x['mimeType']]
+            url = player['streamingData'].get('hlsManifestUrl') or stream_url[0]['url']
 
-        filename = data['url']
-        return [cls(discord.FFmpegPCMAudio(filename, **FFMPEG_OPTIONS), requester, data=data)]
+            player['url'] = url
+            players.append(cls(
+                discord.FFmpegPCMAudio(url, **FFMPEG_OPTIONS),
+                requester,
+                data={x: y for x, y in player.items() if x in ['url', 'videoDetails']}
+            ))
+
+        return players
 
 
 class QueueManager:
@@ -245,6 +241,7 @@ class MusicManager(EventManager):
 
         self.queue = {}
 
+        self.youtube = YoutubeClient()
         if spotify_support:
             self.spotify = SpotifyClient(client_id=self.client_id, client_secret=self.client_secret, loop=self.bot.loop)
 
@@ -376,7 +373,7 @@ class MusicManager(EventManager):
         return min(time_played, time_played if player.duration == "LIVE" else player.duration)
 
     @staticmethod
-    async def fetch_data(query: str) -> Optional[dict]:
+    async def fetch_data(query: str) -> List[dict]:
         """
         |coro|
 
@@ -388,20 +385,7 @@ class MusicManager(EventManager):
         :rtype: Optional[dict]
         """
 
-        try:
-            loop = asyncio.get_event_loop()
-
-            fetched_data = await loop.run_in_executor(None, lambda: YTDL.extract_info(query, download=False))
-            if fetched_data:
-                fetched_data.pop('formats', None)
-
-                if 'entries' in fetched_data:
-                    for entry in fetched_data['entries']:
-                        entry.pop('formats', None)
-
-            return fetched_data
-        except youtube_dl.utils.DownloadError:
-            return None
+        return [x for x in await YOUTUBE.get_videos(await YOUTUBE.get_query_id(query)) if 'streamingData' in x]
 
     async def create_player(self, query: str, requester: discord.Member) -> List[Player]:
         """
