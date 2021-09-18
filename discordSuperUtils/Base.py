@@ -24,6 +24,7 @@ from motor import motor_asyncio
 if TYPE_CHECKING:
     from discord.ext import commands
     from .Database import Database
+    from datetime import timedelta
 
 
 __all__ = (
@@ -37,6 +38,7 @@ __all__ = (
     "EventManager",
     "CogManager",
     "DatabaseChecker",
+    "CacheBased",
 )
 
 
@@ -65,6 +67,34 @@ COLUMN_TYPES = {
 
 class DatabaseNotConnected(Exception):
     """Raises an error when the user tries to use a method of a manager without a database connected to it."""
+
+
+class CacheBased:
+    """
+    Represents a cache manager that manages member cache.
+    """
+
+    def __init__(self, bot: commands.Bot, wipe_cache_delay: timedelta):
+        self.wipe_cache_delay = wipe_cache_delay
+        self.bot = bot
+        self._cache = {}
+
+        asyncio.get_event_loop().create_task(self.__wipe_cache())
+
+    async def __wipe_cache(self) -> None:
+        """
+        |coro|
+
+        This function is responsible for wiping the member cache.
+
+        :return: None
+        :rtype: None
+        """
+
+        while not self.bot.is_closed():
+            await asyncio.sleep(self.wipe_cache_delay.total_seconds())
+
+            self._cache = {}
 
 
 class InvalidGenerator(Exception):

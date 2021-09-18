@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, List, Union, Any, Iterable
 
 import discord
 
-from .Base import EventManager, get_generator_response
+from .Base import EventManager, get_generator_response, CacheBased
 from .Punishments import get_relevant_punishment
 
 if TYPE_CHECKING:
@@ -54,12 +54,12 @@ class DefaultSpamDetectionGenerator(SpamDetectionGenerator):
         )
 
 
-class SpamManager(EventManager):
+class SpamManager(EventManager, CacheBased):
     """
     Represents a SpamManager which detects spam.
     """
 
-    __slots__ = ("bot", "generator", "punishments", "_spam_cache", "_last_messages")
+    __slots__ = ("bot", "generator", "punishments", "_last_messages")
 
     def __init__(
         self,
@@ -67,31 +67,15 @@ class SpamManager(EventManager):
         generator: SpamDetectionGenerator = None,
         wipe_cache_delay: timedelta = timedelta(minutes=5),
     ):
-        super().__init__()
-        self.bot = bot
+        super().__init__(bot, wipe_cache_delay)
         self.generator = (
             generator if generator is not None else DefaultSpamDetectionGenerator
         )
-        self.wipe_cache_delay = wipe_cache_delay
         self.punishments = []
-        self._spam_cache = {}
         self._last_messages = {}
 
-        self.bot.loop.create_task(self.__wipe_cache())
         self.bot.add_listener(self.__handle_messages, "on_message")
         self.bot.add_listener(self.__handle_messages, "on_message_edit")
-
-    async def __wipe_cache(self):
-        """
-        This function is responsible for wiping the member cache.
-
-        :return:
-        """
-
-        while not self.bot.is_closed():
-            await asyncio.sleep(self.wipe_cache_delay.total_seconds())
-
-            self._spam_cache = {}
 
     @staticmethod
     def get_messages_similarity(messages: Iterable[str]) -> float:
@@ -140,10 +124,9 @@ class SpamManager(EventManager):
 
         # member_warnings are the number of times the member has spammed.
         member_warnings = (
-            self._spam_cache.setdefault(message.guild.id, {}).get(message.author.id, 0)
-            + 1
+            self._cache.setdefault(message.guild.id, {}).get(message.author.id, 0) + 1
         )
-        self._spam_cache[message.guild.id][message.author.id] = member_warnings
+        self._cache[message.guild.id][message.author.id] = member_warnings
 
         await self.call_event("on_message_spam", member_last_messages, member_warnings)
 

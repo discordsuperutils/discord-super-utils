@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from datetime import timedelta
 from typing import TYPE_CHECKING, Union, Any, List
 
-from .Base import get_generator_response, EventManager
+from .Base import get_generator_response, EventManager, CacheBased
 from .Punishments import get_relevant_punishment
 
 if TYPE_CHECKING:
@@ -64,12 +64,12 @@ class DefaultMessageResponseGenerator(MessageResponseGenerator):
         )
 
 
-class MessageFilter(EventManager):
+class MessageFilter(EventManager, CacheBased):
     """
     Represents a discordSuperUtils message filter that filters messages and finds inappropriate content.
     """
 
-    __slots__ = ("bot", "generator", "_member_cache", "punishments", "wipe_cache_delay")
+    __slots__ = ("bot", "generator", "punishments")
 
     def __init__(
         self,
@@ -78,31 +78,15 @@ class MessageFilter(EventManager):
         delete_message: bool = True,
         wipe_cache_delay: timedelta = timedelta(minutes=5),
     ):
-        super().__init__()
-        self.bot = bot
+        super().__init__(bot, wipe_cache_delay)
         self.generator = (
             generator if generator is not None else DefaultMessageResponseGenerator
         )
         self.delete_message = delete_message
-        self.wipe_cache_delay = wipe_cache_delay
-        self._member_cache = {}
         self.punishments = []
 
-        self.bot.loop.create_task(self.__wipe_cache())
         self.bot.add_listener(self.__handle_messages, "on_message")
         self.bot.add_listener(self.__handle_messages, "on_message_edit")
-
-    async def __wipe_cache(self):
-        """
-        This function is responsible for wiping the member cache.
-
-        :return:
-        """
-
-        while not self.bot.is_closed():
-            await asyncio.sleep(self.wipe_cache_delay.total_seconds())
-
-            self._member_cache = {}
 
     def add_punishments(self, punishments: List[Punishment]) -> None:
         self.punishments = punishments
@@ -134,12 +118,9 @@ class MessageFilter(EventManager):
             await message.delete()
 
         member_warnings = (
-            self._member_cache.setdefault(message.guild.id, {}).get(
-                message.author.id, 0
-            )
-            + 1
+            self._cache.setdefault(message.guild.id, {}).get(message.author.id, 0) + 1
         )
-        self._member_cache[message.guild.id][message.author.id] = member_warnings
+        self._cache[message.guild.id][message.author.id] = member_warnings
 
         await self.call_event("on_inappropriate_message", message, member_warnings)
 

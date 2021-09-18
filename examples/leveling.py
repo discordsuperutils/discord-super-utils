@@ -5,7 +5,9 @@ import discordSuperUtils
 
 bot = commands.Bot(command_prefix="-", intents=discord.Intents.all())
 LevelingManager = discordSuperUtils.LevelingManager(bot, award_role=True)
-ImageManager = discordSuperUtils.ImageManager()  # LevelingManager uses ImageManager to create the rank command.
+ImageManager = (
+    discordSuperUtils.ImageManager()
+)  # LevelingManager uses ImageManager to create the rank command.
 
 
 @bot.event

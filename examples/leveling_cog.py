@@ -21,10 +21,10 @@ class Leveling(commands.Cog, discordSuperUtils.CogManager.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        database = discordSuperUtils.DatabaseManager.connect(
-            ...
+        database = discordSuperUtils.DatabaseManager.connect(...)
+        await self.LevelingManager.connect_to_database(
+            database, ["xp", "roles", "role_list"]
         )
-        await self.LevelingManager.connect_to_database(database, ["xp", "roles", "role_list"])
 
         print("Leveling manager is ready.", self.bot.user)
 
@@ -40,7 +40,9 @@ class Leveling(commands.Cog, discordSuperUtils.CogManager.Cog):
         member_data = await self.LevelingManager.get_account(ctx.author)
 
         if not member_data:
-            await ctx.send(f"I am still creating your account! please wait a few seconds.")
+            await ctx.send(
+                f"I am still creating your account! please wait a few seconds."
+            )
             return
 
         guild_leaderboard = await self.LevelingManager.get_leaderboard(ctx.guild)

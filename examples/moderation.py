@@ -21,6 +21,38 @@ InfractionManager.add_punishments(
 )
 
 
+def make_removed_embeds(removed_infractions, member):
+    return (
+        discordSuperUtils.generate_embeds(
+            [
+                f"**Reason: **{infraction.reason}\n"
+                f"**ID: **{infraction.infraction_id}\n"
+                f"**Date of Infraction: **{infraction.date_of_infraction}"
+                for infraction in removed_infractions
+            ],
+            title=f"Removed Infractions",
+            fields=25,
+            description=f"List of infractions that were removed from {member.mention}.",
+        ),
+    )
+
+
+def make_infraction_embed(member_infractions, member):
+    return (
+        discordSuperUtils.generate_embeds(
+            [
+                f"**Reason: **{await infraction.reason()}\n"
+                f"**ID: **{infraction.infraction_id}\n"
+                f"**Date of Infraction: **{await infraction.datetime()}"
+                for infraction in member_infractions
+            ],
+            title=f"Infractions of {member}",
+            fields=25,
+            description=f"List of {member.mention}'s infractions.",
+        ),
+    )
+
+
 @MuteManager.event()
 async def on_unmute(member, reason):
     print(f"{member} has been unmuted. Mute reason: {reason}")
@@ -94,17 +126,7 @@ async def infractions(ctx, member: discord.Member):
 
     await discordSuperUtils.PageManager(
         ctx,
-        discordSuperUtils.generate_embeds(
-            [
-                f"**Reason: **{await infraction.reason()}\n"
-                f"**ID: **{infraction.infraction_id}\n"
-                f"**Date of Infraction: **{await infraction.datetime()}"
-                for infraction in member_infractions
-            ],
-            title=f"Infractions of {member}",
-            fields=25,
-            description=f"List of {member.mention}'s infractions.",
-        ),
+        make_infraction_embed(member_infractions, member),
     ).run()
 
 
@@ -164,17 +186,7 @@ async def get_before(
 
     await discordSuperUtils.PageManager(
         ctx,
-        discordSuperUtils.generate_embeds(
-            [
-                f"**Reason: **{await infraction.reason()}\n"
-                f"**ID: **{infraction.infraction_id}\n"
-                f"**Date of Infraction: **{await infraction.datetime()}"
-                for infraction in member_infractions
-            ],
-            title=f"Infractions of {member}",
-            fields=25,
-            description=f"Shows a list of {member.mention}'s infractions before {datetime.fromtimestamp(from_timestamp)}.",
-        ),
+        make_infraction_embed(member_infractions, member),
     ).run()
 
 
@@ -187,17 +199,7 @@ async def clear(ctx, member: discord.Member):
 
     await discordSuperUtils.PageManager(
         ctx,
-        discordSuperUtils.generate_embeds(
-            [
-                f"**Reason: **{infraction.reason}\n"
-                f"**ID: **{infraction.infraction_id}\n"
-                f"**Date of Infraction: **{infraction.date_of_infraction}"
-                for infraction in removed_infractions
-            ],
-            title=f"Removed Infractions",
-            fields=25,
-            description=f"List of infractions that were removed from {member.mention}.",
-        ),
+        make_removed_embeds(removed_infractions, member),
     ).run()
 
 
@@ -248,17 +250,7 @@ async def remove_before(
 
     await discordSuperUtils.PageManager(
         ctx,
-        discordSuperUtils.generate_embeds(
-            [
-                f"**Reason: **{infraction.reason}\n"
-                f"**ID: **{infraction.infraction_id}\n"
-                f"**Date of Infraction: **{infraction.date_of_infraction}"
-                for infraction in removed_infractions
-            ],
-            title=f"Infractions of {member}",
-            fields=25,
-            description=f"Shows a list of {member.mention}'s removed infractions before {datetime.fromtimestamp(from_timestamp)}.",
-        ),
+        make_removed_embeds(removed_infractions, member),
     ).run()
 
 
