@@ -59,7 +59,7 @@ class BirthdayMember:
 
     async def age(self) -> int:
         current_birthday = await self.birthday_date()
-        current_datetime = datetime.now()
+        current_datetime = datetime.utcnow()
 
         return (
             current_datetime.year
@@ -132,9 +132,9 @@ class BirthdayManager(DatabaseChecker):
             self.tables["birthdays"], [], fetchall=True
         )
 
+        current_datetime = datetime.utcnow()
         member_data_formatted = []
         for member in member_data:
-            current_datetime = datetime.now(pytz.timezone(member["timezone"]))
             member["utc_birthday"] = datetime.utcfromtimestamp(member["utc_birthday"])
 
             new_date = member["utc_birthday"].replace(year=current_datetime.year)
