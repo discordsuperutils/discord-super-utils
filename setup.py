@@ -12,7 +12,7 @@ setup(
         "discordSuperUtils.Interactions": ["*"],
     },
     include_package_data=True,
-    version="0.1.9",
+    version="0.2.0",
     license="MIT",
     description="Discord Bot Development made easy!",
     long_description=README,
