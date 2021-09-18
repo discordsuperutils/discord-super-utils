@@ -42,6 +42,7 @@ Features
 - Modern Template Manager.
 - Modern CogManager that supports usage of managers in discord cogs.
 - Modern MessageFilter and AntiSpam.
+- Modern youtube client that is optimized for player fetching.
 - And many more!
 (MORE COMING SOON!)
 
