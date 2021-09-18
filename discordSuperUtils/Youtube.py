@@ -27,7 +27,7 @@ class YoutubeClient:
         "accept-language": "en-US,en",
     }
 
-    def __init__(self, session: aiohttp.ClientSession = None, timeout: int = 30):
+    def __init__(self, session: aiohttp.ClientSession = None, timeout: int = 10):
         self.timeout = timeout
         self.session = session or asyncio.get_event_loop().run_until_complete(
             self._make_session()
@@ -43,7 +43,9 @@ class YoutubeClient:
         :rtype: aiohttp.ClientSession
         """
 
-        return aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=self.timeout))
+        return aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=self.timeout, connect=3)
+        )
 
     async def request(
         self,
