@@ -107,10 +107,11 @@ class YoutubeClient:
 
         # Not using the youtube API as it is inconsistent.
 
-        r = await self.session.get(
-            f"https://www.youtube.com/results?search_query={query}"
-        )
-        if not r:
+        try:
+            r = await self.session.get(
+                f"https://www.youtube.com/results?search_query={query}"
+            )
+        except asyncio.exceptions.TimeoutError:
             return []
 
         return re.findall(r"watch\?v=(\S{11})", await r.text())
