@@ -13,7 +13,7 @@ class YoutubeClient:
     Represents a Youtube client that fetches music.
     """
 
-    __slots__ = ("session",)
+    __slots__ = ("session", "timeout")
 
     # This access key is not private, and is used in ALL youtube API requests from the website (from any user).
     ACCESS_KEY = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"
@@ -28,9 +28,22 @@ class YoutubeClient:
     }
 
     def __init__(self, session: aiohttp.ClientSession = None, timeout: int = 30):
-        self.session = session or aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(total=timeout)
+        self.timeout = timeout
+        self.session = session or asyncio.get_event_loop().run_until_complete(
+            self._make_session()
         )
+
+    async def _make_session(self) -> aiohttp.ClientSession:
+        """
+        |coro|
+
+        Makes an aiohttp session.
+
+        :return: The session.
+        :rtype: aiohttp.ClientSession
+        """
+
+        return aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=self.timeout))
 
     async def request(
         self,
