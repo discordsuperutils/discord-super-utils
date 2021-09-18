@@ -8,6 +8,7 @@
   <a href=""><img src="https://img.shields.io/pypi/l/discordSuperUtils?style=flat-square" /></a>
     <br/>
   <a href="https://discord-super-utils.gitbook.io/discord-super-utils/">Documentation</a>
+  <a href="https://discordsuperutils.readthedocs.io/en/latest/">Secondary Documentation</a>
 </p>
 
 <p align="center">
