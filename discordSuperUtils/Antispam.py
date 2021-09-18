@@ -4,13 +4,7 @@ import asyncio
 from abc import ABC, abstractmethod
 from datetime import timedelta
 from difflib import SequenceMatcher
-from typing import (
-    TYPE_CHECKING,
-    List,
-    Union,
-    Any,
-    Iterable
-)
+from typing import TYPE_CHECKING, List, Union, Any, Iterable
 
 import discord
 
@@ -52,7 +46,12 @@ class DefaultSpamDetectionGenerator(SpamDetectionGenerator):
         if member.guild_permissions.administrator:
             return False
 
-        return SpamManager.get_messages_similarity([message.content for message in last_messages]) > 0.70
+        return (
+            SpamManager.get_messages_similarity(
+                [message.content for message in last_messages]
+            )
+            > 0.70
+        )
 
 
 class SpamManager(EventManager):
@@ -62,13 +61,17 @@ class SpamManager(EventManager):
 
     __slots__ = ("bot", "generator", "punishments", "_spam_cache", "_last_messages")
 
-    def __init__(self,
-                 bot: commands.Bot,
-                 generator: SpamDetectionGenerator = None,
-                 wipe_cache_delay: timedelta = timedelta(minutes=5)):
+    def __init__(
+        self,
+        bot: commands.Bot,
+        generator: SpamDetectionGenerator = None,
+        wipe_cache_delay: timedelta = timedelta(minutes=5),
+    ):
         super().__init__()
         self.bot = bot
-        self.generator = generator if generator is not None else DefaultSpamDetectionGenerator
+        self.generator = (
+            generator if generator is not None else DefaultSpamDetectionGenerator
+        )
         self.wipe_cache_delay = wipe_cache_delay
         self.punishments = []
         self._spam_cache = {}
@@ -106,7 +109,9 @@ class SpamManager(EventManager):
         for i, message in enumerate(messages):
             for second_index, second_message in enumerate(messages):
                 if i != second_index:
-                    results.append(SequenceMatcher(None, message, second_message).ratio())
+                    results.append(
+                        SequenceMatcher(None, message, second_message).ratio()
+                    )
 
         return sum(results) / len(results) if results else 0
 
@@ -119,21 +124,30 @@ class SpamManager(EventManager):
         if not message.guild or message.author.bot:
             return
 
-        member_last_messages = self._last_messages.setdefault(message.guild.id, {}).get(message.author.id, [])
+        member_last_messages = self._last_messages.setdefault(message.guild.id, {}).get(
+            message.author.id, []
+        )
 
         member_last_messages.append(message)
         member_last_messages = member_last_messages[-5:]
 
         self._last_messages[message.guild.id][message.author.id] = member_last_messages
 
-        if len(member_last_messages) <= 3 or not get_generator_response(self.generator, SpamDetectionGenerator, member_last_messages):
+        if len(member_last_messages) <= 3 or not get_generator_response(
+            self.generator, SpamDetectionGenerator, member_last_messages
+        ):
             return
 
         # member_warnings are the number of times the member has spammed.
-        member_warnings = self._spam_cache.setdefault(message.guild.id, {}).get(message.author.id, 0) + 1
+        member_warnings = (
+            self._spam_cache.setdefault(message.guild.id, {}).get(message.author.id, 0)
+            + 1
+        )
         self._spam_cache[message.guild.id][message.author.id] = member_warnings
 
         await self.call_event("on_message_spam", member_last_messages, member_warnings)
 
         if punishment := get_relevant_punishment(self.punishments, member_warnings):
-            await punishment.punishment_manager.punish(message, message.author, punishment)
+            await punishment.punishment_manager.punish(
+                message, message.author, punishment
+            )

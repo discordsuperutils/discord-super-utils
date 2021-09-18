@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-from typing import (
-    Dict,
-    Any
-)
+from typing import Dict, Any
 
 import aiohttp
 
@@ -22,11 +19,13 @@ class HTTPClient:
         self.bot_token = bot_token
         self.session = session or aiohttp.ClientSession()
 
-    async def request(self,
-                      request_type: str,
-                      url: str,
-                      payload: Dict[str, Any] = None,
-                      headers: Dict[str, Any] = None) -> str:
+    async def request(
+        self,
+        request_type: str,
+        url: str,
+        payload: Dict[str, Any] = None,
+        headers: Dict[str, Any] = None,
+    ) -> str:
         """
         |coro|
 
@@ -44,10 +43,14 @@ class HTTPClient:
         :rtype: str
         """
 
-        r = await self.session.request(request_type.upper(), url, json=payload or {}, headers=headers or {})
+        r = await self.session.request(
+            request_type.upper(), url, json=payload or {}, headers=headers or {}
+        )
         return await r.text()
 
-    async def add_slash_command(self, payload: Dict[str, Any], application_id: int) -> None:
+    async def add_slash_command(
+        self, payload: Dict[str, Any], application_id: int
+    ) -> None:
         """
         |coro|
 
@@ -64,7 +67,6 @@ class HTTPClient:
         url = f"https://discord.com/api/v9/applications/{application_id}/commands"
         headers = {
             "Authorization": self.bot_token,
-
         }
 
         await self.request("POST", url, payload, headers)

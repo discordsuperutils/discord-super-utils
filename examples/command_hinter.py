@@ -18,7 +18,7 @@ discordSuperUtils.CommandHinter(bot, MyCommandGenerator())
 
 @bot.event
 async def on_ready():
-    print('Command hinter is ready.', bot.user)
+    print("Command hinter is ready.", bot.user)
 
 
 @bot.command()

@@ -6,29 +6,29 @@ import discord
 __all__ = ("generate_embeds", "EmojiError", "PageManager", "ButtonsPageManager")
 
 
-def generate_embeds(list_to_generate, title, description, fields=25, color=0xff0000, string_format='{}'):
+def generate_embeds(
+    list_to_generate, title, description, fields=25, color=0xFF0000, string_format="{}"
+):
     num_of_embeds = ceil((len(list_to_generate) + 1) / fields)
 
     embeds = [
         discord.Embed(
             title=f"{title} (Page 1/{num_of_embeds})",
             description=description,
-            color=color
+            color=color,
         )
     ]
 
     for i in range(2, num_of_embeds + 1):
-        embeds.append(discord.Embed(
-            title=f"{title} (Page {i}/{num_of_embeds})",
-            color=color
-        )
+        embeds.append(
+            discord.Embed(title=f"{title} (Page {i}/{num_of_embeds})", color=color)
         )
 
     embed_index = 0
     for index, element in enumerate(list_to_generate):
-        embeds[embed_index].add_field(name=f"**{index + 1}.**",
-                                      value=string_format.format(element),
-                                      inline=False)
+        embeds[embed_index].add_field(
+            name=f"**{index + 1}.**", value=string_format.format(element), inline=False
+        )
 
         if (index + 1) % fields == 0:
             embed_index += 1
@@ -45,9 +45,26 @@ class EmojiError(Exception):
 
 
 class ButtonsPageManager:
-    __slots__ = ("ctx", "messages", "timeout", "buttons", "public", "index", "button_color")
+    __slots__ = (
+        "ctx",
+        "messages",
+        "timeout",
+        "buttons",
+        "public",
+        "index",
+        "button_color",
+    )
 
-    def __init__(self, ctx, messages, timeout=60, buttons=None, public=False, index=0, button_color=None):
+    def __init__(
+        self,
+        ctx,
+        messages,
+        timeout=60,
+        buttons=None,
+        public=False,
+        index=0,
+        button_color=None,
+    ):
         self.ctx = ctx
         self.messages = messages
         self.timeout = timeout
@@ -63,6 +80,7 @@ class ButtonsPageManager:
         self.index = 0 if not -1 < self.index < len(self.messages) else self.index
 
         from discord_components import ActionRow, Button, ButtonStyle, DiscordComponents
+
         DiscordComponents(self.ctx.bot)
 
         components = ActionRow(
@@ -70,7 +88,7 @@ class ButtonsPageManager:
                 Button(
                     style=self.button_color or ButtonStyle.red,
                     label=button,
-                    custom_id=button
+                    custom_id=button,
                 )
                 for button in self.buttons
             ]
@@ -83,9 +101,9 @@ class ButtonsPageManager:
 
         while True:
             try:
-                interaction = await self.ctx.bot.wait_for('button_click',
-                                                          check=lambda i: i.message == message,
-                                                          timeout=30)
+                interaction = await self.ctx.bot.wait_for(
+                    "button_click", check=lambda i: i.message == message, timeout=30
+                )
 
                 if interaction.user.bot:
                     continue
@@ -127,7 +145,7 @@ class ButtonsPageManager:
                 type=7,  # Cannot find a proper enum :)
                 content="",
                 embed=message_to_send,
-                components=components
+                components=components,
             )
 
 
@@ -159,9 +177,11 @@ class PageManager:
 
         while True:
             try:
-                reaction, user = await self.ctx.bot.wait_for('reaction_add',
-                                                             check=lambda x, y: x.message == message,
-                                                             timeout=self.timeout)
+                reaction, user = await self.ctx.bot.wait_for(
+                    "reaction_add",
+                    check=lambda x, y: x.message == message,
+                    timeout=self.timeout,
+                )
 
                 if user.bot:
                     continue

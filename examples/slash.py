@@ -9,7 +9,7 @@ slash = discordSuperUtils.SlashManager(bot)
 
 @bot.event
 async def on_ready():
-    print('Slash manager is ready.', bot.user)
+    print("Slash manager is ready.", bot.user)
 
 
 @slash.command()

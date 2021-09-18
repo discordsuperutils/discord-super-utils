@@ -2,11 +2,7 @@ from __future__ import annotations
 
 import math
 import time
-from typing import (
-    Iterable,
-    TYPE_CHECKING,
-    List
-)
+from typing import Iterable, TYPE_CHECKING, List
 
 from .Base import DatabaseChecker
 
@@ -28,15 +24,21 @@ class LevelingAccount:
         return LevelingManager.generate_checks(self.member)
 
     async def xp(self):
-        xp_data = await self.leveling_manager.database.select(self.table, ['xp'], self.__checks)
+        xp_data = await self.leveling_manager.database.select(
+            self.table, ["xp"], self.__checks
+        )
         return xp_data["xp"]
 
     async def level(self):
-        rank_data = await self.leveling_manager.database.select(self.table, ['rank'], self.__checks)
+        rank_data = await self.leveling_manager.database.select(
+            self.table, ["rank"], self.__checks
+        )
         return rank_data["rank"]
 
     async def next_level(self):
-        level_up_data = await self.leveling_manager.database.select(self.table, ['level_up'], self.__checks)
+        level_up_data = await self.leveling_manager.database.select(
+            self.table, ["level_up"], self.__checks
+        )
         return level_up_data["level_up"]
 
     async def percentage_next_level(self):
@@ -44,35 +46,58 @@ class LevelingAccount:
         xp = await self.xp()
         initial_xp = await self.initial_rank_xp()
 
-        return min(abs(math.floor(abs(xp - initial_xp) / (level_up - initial_xp) * 100)), 100)
+        return min(
+            abs(math.floor(abs(xp - initial_xp) / (level_up - initial_xp) * 100)), 100
+        )
 
     async def initial_rank_xp(self):
         next_level = await self.next_level()
-        return 0 if next_level == 50 else next_level / self.leveling_manager.rank_multiplier
+        return (
+            0
+            if next_level == 50
+            else next_level / self.leveling_manager.rank_multiplier
+        )
 
     async def set_xp(self, value):
-        await self.leveling_manager.database.update(self.table, {"xp": value}, self.__checks)
+        await self.leveling_manager.database.update(
+            self.table, {"xp": value}, self.__checks
+        )
 
     async def set_level(self, value):
-        await self.leveling_manager.database.update(self.table, {"rank": value}, self.__checks)
+        await self.leveling_manager.database.update(
+            self.table, {"rank": value}, self.__checks
+        )
 
     async def set_next_level(self, value):
-        await self.leveling_manager.database.update(self.table, {"level_up": value}, self.__checks)
+        await self.leveling_manager.database.update(
+            self.table, {"level_up": value}, self.__checks
+        )
 
 
 class LevelingManager(DatabaseChecker):
-    def __init__(self,
-                 bot,
-                 award_role: bool = False,
-                 default_role_interval: int = 5,
-                 xp_on_message=5,
-                 rank_multiplier=1.5,
-                 xp_cooldown=60):
-        super().__init__([
-            {'guild': 'snowflake', 'member': 'snowflake', 'rank': 'number', 'xp': 'number', 'level_up': 'number'},
-            {'guild': 'snowflake', 'interval': 'smallnumber'},
-            {'guild': 'snowflake', 'role': 'snowflake'}
-        ], ['xp', 'roles', 'role_list'])
+    def __init__(
+        self,
+        bot,
+        award_role: bool = False,
+        default_role_interval: int = 5,
+        xp_on_message=5,
+        rank_multiplier=1.5,
+        xp_cooldown=60,
+    ):
+        super().__init__(
+            [
+                {
+                    "guild": "snowflake",
+                    "member": "snowflake",
+                    "rank": "number",
+                    "xp": "number",
+                    "level_up": "number",
+                },
+                {"guild": "snowflake", "interval": "smallnumber"},
+                {"guild": "snowflake", "role": "snowflake"},
+            ],
+            ["xp", "roles", "role_list"],
+        )
 
         self.bot = bot
         self.award_role = award_role
@@ -101,15 +126,11 @@ class LevelingManager(DatabaseChecker):
         if 0 >= interval:
             raise ValueError("The interval must be greater than 0.")
 
-        sql_insert_data = {
-            'guild': guild.id,
-            'interval': interval
-        }
+        sql_insert_data = {"guild": guild.id, "interval": interval}
 
-        await self.database.updateorinsert(self.tables["roles"],
-                                           sql_insert_data,
-                                           {'guild': guild.id},
-                                           sql_insert_data)
+        await self.database.updateorinsert(
+            self.tables["roles"], sql_insert_data, {"guild": guild.id}, sql_insert_data
+        )
 
     async def get_roles(self, guild: discord.Guild) -> List[int]:
         """
@@ -123,12 +144,16 @@ class LevelingManager(DatabaseChecker):
 
         self._check_database()
 
-        return [role["role"] for role in await self.database.select(self.tables["role_list"],
-                                                                    ['role'],
-                                                                    {'guild': guild.id},
-                                                                    fetchall=True)]
+        return [
+            role["role"]
+            for role in await self.database.select(
+                self.tables["role_list"], ["role"], {"guild": guild.id}, fetchall=True
+            )
+        ]
 
-    async def set_roles(self, guild: discord.Guild, roles: Iterable[discord.Role]) -> None:
+    async def set_roles(
+        self, guild: discord.Guild, roles: Iterable[discord.Role]
+    ) -> None:
         """
         Sets the roles of the guild.
 
@@ -142,17 +167,19 @@ class LevelingManager(DatabaseChecker):
 
         self._check_database()
 
-        await self.database.delete(self.tables["role_list"], {'guild': guild.id})
+        await self.database.delete(self.tables["role_list"], {"guild": guild.id})
 
         for role in roles:
-            await self.database.insert(self.tables["role_list"], {'guild': guild.id, "role": role.id})
+            await self.database.insert(
+                self.tables["role_list"], {"guild": guild.id, "role": role.id}
+            )
 
     async def on_database_connect(self):
-        self.bot.add_listener(self.__handle_experience, 'on_message')
+        self.bot.add_listener(self.__handle_experience, "on_message")
 
     @staticmethod
     def generate_checks(member: discord.Member):
-        return {'guild': member.guild.id, 'member': member.id}
+        return {"guild": member.guild.id, "member": member.id}
 
     async def __handle_experience(self, message):
         self._check_database()
@@ -160,7 +187,9 @@ class LevelingManager(DatabaseChecker):
         if not message.guild or message.author.bot:
             return
 
-        member_cooldown = self.cooldown_members.setdefault(message.guild.id, {}).get(message.author.id, 0)
+        member_cooldown = self.cooldown_members.setdefault(message.guild.id, {}).get(
+            message.author.id, 0
+        )
 
         if (time.time() - member_cooldown) >= self.xp_cooldown:
             await self.create_account(message.author)
@@ -171,7 +200,9 @@ class LevelingManager(DatabaseChecker):
 
             leveled_up = False
             while await member_account.xp() >= await member_account.next_level():
-                await member_account.set_next_level(await member_account.next_level() * self.rank_multiplier)
+                await member_account.set_next_level(
+                    await member_account.next_level() * self.rank_multiplier
+                )
                 await member_account.set_level(await member_account.level() + 1)
                 leveled_up = True
 
@@ -179,21 +210,27 @@ class LevelingManager(DatabaseChecker):
                 roles = []
                 if self.award_role:
                     role_ids = await self.get_roles(message.guild)
-                    interval = await self.database.select(self.tables['roles'],
-                                                          ['interval'],
-                                                          {'guild': message.guild.id})
-                    interval = interval["interval"] if interval else self.default_role_interval
+                    interval = await self.database.select(
+                        self.tables["roles"], ["interval"], {"guild": message.guild.id}
+                    )
+                    interval = (
+                        interval["interval"] if interval else self.default_role_interval
+                    )
 
                     if role_ids:
                         member_level = await member_account.level()
 
-                        if member_level % interval == 0 and member_level // interval <= len(role_ids):
-                            roles = [message.guild.get_role(role_id) for role_id in
-                                     role_ids][:await member_account.level() // interval]
+                        if (
+                            member_level % interval == 0
+                            and member_level // interval <= len(role_ids)
+                        ):
+                            roles = [
+                                message.guild.get_role(role_id) for role_id in role_ids
+                            ][: await member_account.level() // interval]
                             roles.reverse()
                             roles = [role for role in roles if role]
 
-                await self.call_event('on_level_up', message, member_account, roles)
+                await self.call_event("on_level_up", message, member_account, roles)
 
                 if roles:
                     await message.author.add_roles(*roles)
@@ -201,22 +238,20 @@ class LevelingManager(DatabaseChecker):
     async def create_account(self, member):
         self._check_database()
 
-        await self.database.insertifnotexists(self.tables["xp"],
-                                              dict(
-                                                  zip(
-                                                      self.tables_column_data[0],
-                                                      [member.guild.id, member.id, 1, 0, 50]
-                                                  )
-                                              ),
-                                              self.generate_checks(member))
+        await self.database.insertifnotexists(
+            self.tables["xp"],
+            dict(
+                zip(self.tables_column_data[0], [member.guild.id, member.id, 1, 0, 50])
+            ),
+            self.generate_checks(member),
+        )
 
     async def get_account(self, member):
         self._check_database()
 
-        member_data = await self.database.select(self.tables["xp"],
-                                                 [],
-                                                 self.generate_checks(member),
-                                                 True)
+        member_data = await self.database.select(
+            self.tables["xp"], [], self.generate_checks(member), True
+        )
 
         if member_data:
             return LevelingAccount(self, member)
@@ -227,14 +262,16 @@ class LevelingManager(DatabaseChecker):
         self._check_database()
 
         guild_info = sorted(
-            await self.database.select(self.tables['xp'], [], {'guild': guild.id}, True),
+            await self.database.select(
+                self.tables["xp"], [], {"guild": guild.id}, True
+            ),
             key=lambda x: x["xp"],
-            reverse=True
+            reverse=True,
         )
 
         members = []
         for member_info in guild_info:
-            member = guild.get_member(member_info['member'])
+            member = guild.get_member(member_info["member"])
             if member:
                 members.append(LevelingAccount(self, member))
 

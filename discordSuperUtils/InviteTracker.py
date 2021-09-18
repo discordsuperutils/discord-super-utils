@@ -8,11 +8,7 @@ Please feel free to read the Discord Terms of Service https://discord.com/terms.
 
 from __future__ import annotations
 
-from typing import (
-    TYPE_CHECKING,
-    Union,
-    Optional
-)
+from typing import TYPE_CHECKING, Union, Optional
 
 from .Base import DatabaseChecker
 
@@ -30,21 +26,32 @@ class InviteAccount:
         return f"<member={self.member.id}>"
 
     async def get_invited_users(self):
-        return await self.invite_tracker.get_members_invited(self.member, self.member.guild)
+        return await self.invite_tracker.get_members_invited(
+            self.member, self.member.guild
+        )
 
 
 class InviteTracker(DatabaseChecker):
     def __init__(self, bot: commands.Bot):
-        super().__init__([{'guild': 'snowflake', 'member': 'snowflake', 'members_invited': 'string'}], ['invites'])
+        super().__init__(
+            [
+                {
+                    "guild": "snowflake",
+                    "member": "snowflake",
+                    "members_invited": "string",
+                }
+            ],
+            ["invites"],
+        )
         self.bot = bot
         self.cache = {}
 
         self.bot.loop.create_task(self.__initialize_cache())
 
-        self.bot.add_listener(self.__cleanup_guild_cache, 'on_guild_remove')
-        self.bot.add_listener(self.__update_guild_cache, 'on_guild_add')
-        self.bot.add_listener(self.__track_invite, 'on_invite_create')
-        self.bot.add_listener(self.__cleanup_invite, 'on_invite_delete')
+        self.bot.add_listener(self.__cleanup_guild_cache, "on_guild_remove")
+        self.bot.add_listener(self.__update_guild_cache, "on_guild_add")
+        self.bot.add_listener(self.__track_invite, "on_invite_create")
+        self.bot.add_listener(self.__cleanup_invite, "on_invite_delete")
 
     async def get_invite(self, member: discord.Member) -> Optional[discord.Invite]:
         for inv in await member.guild.invites():
@@ -57,29 +64,40 @@ class InviteTracker(DatabaseChecker):
                     await self.__update_guild_cache(member.guild)
                     return inv
 
-    async def get_members_invited(self, user: Union[discord.User, discord.Member], guild: discord.Guild):
+    async def get_members_invited(
+        self, user: Union[discord.User, discord.Member], guild: discord.Guild
+    ):
         self._check_database()
 
-        invited_members = await self.database.select(self.tables['invites'], ['members_invited'], {
-            'guild': guild.id,
-            'member': user.id
-        })
+        invited_members = await self.database.select(
+            self.tables["invites"],
+            ["members_invited"],
+            {"guild": guild.id, "member": user.id},
+        )
 
         if not invited_members:
             return []
 
         invited_members = invited_members["members_invited"]
         if isinstance(invited_members, str):
-            return [int(invited_member) for invited_member in invited_members.split('\0') if invited_member]
+            return [
+                int(invited_member)
+                for invited_member in invited_members.split("\0")
+                if invited_member
+            ]
 
-    async def fetch_inviter(self, invite: discord.Invite) -> Union[discord.Member, discord.User]:
+    async def fetch_inviter(
+        self, invite: discord.Invite
+    ) -> Union[discord.Member, discord.User]:
         inviter = invite.guild.get_member(invite.inviter.id)
         return inviter if inviter else await self.bot.get_user(invite.inviter.id)
 
-    async def register_invite(self,
-                              invite: discord.Invite,
-                              member: discord.Member,
-                              inviter: Union[discord.Member, discord.User]) -> None:
+    async def register_invite(
+        self,
+        invite: discord.Invite,
+        member: discord.Member,
+        inviter: Union[discord.Member, discord.User],
+    ) -> None:
         self._check_database()
 
         invited_members = await self.get_members_invited(inviter, invite.guild)
@@ -87,13 +105,19 @@ class InviteTracker(DatabaseChecker):
             return
 
         invited_members.append(member.id)
-        invited_members_sql = '\0'.join(str(invited_member) for invited_member in invited_members)
+        invited_members_sql = "\0".join(
+            str(invited_member) for invited_member in invited_members
+        )
 
         await self.database.updateorinsert(
-            self.tables['invites'],
-            {'members_invited': invited_members_sql},
-            {'guild': invite.guild.id, 'member': inviter.id},
-            {'guild': invite.guild.id, 'member': inviter.id, 'members_invited': invited_members_sql}
+            self.tables["invites"],
+            {"members_invited": invited_members_sql},
+            {"guild": invite.guild.id, "member": inviter.id},
+            {
+                "guild": invite.guild.id,
+                "member": inviter.id,
+                "members_invited": invited_members_sql,
+            },
         )
 
     async def __initialize_cache(self) -> None:

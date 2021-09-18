@@ -11,17 +11,17 @@ class MyMessageGenerator(discordSuperUtils.MessageResponseGenerator):
         # a URL or a discord invite.
         # You could also make this ignore roles, permissions, etc...
 
-        return 'bad-word' in message.content
+        return "bad-word" in message.content
 
 
 bot = commands.Bot(command_prefix="-")
 KickManager = discordSuperUtils.KickManager(bot)
-MessageFilter = discordSuperUtils.MessageFilter(bot, MyMessageGenerator(), delete_message=True)
+MessageFilter = discordSuperUtils.MessageFilter(
+    bot, MyMessageGenerator(), delete_message=True
+)
 # Incase you want to use the default message generator, don't pass a message generator.
 MessageFilter.add_punishments(
-    [
-        discordSuperUtils.Punishment(KickManager, punish_after=3)
-    ]
+    [discordSuperUtils.Punishment(KickManager, punish_after=3)]
 )
 
 
@@ -33,7 +33,7 @@ async def on_inappropriate_message(message, member_warnings):
 
 @bot.event
 async def on_ready():
-    print('Message filter is ready.', bot.user)
+    print("Message filter is ready.", bot.user)
 
 
 bot.run("token")

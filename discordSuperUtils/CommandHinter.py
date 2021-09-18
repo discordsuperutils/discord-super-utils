@@ -1,9 +1,6 @@
 from abc import ABC, abstractmethod
 from difflib import SequenceMatcher
-from typing import (
-    List,
-    Union
-)
+from typing import List, Union
 
 import discord
 from discord.ext import commands
@@ -17,7 +14,9 @@ class CommandResponseGenerator(ABC):
     __slots__ = ()
 
     @abstractmethod
-    def generate(self, invalid_command: str, suggestions: List[str]) -> Union[str, discord.Embed]:
+    def generate(
+        self, invalid_command: str, suggestions: List[str]
+    ) -> Union[str, discord.Embed]:
         pass
 
 
@@ -28,11 +27,13 @@ class DefaultResponseGenerator(CommandResponseGenerator):
         embed = discord.Embed(
             title="Invalid command!",
             description=f"**`{invalid_command}`** is invalid. Did you mean:",
-            color=0x00ff00
+            color=0x00FF00,
         )
 
         for index, suggestion in enumerate(suggestions[:3]):
-            embed.add_field(name=f"**{index + 1}.**", value=f"**`{suggestion}`**", inline=False)
+            embed.add_field(
+                name=f"**{index + 1}.**", value=f"**`{suggestion}`**", inline=False
+            )
 
         return embed
 
@@ -40,9 +41,7 @@ class DefaultResponseGenerator(CommandResponseGenerator):
 class CommandHinter:
     __slots__ = ("bot", "generator")
 
-    def __init__(self,
-                 bot: commands.Bot,
-                 generator=None):
+    def __init__(self, bot: commands.Bot, generator=None):
         self.bot = bot
         self.generator = DefaultResponseGenerator if generator is None else generator
 
@@ -66,16 +65,20 @@ class CommandHinter:
     async def __handle_hinter(self, ctx: commands.Context, error) -> None:
         if isinstance(error, commands.CommandNotFound):
             command_similarity = {}
-            command_used = ctx.message.content.lstrip(ctx.prefix)[:max([len(c) for c in self.command_names])]
+            command_used = ctx.message.content.lstrip(ctx.prefix)[
+                : max([len(c) for c in self.command_names])
+            ]
 
             for command in self.command_names:
-                command_similarity[SequenceMatcher(None, command, command_used).ratio()] = command
+                command_similarity[
+                    SequenceMatcher(None, command, command_used).ratio()
+                ] = command
 
             generated_message = get_generator_response(
                 self.generator,
                 CommandResponseGenerator,
                 command_used,
-                [x[1] for x in sorted(command_similarity.items(), reverse=True)]
+                [x[1] for x in sorted(command_similarity.items(), reverse=True)],
             )
 
             if not generated_message:
@@ -86,7 +89,9 @@ class CommandHinter:
             elif isinstance(generated_message, str):
                 await ctx.send(generated_message)
             else:
-                raise TypeError("The generated message must be of type 'discord.Embed' or 'str'.")
+                raise TypeError(
+                    "The generated message must be of type 'discord.Embed' or 'str'."
+                )
 
         else:
             raise error

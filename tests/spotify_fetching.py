@@ -37,12 +37,20 @@ async def fetch_spotify_client():
 
 
 async def fetch_spotify_dl_client():
-    return (await asyncio.get_event_loop().run_in_executor(
-        None,
-        lambda: spotify.fetch_tracks(spotify_client.sp, spotify.parse_spotify_url(playlist_url)[0], playlist_url)
-    ))[0]['name']
+    return (
+        await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: spotify.fetch_tracks(
+                spotify_client.sp,
+                spotify.parse_spotify_url(playlist_url)[0],
+                playlist_url,
+            ),
+        )
+    )[0]["name"]
 
 
 loop = asyncio.get_event_loop()
-spotify_client = discordSuperUtils.SpotifyClient(client_id, client_secret, asyncio.get_event_loop())
+spotify_client = discordSuperUtils.SpotifyClient(
+    client_id, client_secret, asyncio.get_event_loop()
+)
 loop.run_until_complete(start_testing())

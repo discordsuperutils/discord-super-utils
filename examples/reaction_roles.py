@@ -3,7 +3,7 @@ from discord.ext import commands
 
 import discordSuperUtils
 
-bot = commands.Bot(command_prefix='-', intents=discord.Intents.all())
+bot = commands.Bot(command_prefix="-", intents=discord.Intents.all())
 ReactionManager = discordSuperUtils.ReactionManager(bot)
 
 
@@ -20,14 +20,18 @@ async def on_ready():
     database = discordSuperUtils.DatabaseManager.connect(...)
     await ReactionManager.connect_to_database(database, ["reaction_roles"])
 
-    print('Reaction manager is ready.', bot.user)
+    print("Reaction manager is ready.", bot.user)
 
 
 @bot.command()
-async def reaction(ctx, message, emoji: str, remove_on_reaction, role: discord.Role = None):
+async def reaction(
+    ctx, message, emoji: str, remove_on_reaction, role: discord.Role = None
+):
     message = await ctx.channel.fetch_message(message)
 
-    await ReactionManager.create_reaction(ctx.guild, message, role, emoji, remove_on_reaction)
+    await ReactionManager.create_reaction(
+        ctx.guild, message, role, emoji, remove_on_reaction
+    )
 
 
 bot.run("token")

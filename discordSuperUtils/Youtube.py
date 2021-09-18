@@ -1,15 +1,9 @@
 import asyncio
 import re
-from typing import (
-    Dict,
-    Any,
-    List,
-    Optional
-)
+from typing import Dict, Any, List, Optional
 from urllib import parse
 
 import aiohttp
-
 
 __all__ = ("YoutubeClient",)
 
@@ -24,21 +18,27 @@ class YoutubeClient:
     # This access key is not private, and is used in ALL youtube API requests from the website (from any user).
     ACCESS_KEY = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"
     BASE_URL = "https://www.youtube.com/youtubei/v1"
-    CONTEXT = b"{'context': {'client': {'clientName': 'ANDROID','clientVersion': '16.20'}}}"
+    CONTEXT = (
+        b"{'context': {'client': {'clientName': 'ANDROID','clientVersion': '16.20'}}}"
+    )
     HEADERS = {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         "User-Agent": "Mozilla/5.0",
-        "accept-language": "en-US,en"
+        "accept-language": "en-US,en",
     }
 
-    def __init__(self, session: aiohttp.ClientSession = None):
-        self.session = session or aiohttp.ClientSession()
+    def __init__(self, session: aiohttp.ClientSession = None, timeout: int = 30):
+        self.session = session or aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=timeout)
+        )
 
-    async def request(self,
-                      url: str,
-                      query: Dict[str, Any],
-                      headers: Dict[str, str] = None,
-                      payload: bytes = CONTEXT) -> aiohttp.ClientResponse:
+    async def request(
+        self,
+        url: str,
+        query: Dict[str, Any],
+        headers: Dict[str, str] = None,
+        payload: bytes = CONTEXT,
+    ) -> Optional[aiohttp.ClientResponse]:
         """
         |coro|
 
@@ -54,11 +54,12 @@ class YoutubeClient:
 
         headers = headers or self.HEADERS
 
-        return await self.session.post(
-            f'{url}?{parse.urlencode(query)}',
-            data=payload,
-            headers=headers
-        )
+        try:
+            return await self.session.post(
+                f"{url}?{parse.urlencode(query)}", data=payload, headers=headers
+            )
+        except asyncio.exceptions.TimeoutError:
+            return None
 
     async def get_query_id(self, query: str) -> Optional[str]:
         """
@@ -73,7 +74,7 @@ class YoutubeClient:
 
         query_arguments = dict(parse.parse_qsl(parse.urlparse(query).query))
 
-        result_id = query_arguments.get('list') or query_arguments.get('v')
+        result_id = query_arguments.get("list") or query_arguments.get("v")
         if result_id:
             return result_id
 
@@ -93,8 +94,50 @@ class YoutubeClient:
 
         # Not using the youtube API as it is inconsistent.
 
-        r = await self.session.get(f"https://www.youtube.com/results?search_query={query}")
+        r = await self.session.get(
+            f"https://www.youtube.com/results?search_query={query}"
+        )
+        if not r:
+            return []
+
         return re.findall(r"watch\?v=(\S{11})", await r.text())
+
+    async def get_similar_videos(self, video_id: str) -> List[str]:
+        """
+        |coro|
+
+        Returns similar videos to the video id.
+        Simply returns the suggestions in the suggestions section when watching a video.
+
+        :param str video_id: The video id.
+        :return: The list of similar videos.
+        :rtype: List[str]
+        """
+
+        query = {
+            "key": self.ACCESS_KEY,
+            "contentCheckOk": True,
+            "racyCheckOk": True,
+            "videoId": video_id,
+        }
+
+        r = await self.request(f"{self.BASE_URL}/next", query=query)
+        if not r:
+            return []
+
+        r_json = await r.json()
+
+        suggestions = r_json["contents"]["singleColumnWatchNextResults"]["results"][
+            "results"
+        ]["contents"][1]
+
+        return [
+            x["gridVideoRenderer"]["videoId"]
+            for x in suggestions["shelfRenderer"]["content"]["horizontalListRenderer"][
+                "items"
+            ]
+            if "gridVideoRenderer" in x
+        ]
 
     async def get_playlist_videos(self, playlist_id: str) -> List[str]:
         """
@@ -108,25 +151,37 @@ class YoutubeClient:
         """
 
         query = {
-            'key': self.ACCESS_KEY,
-            'contentCheckOk': True,
-            'racyCheckOk': True,
-            'playlistId': playlist_id
+            "key": self.ACCESS_KEY,
+            "contentCheckOk": True,
+            "racyCheckOk": True,
+            "playlistId": playlist_id,
         }
 
-        r = await self.request(f'{self.BASE_URL}/next', query=query)
+        r = await self.request(f"{self.BASE_URL}/next", query=query)
+        if not r:
+            return []
+
         r_json = await r.json()
 
         # Youtube api lol
-        return [x['playlistPanelVideoRenderer']['navigationEndpoint']['watchEndpoint']['videoId']
-                for x in r_json['contents']['singleColumnWatchNextResults']['playlist']['playlist']['contents']]
+        return [
+            x["playlistPanelVideoRenderer"]["navigationEndpoint"]["watchEndpoint"][
+                "videoId"
+            ]
+            for x in r_json["contents"]["singleColumnWatchNextResults"]["playlist"][
+                "playlist"
+            ]["contents"]
+        ]
 
-    async def get_videos(self, video_id: str) -> List[Dict[str, Any]]:
+    async def get_videos(
+        self, video_id: str, playlist: bool = True
+    ) -> List[Dict[str, Any]]:
         """
         |coro|
 
         Returns the videos data including title, duration, stream urls.
 
+        :param bool playlist: Fetches playlists if True.
         :param str video_id: The video or playlist id.
         :return Dict[str, Any]: The video data.
         """
@@ -137,22 +192,30 @@ class YoutubeClient:
         if len(video_id) == 11:  # Video
             queries = [
                 {
-                    'key': self.ACCESS_KEY,
-                    'videoId': video_id,
-                    'contentCheckOk': True,
-                    'racyCheckOk': True
+                    "key": self.ACCESS_KEY,
+                    "videoId": video_id,
+                    "contentCheckOk": True,
+                    "racyCheckOk": True,
                 }
             ]
 
         else:  # Playlist
             queries = [
                 {
-                    'key': self.ACCESS_KEY,
-                    'videoId': playlist_video_id,
-                    'contentCheckOk': True,
-                    'racyCheckOk': True
-                } for playlist_video_id in await self.get_playlist_videos(video_id)
+                    "key": self.ACCESS_KEY,
+                    "videoId": playlist_video_id,
+                    "contentCheckOk": True,
+                    "racyCheckOk": True,
+                }
+                for playlist_video_id in await self.get_playlist_videos(video_id)
             ]
 
-        return [await r.json() for r in await asyncio.gather(
-            *[self.request(f'{self.BASE_URL}/player', query=query) for query in queries])]
+        queries = queries[:1] if not playlist else queries
+
+        requests = await asyncio.gather(
+            *[self.request(f"{self.BASE_URL}/player", query=query) for query in queries]
+        )
+        try:
+            return [await r.json() if r else {} for r in requests]
+        except asyncio.exceptions.TimeoutError:
+            return []

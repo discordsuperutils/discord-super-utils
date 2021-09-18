@@ -1,18 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import random
 import re
 import time
 from enum import Enum
-from typing import (
-    Optional,
-    TYPE_CHECKING,
-    Iterable,
-    List,
-    Union,
-    Any,
-    Tuple
-)
+from typing import Optional, TYPE_CHECKING, Iterable, List, Union, Any, Tuple
 
 import aiohttp
 import discord
@@ -24,7 +17,10 @@ from .Youtube import YoutubeClient
 if TYPE_CHECKING:
     from discord.ext import commands
 
-FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
+FFMPEG_OPTIONS = {
+    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+    "options": "-vn",
+}
 SPOTIFY_RE = re.compile("^https://open.spotify.com/")
 YOUTUBE = YoutubeClient()
 
@@ -42,7 +38,7 @@ __all__ = (
     "Loops",
     "Player",
     "QueueManager",
-    "MusicManager"
+    "MusicManager",
 )
 
 
@@ -92,59 +88,115 @@ class Loops(Enum):
     QUEUE_LOOP = 2
 
 
-class Player(discord.PCMVolumeTransformer):
+class Player:
     """
     Represents a music player.
     """
 
-    __slots__ = ("data", "title", "stream_url", "url", "start_timestamp", "last_pause_timestamp", "duration")
+    __slots__ = (
+        "data",
+        "title",
+        "stream_url",
+        "url",
+        "start_timestamp",
+        "last_pause_timestamp",
+        "duration",
+        "requester",
+        "source",
+        "autoplayed",
+    )
 
-    def __init__(self, source, requester: discord.Member, *, data, volume=0.1):
-        super().__init__(source, volume)
-
+    def __init__(self, requester: Optional[discord.Member], data):
+        self.source = None
         self.data = data
         self.requester = requester
-        self.title = data['videoDetails']['title']
-        self.stream_url = data.get('url')
-        self.url = 'https://youtube.com/watch/?v=' + data['videoDetails']['videoId']
+        self.title = data["videoDetails"]["title"]
+        self.stream_url = data.get("url")
+        self.url = "https://youtube.com/watch/?v=" + data["videoDetails"]["videoId"]
 
+        self.autoplayed = False
         self.start_timestamp = 0
         self.last_pause_timestamp = 0
 
-        duration = int(data['videoDetails']['lengthSeconds'])
+        duration = int(data["videoDetails"]["lengthSeconds"])
         self.duration = duration if duration != 0 else "LIVE"
 
     def __str__(self):
         return self.title
 
-    @staticmethod
-    async def make_multiple_players(songs: Iterable[str], requester: discord.Member) -> List[Player]:
+    @classmethod
+    async def make_multiple_players(
+        cls, songs: Iterable[str], requester: Optional[discord.Member]
+    ) -> List[Player]:
         """
         |coro|
 
         Returns a list of players from a iterable of queries.
 
         :param requester: The requester.
-        :type requester: discord.Member
+        :type requester: Optional[discord.Member]
         :param songs: The queries.
         :type songs: Iterable[str]
         :return: The list of created players.
         :rtype: List[Player]
         """
 
-        tasks = [Player.make_player(song, requester, playlist=False) for song in songs]
-        return [x[0] for x in await asyncio.gather(*tasks) if x]
+        tasks = [cls.fetch_song(song, playlist=False) for song in songs]
+
+        songs = await asyncio.gather(*tasks)
+
+        return [cls(requester, data=x[0]) for x in songs if x]
+
+    @staticmethod
+    async def fetch_song(query: str, playlist: bool = True) -> List[dict]:
+        """
+        |coro|
+
+        Fetches the song's or playlist's data.
+        Will return the first song in the playlist if playlist is False.
+
+        :param query: The query.
+        :type query: str
+        :param playlist: A bool indicating if the function should fetch playlists or get the first video.
+        :type playlist: bool
+        :return: The list of songs.
+        :rtype: List[dict]
+        """
+
+        data = await MusicManager.fetch_data(query, playlist)
+        if not data:
+            return []
+
+        players = []
+        for player in data:
+            stream_url = [
+                x
+                for x in sorted(
+                    player["streamingData"]["adaptiveFormats"],
+                    key=lambda x: x.get("averageBitrate", 0),
+                    reverse=True,
+                )
+                if "audio" in x["mimeType"] and "opus" not in x["mimeType"]
+            ]
+            url = player["streamingData"].get("hlsManifestUrl") or stream_url[0]["url"]
+
+            player["url"] = url
+            players.append(
+                {x: y for x, y in player.items() if x in ["url", "videoDetails"]}
+            )
+
+        return players
 
     @classmethod
-    async def make_player(cls, query: str, requester: discord.Member, playlist: bool = True) -> List[Player]:
+    async def make_players(
+        cls, query: str, requester: Optional[discord.Member], playlist: bool = True
+    ) -> List[Player]:
         """
         |coro|
 
         Returns a list of players from the query.
-        The list will contain the first video incase it is not a playlist.
 
-        :param requester: The requester.
-        :type requester: discord.Member
+        :param Optional[discord.Member] requester: The song requester.
         :param query: The query.
         :type query: str
         :param playlist: A bool indicating if the function should fetch playlists or get the first video.
@@ -153,34 +205,29 @@ class Player(discord.PCMVolumeTransformer):
         :rtype: List[Player]
         """
 
-        data = await MusicManager.fetch_data(query)
-        if not data:
-            return []
-
-        players = []
-        for player in data:
-            stream_url = [x for x in sorted(player['streamingData']['adaptiveFormats'],
-                                            key=lambda x: x.get('averageBitrate', 0),
-                                            reverse=True) if 'audio/mp4' in x['mimeType']]
-            url = player['streamingData'].get('hlsManifestUrl') or stream_url[0]['url']
-
-            player['url'] = url
-            players.append(cls(
-                discord.FFmpegPCMAudio(url, **FFMPEG_OPTIONS),
-                requester,
-                data={x: y for x, y in player.items() if x in ['url', 'videoDetails']}
-            ))
-
-        return players
+        return [
+            cls(requester, data=player)
+            for player in await cls.fetch_song(query, playlist)
+        ]
 
 
 class QueueManager:
-    __slots__ = ("queue", "volume", "history", "loop", "now_playing")
+    __slots__ = (
+        "queue",
+        "volume",
+        "history",
+        "loop",
+        "now_playing",
+        "autoplay",
+        "shuffle",
+    )
 
     def __init__(self, volume: float, queue: List[Player]):
         self.queue = queue
         self.volume = volume
         self.history = []
+        self.autoplay = False
+        self.shuffle = False
         self.loop = Loops.NO_LOOP
         self.now_playing = None
 
@@ -218,9 +265,11 @@ class QueueManager:
 
         return self.queue.pop(index)
 
-    def clean_up(self):
-        pass
-        # TODO
+    def cleanup(self):
+        self.clear()
+        self.history.clear()
+        del self.history
+        del self.queue
 
 
 class MusicManager(EventManager):
@@ -228,14 +277,28 @@ class MusicManager(EventManager):
     Represents a MusicManager.
     """
 
-    __slots__ = ("bot", "client_id", "client_secret", "spotify_support", "inactivity_timeout", "queue", "spotify")
+    __slots__ = (
+        "bot",
+        "client_id",
+        "client_secret",
+        "spotify_support",
+        "inactivity_timeout",
+        "queue",
+        "spotify",
+    )
 
-    def __init__(self, bot: commands.Bot, spotify_support: bool = True, inactivity_timeout: int = 60, **kwargs):
+    def __init__(
+        self,
+        bot: commands.Bot,
+        spotify_support: bool = True,
+        inactivity_timeout: int = 60,
+        **kwargs,
+    ):
         super().__init__()
         self.bot = bot
 
-        self.client_id = kwargs.get('client_id')
-        self.client_secret = kwargs.get('client_secret')
+        self.client_id = kwargs.get("client_id")
+        self.client_secret = kwargs.get("client_secret")
         self.spotify_support = spotify_support
         self.inactivity_timeout = inactivity_timeout
 
@@ -243,7 +306,11 @@ class MusicManager(EventManager):
 
         self.youtube = YoutubeClient()
         if spotify_support:
-            self.spotify = SpotifyClient(client_id=self.client_id, client_secret=self.client_secret, loop=self.bot.loop)
+            self.spotify = SpotifyClient(
+                client_id=self.client_id,
+                client_secret=self.client_secret,
+                loop=self.bot.loop,
+            )
 
     async def ensure_activity(self, ctx: commands.Context) -> None:
         """
@@ -270,10 +337,12 @@ class MusicManager(EventManager):
             await ctx.voice_client.disconnect()
             await self.call_event("on_inactivity_disconnect", ctx)
 
-    async def __check_connection(self,
-                                 ctx: commands.Context,
-                                 check_playing: bool = False,
-                                 check_queue: bool = False) -> Optional[bool]:
+    async def __check_connection(
+        self,
+        ctx: commands.Context,
+        check_playing: bool = False,
+        check_queue: bool = False,
+    ) -> Optional[bool]:
         """
         |coro|
 
@@ -290,24 +359,53 @@ class MusicManager(EventManager):
         """
 
         if not ctx.voice_client or not ctx.voice_client.is_connected():
-            await self.call_event('on_music_error', ctx, NotConnected("Client is not connected to a voice channel"))
+            await self.call_event(
+                "on_music_error",
+                ctx,
+                NotConnected("Client is not connected to a voice channel"),
+            )
             return
 
         if check_playing and not ctx.voice_client.is_playing():
-            await self.call_event('on_music_error', ctx, NotPlaying("Client is not playing anything currently"))
+            await self.call_event(
+                "on_music_error",
+                ctx,
+                NotPlaying("Client is not playing anything currently"),
+            )
             return
 
         if check_queue and ctx.guild.id not in self.queue:
-            await self.call_event('on_music_error', ctx, QueueEmpty("Queue is empty"))
+            await self.call_event("on_music_error", ctx, QueueEmpty("Queue is empty"))
             return
 
         return True
+
+    @staticmethod
+    async def _get_similar_videos(video_id: str) -> List[Player]:
+        """
+        |coro|
+
+        Creates similar videos related to the video id.
+
+        :param str video_id: The video id
+        :return: The list of similar players
+        :rtype: List[Player]
+        """
+
+        similar_video = await YOUTUBE.get_similar_videos(video_id)
+        players = await Player.make_players(
+            f"https://youtube.com/watch/?v={similar_video[0]}", None, False
+        )
+        for player in players:
+            player.autoplayed = True
+
+        return players
 
     async def __check_queue(self, ctx: commands.Context) -> None:
         """
         |coro|
 
-        Plays the next song in the queue, handles looping and queue looping.
+        Plays the next song in the queue, handles looping, queue looping, autoplay, etc.
 
         :param ctx: The context of the voice client.
         :type ctx: commands.Context
@@ -319,36 +417,57 @@ class MusicManager(EventManager):
             if not ctx.voice_client or not ctx.voice_client.is_connected():
                 return
 
-            if self.queue[ctx.guild.id].loop == Loops.LOOP:
-                player = self.queue[ctx.guild.id].now_playing
-                player.original = discord.FFmpegPCMAudio(player.stream_url, **FFMPEG_OPTIONS)
+            queue = self.queue[ctx.guild.id]
 
-            elif self.queue[ctx.guild.id].loop == Loops.QUEUE_LOOP:
-                player = self.queue[ctx.guild.id].remove(0)
-                player.original = discord.FFmpegPCMAudio(player.stream_url, **FFMPEG_OPTIONS)
+            if queue.loop == Loops.LOOP:
+                player = queue.now_playing
+
+            elif queue.loop == Loops.QUEUE_LOOP:
+                player = (
+                    random.choice(queue.queue) if queue.shuffle else queue.remove(0)
+                )
                 self.queue[ctx.guild.id].add(player)
 
             else:
-                player = self.queue[ctx.guild.id].remove(0)
+                if not queue.queue and queue.autoplay:
+                    last_video_id = queue.history[-1].data["videoDetails"]["videoId"]
+                    player = (await self._get_similar_videos(last_video_id))[0]
 
-            self.queue[ctx.guild.id].now_playing = player
+                else:
+                    player = (
+                        random.choice(queue.queue) if queue.shuffle else queue.remove(0)
+                    )
+
+            player.source = discord.PCMVolumeTransformer(
+                discord.FFmpegPCMAudio(player.stream_url, **FFMPEG_OPTIONS),
+                queue.volume,
+            )
+
+            queue.now_playing = player
 
             if player is None or not ctx.voice_client:
                 return
 
-            player.volume = self.queue[ctx.guild.id].volume
-            ctx.voice_client.play(player, after=lambda x: self.bot.loop.create_task(self.__check_queue(ctx)))
+            ctx.voice_client.play(
+                player.source,
+                after=lambda x: self.bot.loop.create_task(self.__check_queue(ctx)),
+            )
             player.start_timestamp = time.time()
 
-            if self.queue[ctx.guild.id].loop == Loops.NO_LOOP:
-                self.queue[ctx.guild.id].history.append(player)
-                await self.call_event('on_play', ctx, player)
+            if queue.loop == Loops.NO_LOOP:
+                queue.history.append(player)
+                await self.call_event("on_play", ctx, player)
 
         except (IndexError, KeyError):
-            await self.call_event("on_queue_end", ctx)
-            del self.queue[ctx.guild.id]
+            if ctx.guild.id in self.queue:
+                self.queue[ctx.guild.id].cleanup()
+                del self.queue[ctx.guild.id]
 
-    async def get_player_played_duration(self, ctx: commands.Context, player: Player) -> Optional[float]:
+            await self.call_event("on_queue_end", ctx)
+
+    async def get_player_played_duration(
+        self, ctx: commands.Context, player: Player
+    ) -> Optional[float]:
         """
         |coro|
 
@@ -367,27 +486,40 @@ class MusicManager(EventManager):
 
         start_timestamp = player.start_timestamp
         if ctx.voice_client.is_paused():
-            start_timestamp = player.start_timestamp + time.time() - player.last_pause_timestamp
+            start_timestamp = (
+                player.start_timestamp + time.time() - player.last_pause_timestamp
+            )
 
         time_played = time.time() - start_timestamp
-        return min(time_played, time_played if player.duration == "LIVE" else player.duration)
+        return min(
+            time_played, time_played if player.duration == "LIVE" else player.duration
+        )
 
     @staticmethod
-    async def fetch_data(query: str) -> List[dict]:
+    async def fetch_data(query: str, playlist: bool = True) -> List[dict]:
         """
         |coro|
 
-        Fetches the YTDL data of the query.
+        Fetches the youtube data of the query.
 
+        :param bool playlist: Indicating if it should fetch playlists.
         :param query: The query.
         :type query: str
-        :return: The YTDL data.
+        :return: The youtube data.
         :rtype: Optional[dict]
         """
 
-        return [x for x in await YOUTUBE.get_videos(await YOUTUBE.get_query_id(query)) if 'streamingData' in x]
+        return [
+            x
+            for x in await YOUTUBE.get_videos(
+                await YOUTUBE.get_query_id(query), playlist
+            )
+            if "streamingData" in x
+        ]
 
-    async def create_player(self, query: str, requester: discord.Member) -> List[Player]:
+    async def create_player(
+        self, query: str, requester: discord.Member
+    ) -> List[Player]:
         """
         |coro|
 
@@ -404,13 +536,14 @@ class MusicManager(EventManager):
 
         if SPOTIFY_RE.match(query) and self.spotify_support:
             return await Player.make_multiple_players(
-                [song for song in await self.spotify.get_songs(query)],
-                requester
+                [song for song in await self.spotify.get_songs(query)], requester
             )
 
-        return await Player.make_player(query, requester)
+        return await Player.make_players(query, requester)
 
-    async def queue_add(self, players: List[Player], ctx: commands.Context) -> Optional[bool]:
+    async def queue_add(
+        self, players: List[Player], ctx: commands.Context
+    ) -> Optional[bool]:
         """
         |coro|
 
@@ -456,9 +589,15 @@ class MusicManager(EventManager):
         try:
             self.queue[ctx.guild.id].remove(index)
         except IndexError:
-            await self.call_event('on_music_error', ctx, QueueError("Failure when removing player from queue"))
+            await self.call_event(
+                "on_music_error",
+                ctx,
+                QueueError("Failure when removing player from queue"),
+            )
 
-    async def lyrics(self, ctx: commands.Context, query: str = None) -> Optional[Tuple[str, str, str]]:
+    async def lyrics(
+        self, ctx: commands.Context, query: str = None
+    ) -> Optional[Tuple[str, str, str]]:
         """
         |coro|
 
@@ -482,13 +621,15 @@ class MusicManager(EventManager):
             request = await session.get(url)
             request_json = await request.json()
 
-            authors = request_json.get('author')
-            title = request_json.get('title')
+            authors = request_json.get("author")
+            title = request_json.get("title")
             lyrics = request_json.get("lyrics")
 
             return (title, authors, lyrics) if lyrics else None
 
-    async def play(self, ctx: commands.Context, player: Player = None) -> Optional[bool]:
+    async def play(
+        self, ctx: commands.Context, player: Player = None
+    ) -> Optional[bool]:
         """
         |coro|
 
@@ -506,7 +647,7 @@ class MusicManager(EventManager):
             return
 
         if player is not None:
-            ctx.voice_client.play(player)
+            ctx.voice_client.play(player.source)
             return True
 
         if not ctx.voice_client.is_playing():
@@ -530,7 +671,9 @@ class MusicManager(EventManager):
             return
 
         if ctx.voice_client.is_paused():
-            await self.call_event('on_music_error', ctx, AlreadyPaused("Player is already paused."))
+            await self.call_event(
+                "on_music_error", ctx, AlreadyPaused("Player is already paused.")
+            )
             return
 
         (await self.now_playing(ctx)).last_pause_timestamp = time.time()
@@ -555,7 +698,9 @@ class MusicManager(EventManager):
             return
 
         if not ctx.voice_client.is_paused():
-            await self.call_event('on_music_error', ctx, NotPaused("Player is not paused"))
+            await self.call_event(
+                "on_music_error", ctx, NotPaused("Player is not paused")
+            )
             return
 
         ctx.voice_client.resume()
@@ -583,30 +728,44 @@ class MusicManager(EventManager):
         if not await self.__check_connection(ctx, True, check_queue=True):
             return
 
+        queue = self.queue[ctx.guild.id]
+
         # Created duplicate to make sure InvalidSkipIndex isn't raised when the user does pass an index and the queue
         # is empty.
         skip_index = 0 if index is None else index - 1
-        if not -1 < skip_index < len(self.queue[ctx.guild.id].queue):
+        if not -1 < skip_index < len(queue.queue):
             if index:
-                await self.call_event('on_music_error', ctx, InvalidSkipIndex("Skip index invalid."))
+                await self.call_event(
+                    "on_music_error", ctx, InvalidSkipIndex("Skip index invalid.")
+                )
                 return
 
-        if len(self.queue[ctx.guild.id].queue) <= skip_index:
-            await self.call_event('on_music_error', ctx, SkipError("No song to skip to."))
+        if not queue.autoplay and len(queue.queue) <= skip_index:
+            await self.call_event(
+                "on_music_error", ctx, SkipError("No song to skip to.")
+            )
             return
 
         if skip_index > 0:
-            removed_songs = self.queue[ctx.guild.id].queue[:skip_index]
+            removed_songs = queue.queue[:skip_index]
 
-            self.queue[ctx.guild.id].queue = self.queue[ctx.guild.id].queue[skip_index:]
-            if self.queue[ctx.guild.id].loop == Loops.QUEUE_LOOP:
-                self.queue[ctx.guild.id].queue += removed_songs
+            queue.queue = queue.queue[skip_index:]
+            if queue.loop == Loops.QUEUE_LOOP:
+                queue.queue += removed_songs
 
-        player = self.queue[ctx.guild.id].queue[0]
+        if queue.autoplay:
+            last_video_id = queue.history[-1].data["videoDetails"]["videoId"]
+            player = (await self._get_similar_videos(last_video_id))[0]
+            queue.add(player)
+        else:
+            player = queue.queue[0]
+
         ctx.voice_client.stop()
         return player
 
-    async def volume(self, ctx: commands.Context, volume: int = None) -> Optional[float]:
+    async def volume(
+        self, ctx: commands.Context, volume: int = None
+    ) -> Optional[float]:
         """
         |coro|
 
@@ -645,15 +804,19 @@ class MusicManager(EventManager):
         """
 
         if ctx.voice_client and ctx.voice_client.is_connected():
-            await self.call_event('on_music_error',
-                                  ctx,
-                                  AlreadyConnected("Client is already connected to a voice channel"))
+            await self.call_event(
+                "on_music_error",
+                ctx,
+                AlreadyConnected("Client is already connected to a voice channel"),
+            )
             return
 
         if not ctx.author.voice:
-            await self.call_event('on_music_error',
-                                  ctx,
-                                  UserNotConnected("User is not connected to a voice channel"))
+            await self.call_event(
+                "on_music_error",
+                ctx,
+                UserNotConnected("User is not connected to a voice channel"),
+            )
             return
 
         channel = ctx.author.voice.channel
@@ -674,6 +837,10 @@ class MusicManager(EventManager):
 
         if not await self.__check_connection(ctx):
             return
+
+        if ctx.guild.id in self.queue:
+            self.queue[ctx.guild.id].cleanup()
+            del self.queue[ctx.guild.id]
 
         channel = ctx.voice_client.channel
         await ctx.voice_client.disconnect()
@@ -696,7 +863,11 @@ class MusicManager(EventManager):
 
         now_playing = self.queue[ctx.guild.id].now_playing
         if not ctx.voice_client.is_playing() and not ctx.voice_client.is_paused():
-            await self.call_event('on_music_error', ctx, NotPlaying("Client is not playing anything currently"))
+            await self.call_event(
+                "on_music_error",
+                ctx,
+                NotPlaying("Client is not playing anything currently"),
+            )
 
         return now_playing
 
@@ -715,13 +886,50 @@ class MusicManager(EventManager):
         if not await self.__check_connection(ctx, check_playing=True, check_queue=True):
             return
 
-        self.queue[ctx.guild.id].loop = Loops.QUEUE_LOOP if self.queue[ctx.guild.id].loop != Loops.QUEUE_LOOP else \
-            Loops.NO_LOOP
+        self.queue[ctx.guild.id].loop = (
+            Loops.QUEUE_LOOP
+            if self.queue[ctx.guild.id].loop != Loops.QUEUE_LOOP
+            else Loops.NO_LOOP
+        )
 
         if self.queue[ctx.guild.id].loop == Loops.QUEUE_LOOP:
             self.queue[ctx.guild.id].add(self.queue[ctx.guild.id].now_playing)
 
         return self.queue[ctx.guild.id].loop == Loops.QUEUE_LOOP
+
+    async def shuffle(self, ctx: commands.Context) -> Optional[bool]:
+        """
+        |coro|
+
+        Toggles the shuffle feature.
+
+        :param commands.Context ctx: The context
+        :return: A bool indicating if the queue loop is now enabled or disabled.
+        :rtype: Optional[bool]
+        """
+
+        if not await self.__check_connection(ctx, check_playing=True, check_queue=True):
+            return
+
+        self.queue[ctx.guild.id].shuffle = not self.queue[ctx.guild.id].shuffle
+        return self.queue[ctx.guild.id].shuffle
+
+    async def autoplay(self, ctx: commands.Context) -> Optional[bool]:
+        """
+        |coro|
+
+        Toggles the autoplay feature.
+
+        :param commands.Context ctx: The context
+        :return: A bool indicating if autoplay is now enabled or disabled.
+        :rtype: Optional[bool]
+        """
+
+        if not await self.__check_connection(ctx, check_playing=True, check_queue=True):
+            return
+
+        self.queue[ctx.guild.id].autoplay = not self.queue[ctx.guild.id].autoplay
+        return self.queue[ctx.guild.id].autoplay
 
     async def loop(self, ctx: commands.Context) -> Optional[bool]:
         """
@@ -738,7 +946,9 @@ class MusicManager(EventManager):
         if not await self.__check_connection(ctx, check_playing=True, check_queue=True):
             return
 
-        self.queue[ctx.guild.id].loop = Loops.LOOP if self.queue[ctx.guild.id].loop != Loops.LOOP else Loops.NO_LOOP
+        self.queue[ctx.guild.id].loop = (
+            Loops.LOOP if self.queue[ctx.guild.id].loop != Loops.LOOP else Loops.NO_LOOP
+        )
         return self.queue[ctx.guild.id].loop == Loops.LOOP
 
     async def get_queue(self, ctx: commands.Context) -> Optional[QueueManager]:

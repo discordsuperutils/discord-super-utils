@@ -26,7 +26,9 @@ class KickManager(EventManager, Punisher):
         super().__init__()
         self.bot = bot
 
-    async def punish(self, ctx: commands.Context, member: discord.Member, punishment: Punishment) -> None:
+    async def punish(
+        self, ctx: commands.Context, member: discord.Member, punishment: Punishment
+    ) -> None:
         try:
             await member.kick(reason=punishment.punishment_reason)
         except discord.errors.Forbidden as e:

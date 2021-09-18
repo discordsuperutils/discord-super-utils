@@ -9,21 +9,23 @@ ImageManager = discordSuperUtils.ImageManager()
 
 @bot.event
 async def on_ready():
-    print('Image manager is ready.', bot.user)
+    print("Image manager is ready.", bot.user)
 
 
 @bot.command()
 async def test_welcome(ctx):
     member = ctx.author
 
-    await ctx.send(file=await ImageManager.create_welcome_card(
-        member,
-        discordSuperUtils.Backgrounds.GAMING,
-        (255, 255, 255),
-        f"Welcome, {member} 🔥",
-        "Welcome to ?,! Please read the #rules.",
-        transparency=127
-    ))
+    await ctx.send(
+        file=await ImageManager.create_welcome_card(
+            member,
+            discordSuperUtils.Backgrounds.GAMING,
+            (255, 255, 255),
+            f"Welcome, {member} 🔥",
+            "Welcome to ?,! Please read the #rules.",
+            transparency=127,
+        )
+    )
 
 
 bot.run("token")

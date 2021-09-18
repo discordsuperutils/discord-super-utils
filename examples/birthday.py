@@ -25,7 +25,11 @@ def ordinal(num: int) -> str:
     :return:
     """
 
-    return f"{num}th" if 11 <= (num % 100) <= 13 else f"{num}{['th', 'st', 'nd', 'rd', 'th'][min(num % 10, 4)]}"
+    return (
+        f"{num}th"
+        if 11 <= (num % 100) <= 13
+        else f"{num}{['th', 'st', 'nd', 'rd', 'th'][min(num % 10, 4)]}"
+    )
 
 
 @BirthdayManager.event()
@@ -43,7 +47,7 @@ async def on_member_birthday(birthday_member):
         embed = discord.Embed(
             title="Happy birthday!",
             description=f"Happy {ordinal(await birthday_member.age())} birthday, {birthday_member.member.mention}!",
-            color=0x00ff00
+            color=0x00FF00,
         )
 
         embed.set_thumbnail(url=birthday_member.member.avatar_url)
@@ -56,22 +60,26 @@ async def on_ready():
     database = discordSuperUtils.DatabaseManager.connect(...)
     await BirthdayManager.connect_to_database(database, ["birthdays"])
 
-    print('Birthday manager is ready.', bot.user)
+    print("Birthday manager is ready.", bot.user)
 
 
 @bot.command()
 async def upcoming(ctx):
     guild_upcoming = await BirthdayManager.get_upcoming(ctx.guild)
     formatted_upcoming = [
-        f"Member: {x.member}, Age: {await x.age()}, Date of Birth: {(await x.birthday_date()):'%b %d %Y'}" for x in
-        guild_upcoming]
+        f"Member: {x.member}, Age: {await x.age()}, Date of Birth: {(await x.birthday_date()):'%b %d %Y'}"
+        for x in guild_upcoming
+    ]
 
-    await discordSuperUtils.PageManager(ctx, discordSuperUtils.generate_embeds(
-        formatted_upcoming,
-        title="Upcoming Birthdays",
-        fields=25,
-        description=f"Upcoming birthdays in {ctx.guild}"
-    )).run()
+    await discordSuperUtils.PageManager(
+        ctx,
+        discordSuperUtils.generate_embeds(
+            formatted_upcoming,
+            title="Upcoming Birthdays",
+            fields=25,
+            description=f"Upcoming birthdays in {ctx.guild}",
+        ),
+    ).run()
 
 
 @bot.command()
@@ -84,28 +92,19 @@ async def birthday(ctx, member: discord.Member = None):
         await ctx.send("The specified member does not have a birthday setup!")
         return
 
-    embed = discord.Embed(
-        title=f"{member}'s Birthday",
-        color=0x00ff00
-    )
+    embed = discord.Embed(title=f"{member}'s Birthday", color=0x00FF00)
 
     embed.add_field(
         name="Birthday",
-        value=(await member_birthday.birthday_date()).strftime('%b %d %Y'),
-        inline=False
+        value=(await member_birthday.birthday_date()).strftime("%b %d %Y"),
+        inline=False,
     )
 
     embed.add_field(
-        name="Timezone",
-        value=await member_birthday.timezone(),
-        inline=False
+        name="Timezone", value=await member_birthday.timezone(), inline=False
     )
 
-    embed.add_field(
-        name="Age",
-        value=str(await member_birthday.age()),
-        inline=False
-    )
+    embed.add_field(name="Age", value=str(await member_birthday.age()), inline=False)
 
     await ctx.send(embed=embed)
 
@@ -121,12 +120,11 @@ async def delete_birthday(ctx):
 
     birthday_partial = await birthday_member.delete()
 
-    embed = discord.Embed(
-        title=f"Deleted {ctx.author}'s Birthday.",
-        color=0x00ff00
-    )
+    embed = discord.Embed(title=f"Deleted {ctx.author}'s Birthday.", color=0x00FF00)
 
-    embed.add_field(name="Date of Birth", value=str(birthday_partial.birthday_date), inline=False)
+    embed.add_field(
+        name="Date of Birth", value=str(birthday_partial.birthday_date), inline=False
+    )
     embed.add_field(name="Timezone", value=birthday_partial.timezone, inline=False)
 
     await ctx.send(embed=embed)
@@ -140,14 +138,16 @@ async def setup_birthday(ctx):
         "What day of month where you born in?",
         "What is your timezone? List: https://gist.github.com/heyalexej/8bf688fd67d7199be4a1682b3eec7568"
         "\nAlternatively, you can use the timezone picker: "
-        "http://scratch.andrewl.in/timezone-picker/example_site/openlayers_example.html"
+        "http://scratch.andrewl.in/timezone-picker/example_site/openlayers_example.html",
     ]
     # BirthdayManager uses pytz to save timezones and not raw UTC offsets, why?
     # well, simply, using UTC offsets will result in a lot of confusion. The user might pass an incorrect UTC offset
     # and he cloud be wished a happy birthday before his birthday. (The UTC offsets might have issues with DST, too!)
     # that's why we chose pytz, to make custom timezones user-friendly and easy to setup.
 
-    answers, timed_out = await discordSuperUtils.questionnaire(ctx, questions, member=ctx.author)
+    answers, timed_out = await discordSuperUtils.questionnaire(
+        ctx, questions, member=ctx.author
+    )
     # The questionnaire supports embeds.
 
     if timed_out:
@@ -181,7 +181,9 @@ async def setup_birthday(ctx):
         await member_birthday.set_birthday_date(date_of_birth.timestamp())
         await member_birthday.set_timezone(answers[3])
     else:
-        await BirthdayManager.create_birthday(ctx.author, date_of_birth.timestamp(), answers[3])
+        await BirthdayManager.create_birthday(
+            ctx.author, date_of_birth.timestamp(), answers[3]
+        )
 
     await ctx.send(f"Successfully set your birthday to {date_of_birth:%b %d %Y}.")
 

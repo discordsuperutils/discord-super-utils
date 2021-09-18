@@ -1,12 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import (
-    Dict,
-    Any,
-    List,
-    Callable
-)
+from typing import Dict, Any, List, Callable
 
 from discord.ext import commands
 
@@ -32,7 +27,7 @@ class SlashManager(EventManager):
         self.http = None
         self.commands = {}
 
-        self.bot.add_listener(self.__dispatch_event, 'on_socket_response')
+        self.bot.add_listener(self.__dispatch_event, "on_socket_response")
 
         self.bot.loop.create_task(self.__initialize_http())
 
@@ -65,24 +60,26 @@ class SlashManager(EventManager):
         converters = {
             6: [self.bot.get_user, self.bot.fetch_user],
             7: [interaction.guild and interaction.guild.get_channel],
-            8: [interaction.guild and interaction.guild.get_role]
+            8: [interaction.guild and interaction.guild.get_role],
         }
 
-        data = interaction.data['data']
-        name = data['name']
+        data = interaction.data["data"]
+        name = data["name"]
 
         user_arguments = []
 
-        if 'options' in data:
-            for argument in data['options']:
-                arg_type = argument['type']
+        if "options" in data:
+            for argument in data["options"]:
+                arg_type = argument["type"]
                 if arg_type not in converters:
-                    user_arguments.append(argument['value'])
+                    user_arguments.append(argument["value"])
                     continue
 
-                result_fetch = argument['value']
+                result_fetch = argument["value"]
                 for converter in converters[arg_type]:
-                    convert_result = await maybe_coroutine(converter, int(argument['value']))
+                    convert_result = await maybe_coroutine(
+                        converter, int(argument["value"])
+                    )
 
                     if convert_result:
                         result_fetch = convert_result
@@ -106,14 +103,10 @@ class SlashManager(EventManager):
         :rtype: None
         """
 
-        if event['t'] == "INTERACTION_CREATE":
-            interaction = Interaction(
-                self.bot,
-                event,
-                self.http
-            )
+        if event["t"] == "INTERACTION_CREATE":
+            interaction = Interaction(self.bot, event, self.http)
 
-            await self.call_event('on_interaction', interaction)
+            await self.call_event("on_interaction", interaction)
             await self.process_command(interaction)
 
     async def add_global_command(self, payload: Dict[str, Any]) -> None:
@@ -152,15 +145,19 @@ class SlashManager(EventManager):
             result_parameters.append(
                 {
                     "name": parameter.name,
-                    "type": annotation.value if isinstance(annotation, OptionType) else 3,
-                    "description": '-',
-                    "required": True
+                    "type": annotation.value
+                    if isinstance(annotation, OptionType)
+                    else 3,
+                    "description": "-",
+                    "required": True,
                 }
             )
 
         return result_parameters
 
-    def command(self, name: str = None, description: str = "No description") -> Callable:
+    def command(
+        self, name: str = None, description: str = "No description"
+    ) -> Callable:
         """
         The command initializer decorator.
 
@@ -181,7 +178,7 @@ class SlashManager(EventManager):
                 "name": command_name,
                 "type": OptionType.SUB_COMMAND.value,
                 "description": description,
-                "options": self.parameters_to_dict(list(sig.parameters.values())[1:])
+                "options": self.parameters_to_dict(list(sig.parameters.values())[1:]),
             }
 
             self.commands[command_name] = func

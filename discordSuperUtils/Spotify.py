@@ -1,10 +1,5 @@
 import asyncio
-from typing import (
-    Optional,
-    List,
-    Dict,
-    Union
-)
+from typing import Optional, List, Dict, Union
 
 import spotipy
 from spotipy import SpotifyClientCredentials
@@ -14,8 +9,11 @@ FIELD = "items.track.name,items.track.artists(name),total"
 
 class SpotifyClient:
     def __init__(self, client_id: str, client_secret: str, loop=None):
-        self.sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=client_id,
-                                                                        client_secret=client_secret))
+        self.sp = spotipy.Spotify(
+            auth_manager=SpotifyClientCredentials(
+                client_id=client_id, client_secret=client_secret
+            )
+        )
         self.loop = asyncio.get_event_loop() if loop is None else loop
 
     @staticmethod
@@ -39,10 +37,12 @@ class SpotifyClient:
         :param song:
         :return:
         """
-        artists = " ".join([artist['name'] for artist in song.get('artists')])
+        artists = " ".join([artist["name"] for artist in song.get("artists")])
         return f"{song['name']} by {artists}"
 
-    async def fetch_playlist_data(self, url: str, offset: int) -> Dict[str, Union[int, list]]:
+    async def fetch_playlist_data(
+        self, url: str, offset: int
+    ) -> Dict[str, Union[int, list]]:
         """
         This function receives a URL and an offset and returns 100 tracks from that offset
         Example: Offset: 50, the URL has 160 tracks, returns tracks from 50-150 (limit is 100).
@@ -52,9 +52,12 @@ class SpotifyClient:
         :return:
         """
 
-        return await self.loop.run_in_executor(None, lambda: self.sp.playlist_items(playlist_id=url,
-                                                                                    fields=FIELD,
-                                                                                    offset=offset))
+        return await self.loop.run_in_executor(
+            None,
+            lambda: self.sp.playlist_items(
+                playlist_id=url, fields=FIELD, offset=offset
+            ),
+        )
 
     async def fetch_full_playlist(self, url: str) -> List[Dict[str, dict]]:
         """
@@ -65,16 +68,21 @@ class SpotifyClient:
         """
 
         initial_request = await self.fetch_playlist_data(url, 0)
-        total_tracks = initial_request.get('total')
+        total_tracks = initial_request.get("total")
 
         requests = list(
-            await asyncio.gather(*(self.fetch_playlist_data(url, offset) for offset in range(100, total_tracks, 100)))
+            await asyncio.gather(
+                *(
+                    self.fetch_playlist_data(url, offset)
+                    for offset in range(100, total_tracks, 100)
+                )
+            )
         )
         requests.insert(0, initial_request)
         result_tracks = []
 
         for request in requests:
-            result_tracks += request.get('items')
+            result_tracks += request.get("items")
 
         return result_tracks
 
@@ -90,13 +98,22 @@ class SpotifyClient:
         songs = []
 
         if playlist_type == "playlist":
-            return [self.make_title(song['track']) for song in await self.fetch_full_playlist(url)]
+            return [
+                self.make_title(song["track"])
+                for song in await self.fetch_full_playlist(url)
+            ]
 
         if playlist_type == "track":
-            songs = [await self.loop.run_in_executor(None, lambda: self.sp.track(track_id=url))]
+            songs = [
+                await self.loop.run_in_executor(
+                    None, lambda: self.sp.track(track_id=url)
+                )
+            ]
 
         if playlist_type == "album":
-            album = await self.loop.run_in_executor(None, lambda: self.sp.album_tracks(album_id=url, limit=50))
+            album = await self.loop.run_in_executor(
+                None, lambda: self.sp.album_tracks(album_id=url, limit=50)
+            )
             songs = album.get("items")
 
         return [self.make_title(song) for song in songs]

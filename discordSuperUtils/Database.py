@@ -1,13 +1,7 @@
 import asyncio
 import sys
 from abc import ABC, abstractmethod
-from typing import (
-    Dict,
-    Any,
-    Optional,
-    List,
-    Union
-)
+from typing import Dict, Any, Optional, List, Union
 
 import aiomysql
 import aiopg
@@ -23,7 +17,9 @@ if sys.version_info >= (3, 8) and sys.platform.lower().startswith("win"):
 async def create_mysql(host, port, user, password, dbname):
     # Created this function to make sure the user has autocommit enabled.
     # we must make sure autocommit is enabled because manual commits are not working on aiomysql :)
-    return await aiomysql.create_pool(host=host, port=port, user=user, password=password, db=dbname, autocommit=True)
+    return await aiomysql.create_pool(
+        host=host, port=port, user=user, password=password, db=dbname, autocommit=True
+    )
 
 
 class UnsupportedDatabase(Exception):
@@ -39,7 +35,9 @@ class Database(ABC):
         pass
 
     @abstractmethod
-    async def insertifnotexists(self, table_name: str, data: Dict[str, Any], checks: Dict[str, Any]):
+    async def insertifnotexists(
+        self, table_name: str, data: Dict[str, Any], checks: Dict[str, Any]
+    ):
         pass
 
     @abstractmethod
@@ -47,22 +45,28 @@ class Database(ABC):
         pass
 
     @abstractmethod
-    async def create_table(self,
-                           table_name: str,
-                           columns: Optional[Dict[str, str]] = None,
-                           exists: Optional[bool] = False):
+    async def create_table(
+        self,
+        table_name: str,
+        columns: Optional[Dict[str, str]] = None,
+        exists: Optional[bool] = False,
+    ):
         pass
 
     @abstractmethod
-    async def update(self, table_name: str, data: Dict[str, Any], checks: Dict[str, Any]):
+    async def update(
+        self, table_name: str, data: Dict[str, Any], checks: Dict[str, Any]
+    ):
         pass
 
     @abstractmethod
-    async def updateorinsert(self,
-                             table_name: str,
-                             data: Dict[str, Any],
-                             checks: Dict[str, Any],
-                             insert_data: Dict[str, Any]):
+    async def updateorinsert(
+        self,
+        table_name: str,
+        data: Dict[str, Any],
+        checks: Dict[str, Any],
+        insert_data: Dict[str, Any],
+    ):
         pass
 
     @abstractmethod
@@ -70,18 +74,19 @@ class Database(ABC):
         pass
 
     @abstractmethod
-    async def select(self,
-                     table_name: str,
-                     keys: List[str],
-                     checks: Optional[Dict[str, Any]] = None,
-                     fetchall: Optional[bool] = False):
+    async def select(
+        self,
+        table_name: str,
+        keys: List[str],
+        checks: Optional[Dict[str, Any]] = None,
+        fetchall: Optional[bool] = False,
+    ):
         pass
 
     @abstractmethod
-    async def execute(self,
-                      sql_query: str,
-                      values: List[Any],
-                      fetchall: bool = True) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
+    async def execute(
+        self, sql_query: str, values: List[Any], fetchall: bool = True
+    ) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
         pass
 
 
@@ -125,7 +130,9 @@ class _MongoDatabase(Database):
         return await self.insert(table_name, insert_data)
 
     async def delete(self, table_name, checks=None):
-        return await self.database[table_name].delete_one({} if checks is None else checks)
+        return await self.database[table_name].delete_one(
+            {} if checks is None else checks
+        )
 
     async def select(self, table_name, keys, checks=None, fetchall=False):
         checks = {} if checks is None else checks
@@ -155,10 +162,9 @@ class _MongoDatabase(Database):
 
         return result
 
-    async def execute(self,
-                      sql_query: str,
-                      values: List[Any],
-                      fetchall: bool = True) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
+    async def execute(
+        self, sql_query: str, values: List[Any], fetchall: bool = True
+    ) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
         raise NotImplementedError("NoSQL databases cannot execute sql queries.")
 
 
@@ -199,10 +205,10 @@ class _SqlDatabase(Database):
     def __init__(self, database):
         super().__init__(database)
         self.place_holder = DATABASE_TYPES[type(database)]["placeholder"]
-        self.cursor_context = DATABASE_TYPES[type(database)]['cursorcontext']
-        self.commit_needed = DATABASE_TYPES[type(database)]['commit']
-        self.quote = DATABASE_TYPES[type(database)]['quotes']
-        self.pool = DATABASE_TYPES[type(database)]['pool']
+        self.cursor_context = DATABASE_TYPES[type(database)]["cursorcontext"]
+        self.commit_needed = DATABASE_TYPES[type(database)]["commit"]
+        self.quote = DATABASE_TYPES[type(database)]["quotes"]
+        self.pool = DATABASE_TYPES[type(database)]["pool"]
 
     async def commit(self):
         if not self.pool:
@@ -282,7 +288,7 @@ class _SqlDatabase(Database):
     async def select(self, cursor, table_name, keys, checks=None, fetchall=False):
         checks = {} if checks is None else checks
 
-        keys = '*' if not keys else keys
+        keys = "*" if not keys else keys
         query = f"SELECT {','.join(keys)} FROM {table_name} "
 
         if checks:
@@ -299,15 +305,17 @@ class _SqlDatabase(Database):
         if not result:
             return result
 
-        return [dict(zip(columns, x)) for x in result] if fetchall else dict(zip(columns, result))
+        return (
+            [dict(zip(columns, x)) for x in result]
+            if fetchall
+            else dict(zip(columns, result))
+        )
 
     @with_cursor
     @with_commit
-    async def execute(self,
-                      cursor,
-                      sql_query: str,
-                      values: List[Any] = None,
-                      fetchall: bool = True) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
+    async def execute(
+        self, cursor, sql_query: str, values: List[Any] = None, fetchall: bool = True
+    ) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
         await cursor.execute(sql_query, values if values is not None else [])
 
         result = await cursor.fetchall() if fetchall else await cursor.fetchone()
@@ -315,33 +323,39 @@ class _SqlDatabase(Database):
         if not result:
             return result
 
-        return [dict(zip(columns, x)) for x in result] if fetchall else dict(zip(columns, result))
+        return (
+            [dict(zip(columns, x)) for x in result]
+            if fetchall
+            else dict(zip(columns, result))
+        )
 
 
 DATABASE_TYPES: Dict[Any, Dict[str, Any]] = {
-    motor_asyncio.AsyncIOMotorDatabase: {"class": _MongoDatabase,
-                                         "placeholder": None},
-
-    aiosqlite.core.Connection: {"class": _SqlDatabase,
-                                "placeholder": '?',
-                                'cursorcontext': True,
-                                'commit': True,
-                                'quotes': '"',
-                                'pool': False},
-
-    aiopg.pool.Pool: {"class": _SqlDatabase,
-                      "placeholder": '%s',
-                      'cursorcontext': True,
-                      'commit': True,
-                      'quotes': '"',
-                      'pool': True},
-
-    aiomysql.pool.Pool: {"class": _SqlDatabase,
-                         "placeholder": '%s',
-                         'cursorcontext': True,
-                         'commit': False,
-                         'quotes': '`',
-                         'pool': True}
+    motor_asyncio.AsyncIOMotorDatabase: {"class": _MongoDatabase, "placeholder": None},
+    aiosqlite.core.Connection: {
+        "class": _SqlDatabase,
+        "placeholder": "?",
+        "cursorcontext": True,
+        "commit": True,
+        "quotes": '"',
+        "pool": False,
+    },
+    aiopg.pool.Pool: {
+        "class": _SqlDatabase,
+        "placeholder": "%s",
+        "cursorcontext": True,
+        "commit": True,
+        "quotes": '"',
+        "pool": True,
+    },
+    aiomysql.pool.Pool: {
+        "class": _SqlDatabase,
+        "placeholder": "%s",
+        "cursorcontext": True,
+        "commit": False,
+        "quotes": "`",
+        "pool": True,
+    },
 }
 
 
@@ -352,6 +366,8 @@ class DatabaseManager:
     @staticmethod
     def connect(database):
         if type(database) not in DATABASE_TYPES:
-            raise UnsupportedDatabase(f"Database of type {type(database)} is not supported by the database manager.")
+            raise UnsupportedDatabase(
+                f"Database of type {type(database)} is not supported by the database manager."
+            )
 
         return DATABASE_TYPES[type(database)]["class"](database)

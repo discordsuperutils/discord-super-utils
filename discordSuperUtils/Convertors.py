@@ -1,7 +1,4 @@
-from typing import (
-    Optional,
-    Union
-)
+from typing import Optional, Union
 
 from discord.ext import commands
 
@@ -35,18 +32,24 @@ class TimeConvertor(commands.Converter):
         100j: BadArgument ('j' is not a valid time multiplier)
     """
 
-    async def convert(self, ctx: commands.Context, argument: str) -> Optional[Union[int, float]]:
-        time_multipliers = {"s": 1,
-                            "m": 60,
-                            "h": 60 * 60,
-                            "d": 60 * 60 * 24,
-                            "w": 60 * 60 * 24 * 7}
+    async def convert(
+        self, ctx: commands.Context, argument: str
+    ) -> Optional[Union[int, float]]:
+        time_multipliers = {
+            "s": 1,
+            "m": 60,
+            "h": 60 * 60,
+            "d": 60 * 60 * 24,
+            "w": 60 * 60 * 24 * 7,
+        }
 
         permanent = ["permanent", "perm", "0"]
         if argument.lower() in permanent:
             return 0
 
         if not isfloat(argument[:-1]) or argument[-1] not in time_multipliers.keys():
-            raise commands.BadArgument(f"Invalid time argument provided, cannot convert '{argument}' to time.")
+            raise commands.BadArgument(
+                f"Invalid time argument provided, cannot convert '{argument}' to time."
+            )
 
         return float(argument[:-1]) * time_multipliers[argument[-1]]

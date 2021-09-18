@@ -4,12 +4,7 @@ import asyncio
 import re
 from abc import ABC, abstractmethod
 from datetime import timedelta
-from typing import (
-    TYPE_CHECKING,
-    Union,
-    Any,
-    List
-)
+from typing import TYPE_CHECKING, Union, Any, List
 
 from .Base import get_generator_response, EventManager
 from .Punishments import get_relevant_punishment
@@ -22,7 +17,7 @@ if TYPE_CHECKING:
 __all__ = (
     "MessageFilter",
     "MessageResponseGenerator",
-    "DefaultMessageResponseGenerator"
+    "DefaultMessageResponseGenerator",
 )
 
 
@@ -50,17 +45,23 @@ class MessageResponseGenerator(ABC):
 
 
 class DefaultMessageResponseGenerator(MessageResponseGenerator):
-    URL_RE = re.compile(r"(https?://(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9]["
-                        r"a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?://(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,"
-                        r"}|www\.[a-zA-Z0-9]+\.[^\s]{2,})")
-    DISCORD_INVITE_RE = re.compile(r"(?:(?:http|https)://)?(?:www.)?(?:disco|discord|discordapp).("
-                                   r"?:com|gg|io|li|me|net|org)(?:/(?:invite))?/([a-z0-9-.]+)")
+    URL_RE = re.compile(
+        r"(https?://(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9]["
+        r"a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?://(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,"
+        r"}|www\.[a-zA-Z0-9]+\.[^\s]{2,})"
+    )
+    DISCORD_INVITE_RE = re.compile(
+        r"(?:(?:http|https)://)?(?:www.)?(?:disco|discord|discordapp).("
+        r"?:com|gg|io|li|me|net|org)(?:/(?:invite))?/([a-z0-9-.]+)"
+    )
 
     def generate(self, message: discord.Message) -> Union[bool, Any]:
         if message.author.guild_permissions.administrator:
             return False
 
-        return self.URL_RE.match(message.content) or self.DISCORD_INVITE_RE.match(message.content)
+        return self.URL_RE.match(message.content) or self.DISCORD_INVITE_RE.match(
+            message.content
+        )
 
 
 class MessageFilter(EventManager):
@@ -70,22 +71,26 @@ class MessageFilter(EventManager):
 
     __slots__ = ("bot", "generator", "_member_cache", "punishments", "wipe_cache_delay")
 
-    def __init__(self,
-                 bot: commands.Bot,
-                 generator: MessageResponseGenerator = None,
-                 delete_message: bool = True,
-                 wipe_cache_delay: timedelta = timedelta(minutes=5)):
+    def __init__(
+        self,
+        bot: commands.Bot,
+        generator: MessageResponseGenerator = None,
+        delete_message: bool = True,
+        wipe_cache_delay: timedelta = timedelta(minutes=5),
+    ):
         super().__init__()
         self.bot = bot
-        self.generator = generator if generator is not None else DefaultMessageResponseGenerator
+        self.generator = (
+            generator if generator is not None else DefaultMessageResponseGenerator
+        )
         self.delete_message = delete_message
         self.wipe_cache_delay = wipe_cache_delay
         self._member_cache = {}
         self.punishments = []
 
         self.bot.loop.create_task(self.__wipe_cache())
-        self.bot.add_listener(self.__handle_messages, 'on_message')
-        self.bot.add_listener(self.__handle_messages, 'on_message_edit')
+        self.bot.add_listener(self.__handle_messages, "on_message")
+        self.bot.add_listener(self.__handle_messages, "on_message_edit")
 
     async def __wipe_cache(self):
         """
@@ -120,16 +125,25 @@ class MessageFilter(EventManager):
         if not message.guild or message.author.bot:
             return
 
-        if not get_generator_response(self.generator, MessageResponseGenerator, message):
+        if not get_generator_response(
+            self.generator, MessageResponseGenerator, message
+        ):
             return
 
         if self.delete_message:
             await message.delete()
 
-        member_warnings = self._member_cache.setdefault(message.guild.id, {}).get(message.author.id, 0) + 1
+        member_warnings = (
+            self._member_cache.setdefault(message.guild.id, {}).get(
+                message.author.id, 0
+            )
+            + 1
+        )
         self._member_cache[message.guild.id][message.author.id] = member_warnings
 
         await self.call_event("on_inappropriate_message", message, member_warnings)
 
         if punishment := get_relevant_punishment(self.punishments, member_warnings):
-            await punishment.punishment_manager.punish(message, message.author, punishment)
+            await punishment.punishment_manager.punish(
+                message, message.author, punishment
+            )

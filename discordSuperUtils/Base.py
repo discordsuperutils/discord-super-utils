@@ -2,7 +2,18 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-from typing import List, Any, Iterable, Optional, TYPE_CHECKING, Union, Tuple, Callable, Dict, Awaitable
+from typing import (
+    List,
+    Any,
+    Iterable,
+    Optional,
+    TYPE_CHECKING,
+    Union,
+    Tuple,
+    Callable,
+    Dict,
+    Awaitable,
+)
 
 import aiomysql
 import aiopg
@@ -25,15 +36,30 @@ __all__ = (
     "questionnaire",
     "EventManager",
     "CogManager",
-    "DatabaseChecker"
+    "DatabaseChecker",
 )
 
 
 COLUMN_TYPES = {
     motor_asyncio.AsyncIOMotorDatabase: None,  # mongo does not require any columns
-    aiosqlite.core.Connection: {"snowflake": "INTEGER", "string": 'TEXT', "number": "INTEGER", "smallnumber": "INTEGER"},
-    aiopg.pool.Pool: {"snowflake": "bigint", "string": 'character varying', "number": "integer", "smallnumber": "smallint"},
-    aiomysql.pool.Pool: {"snowflake": "BIGINT", "string": 'TEXT', "number": "INT", "smallnumber": "SMALLINT"}
+    aiosqlite.core.Connection: {
+        "snowflake": "INTEGER",
+        "string": "TEXT",
+        "number": "INTEGER",
+        "smallnumber": "INTEGER",
+    },
+    aiopg.pool.Pool: {
+        "snowflake": "bigint",
+        "string": "character varying",
+        "number": "integer",
+        "smallnumber": "smallint",
+    },
+    aiomysql.pool.Pool: {
+        "snowflake": "BIGINT",
+        "string": "TEXT",
+        "number": "INT",
+        "smallnumber": "SMALLINT",
+    },
 }
 
 
@@ -50,7 +76,9 @@ class InvalidGenerator(Exception):
 
     def __init__(self, generator):
         self.generator = generator
-        super().__init__(f"Generator of type {type(self.generator)!r} is not supported.")
+        super().__init__(
+            f"Generator of type {type(self.generator)!r} is not supported."
+        )
 
 
 async def maybe_coroutine(function: Callable, *args, **kwargs) -> Any:
@@ -101,7 +129,9 @@ def get_generator_response(generator: Any, generator_type: Any, *args, **kwargs)
     raise InvalidGenerator(generator)
 
 
-def generate_column_types(types: Iterable[str], database_type: Any) -> Optional[List[str]]:
+def generate_column_types(
+    types: Iterable[str], database_type: Any
+) -> Optional[List[str]]:
     """
     Generates the column type names that are suitable for the database type.
 
@@ -121,11 +151,13 @@ def generate_column_types(types: Iterable[str], database_type: Any) -> Optional[
     return [database_type_configuration[x] for x in types]
 
 
-async def questionnaire(ctx: commands.Context,
-                        questions: Iterable[Union[str, discord.Embed]],
-                        public: bool = False,
-                        timeout: Union[float, int] = 30,
-                        member: discord.Member = None) -> Tuple[List[str], bool]:
+async def questionnaire(
+    ctx: commands.Context,
+    questions: Iterable[Union[str, discord.Embed]],
+    public: bool = False,
+    timeout: Union[float, int] = 30,
+    member: discord.Member = None,
+) -> Tuple[List[str], bool]:
     """
     |coro|
 
@@ -155,7 +187,11 @@ async def questionnaire(ctx: commands.Context,
         raise ValueError("The questionnaire is private and no member was provided.")
 
     def checks(msg):
-        return msg.channel == ctx.channel if public else msg.channel == ctx.channel and msg.author == member
+        return (
+            msg.channel == ctx.channel
+            if public
+            else msg.channel == ctx.channel and msg.author == member
+        )
 
     for question in questions:
         if isinstance(question, str):
@@ -166,7 +202,7 @@ async def questionnaire(ctx: commands.Context,
             raise TypeError("Question must be of type 'str' or 'discord.Embed'.")
 
         try:
-            message = await ctx.bot.wait_for('message', check=checks, timeout=timeout)
+            message = await ctx.bot.wait_for("message", check=checks, timeout=timeout)
         except asyncio.TimeoutError:
             timed_out = True
             break
@@ -232,7 +268,7 @@ class EventManager:
         name = func.__name__ if not name else name
 
         if not asyncio.iscoroutinefunction(func):
-            raise TypeError('Listeners must be async.')
+            raise TypeError("Listeners must be async.")
 
         if name in self.events:
             self.events[name].append(func)
@@ -281,7 +317,9 @@ class CogManager:
                     else:
                         listeners[listener_type] = [attr]
 
-            managers = managers or [attr for attr in attribute_objects if type(attr) in listeners]
+            managers = managers or [
+                attr for attr in attribute_objects if type(attr) in listeners
+            ]
             for event_type in listeners:
                 for manager in managers:
                     for event in listeners[event_type]:
@@ -301,7 +339,7 @@ class CogManager:
 
         def decorator(func):
             if not inspect.iscoroutinefunction(func):
-                raise TypeError('Listeners must be async.')
+                raise TypeError("Listeners must be async.")
 
             func._listener_type = manager_type
 
@@ -315,9 +353,9 @@ class DatabaseChecker(EventManager):
     A database checker which makes sure the database is connected to a manager and handles the table creation.
     """
 
-    def __init__(self,
-                 tables_column_data: List[Dict[str, str]],
-                 table_identifiers: List[str]):
+    def __init__(
+        self, tables_column_data: List[Dict[str, str]], table_identifiers: List[str]
+    ):
         super().__init__()
 
         self.database = None
@@ -338,8 +376,10 @@ class DatabaseChecker(EventManager):
 
         if not self.database:
             if raise_error:
-                raise DatabaseNotConnected(f"Database not connected."
-                                           f" Connect this manager to a database using 'connect_to_database'")
+                raise DatabaseNotConnected(
+                    f"Database not connected."
+                    f" Connect this manager to a database using 'connect_to_database'"
+                )
 
             return False
 
@@ -358,10 +398,14 @@ class DatabaseChecker(EventManager):
         :return: None
         """
 
-        for table, table_data, identifier in zip(tables, self.tables_column_data, self.table_identifiers):
+        for table, table_data, identifier in zip(
+            tables, self.tables_column_data, self.table_identifiers
+        ):
             types = generate_column_types(table_data.values(), type(database.database))
 
-            await database.create_table(table, dict(zip(list(table_data), types)) if types else None, True)
+            await database.create_table(
+                table, dict(zip(list(table_data), types)) if types else None, True
+            )
 
             self.database = database
             self.tables[identifier] = table

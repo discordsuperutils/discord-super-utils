@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import (
-    TYPE_CHECKING
-)
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from discord.ext import commands
@@ -37,17 +35,14 @@ class Interaction:
 
     __slots__ = ("bot", "http", "raw", "data", "args", "id", "token")
 
-    def __init__(self,
-                 bot: commands.Bot,
-                 raw_interaction,
-                 http: HTTPClient):
+    def __init__(self, bot: commands.Bot, raw_interaction, http: HTTPClient):
         self.bot: commands.Bot = bot
         self.http = http
         self.raw = raw_interaction
-        self.data = raw_interaction['d']
-        self.args = self.data['data']
-        self.id = self.data['id']
-        self.token = self.data['token']
+        self.data = raw_interaction["d"]
+        self.args = self.data["data"]
+        self.id = self.data["id"]
+        self.token = self.data["token"]
 
     @property
     def author(self):
@@ -80,11 +75,6 @@ class Interaction:
         """
 
         url = f"https://discord.com/api/v9/interactions/{self.id}/{self.token}/callback"
-        payload = {
-            "type": 4,
-            "data": {
-                "content": text
-            }
-        }
+        payload = {"type": 4, "data": {"content": text}}
 
         await self.http.request("POST", url, payload=payload)  # Message not done.

@@ -9,14 +9,18 @@ TemplateManager = discordSuperUtils.TemplateManager(bot)
 @bot.event
 async def on_ready():
     database = discordSuperUtils.DatabaseManager.connect(...)
-    await TemplateManager.connect_to_database(database,
-                                              ['templates',
-                                               'categories',
-                                               'text_channels',
-                                               'voice_channels',
-                                               'roles',
-                                               'overwrites'])
-    print('Template manager is ready.', bot.user)
+    await TemplateManager.connect_to_database(
+        database,
+        [
+            "templates",
+            "categories",
+            "text_channels",
+            "voice_channels",
+            "roles",
+            "overwrites",
+        ],
+    )
+    print("Template manager is ready.", bot.user)
 
 
 @bot.command()

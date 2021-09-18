@@ -24,7 +24,9 @@ class Test:
                 self.exception = None
 
         self.time = (time.time() - start) * 1000
-        self.completed = any(self.result == val for val in self.value) and not self.exception
+        self.completed = (
+            any(self.result == val for val in self.value) and not self.exception
+        )
 
 
 class Tester:
@@ -56,7 +58,11 @@ class Tester:
                     status_string = f"❌ Failed. {test.time}ms"
 
                 if flush:
-                    print(f"\rRunning test '{test.func.__name__}' - {status_string}", end="", flush=True)
+                    print(
+                        f"\rRunning test '{test.func.__name__}' - {status_string}",
+                        end="",
+                        flush=True,
+                    )
                 else:
                     done_tests.append(test)
                     print(f"\rRunning test '{test.func.__name__}' - {status_string}")
@@ -67,15 +73,27 @@ class Tester:
             time.sleep(0.05)
 
         failed = [x for x in self.tests if not x.completed]
-        failed_str = "\n".join([f"Test '{x.func.__name__}' failed, " + (f"{x.exception} was raised." if x.exception else f"expected {x.value}, got {x.result}.")
-                                for x in failed])
-        print(f"---------------\nDone, ({len(self.tests) - len(failed)}/{len(self.tests)}) tests have passed.\n" + failed_str)
+        failed_str = "\n".join(
+            [
+                f"Test '{x.func.__name__}' failed, "
+                + (
+                    f"{x.exception} was raised."
+                    if x.exception
+                    else f"expected {x.value}, got {x.result}."
+                )
+                for x in failed
+            ]
+        )
+        print(
+            f"---------------\nDone, ({len(self.tests) - len(failed)}/{len(self.tests)}) tests have passed.\n"
+            + failed_str
+        )
 
     def add_test(self, function, *args, ignored_exception=None):
         self.tests.append(Test(function, ignored_exception, *args))
 
     async def run(self):
-        print(f'Running {len(self.tests)} test(s).\n---------------')
+        print(f"Running {len(self.tests)} test(s).\n---------------")
 
         self._thread.start()
 
