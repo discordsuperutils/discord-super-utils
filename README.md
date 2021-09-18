@@ -6,6 +6,7 @@
   <a href="https://pepy.tech/project/discordsuperutils"><img src="https://img.shields.io/pypi/dm/discordSuperUtils?color=green&style=flat-square" /></a>
   <a href="https://pypi.org/project/discordSuperUtils/"><img src="https://img.shields.io/pypi/v/discordSuperUtils?style=flat-square" /></a>
   <a href=""><img src="https://img.shields.io/pypi/l/discordSuperUtils?style=flat-square" /></a>
+  <a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg?style=flat-square">
     <br/>
   <a href="https://discord-super-utils.gitbook.io/discord-super-utils/">Documentation</a>
   <a href="https://discordsuperutils.readthedocs.io/en/latest/">Secondary Documentation</a>
