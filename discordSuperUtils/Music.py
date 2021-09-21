@@ -215,8 +215,11 @@ class Playlist:
     """
     Represents playlist of songs
     """
-    def __init__(self, name: str, players: List[Player]):
-        self.name = name
+
+    __slots__ = ("playlist_data", "players")
+
+    def __init__(self, playlist_data: dict, players: List[Player]):
+        self.playlist_data = playlist_data
         self.players = players
 
 
@@ -505,7 +508,7 @@ class MusicManager(EventManager):
         )
 
     @staticmethod
-    async def fetch_data(query: str, playlist: bool = True) -> List[dict]:
+    async def fetch_data(query: str, playlist: bool = True) -> Tuple[dict, List[dict]]:
         """
         |coro|
 
@@ -518,11 +521,13 @@ class MusicManager(EventManager):
         :rtype: Optional[dict]
         """
 
-        return [
-            x
-            for x in await YOUTUBE.get_videos(
+        playlist_data, songs = await YOUTUBE.get_videos(
                 await YOUTUBE.get_query_id(query), playlist
             )
+
+        return playlist_data, [
+            x
+            for x in songs
             if "streamingData" in x
         ]
 
