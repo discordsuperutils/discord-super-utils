@@ -211,6 +211,15 @@ class Player:
         ]
 
 
+class Playlist:
+    """
+    Represents playlist of songs
+    """
+    def __init__(self, name: str, players: List[Player]):
+        self.name = name
+        self.players = players
+
+
 class QueueManager:
     __slots__ = (
         "queue",
