@@ -134,17 +134,22 @@ class ImageManager:
     async def create_welcome_card(
         self,
         member: discord.Member,
-        background: Backgrounds,
+        background: Union[Backgrounds, str],
         text_color: Tuple[int, int, int],
         title: str,
         description: str,
         font_path: str = None,
         outline: int = 5,
-        transparency: int = 0,
+        transparency: Optional[int] = 0,
     ) -> discord.File:
         result_bytes = BytesIO()
 
-        card = Image.open(background.value).resize((1024, 500))
+        card = (
+            Image.open(background.value)
+            if isinstance(background, Backgrounds)
+            else await self.convert_image(background)
+        )
+        card = card.resize((1024, 500))
 
         font_path = font_path if font_path else self.load_asset("font.ttf")
 
@@ -152,7 +157,9 @@ class ImageManager:
         small_font = ImageFont.truetype(font_path, 30)
 
         draw = ImageDraw.Draw(card, "RGBA")
-        draw.rectangle((30, 30, 994, 470), fill=(0, 0, 0, transparency))
+        if transparency:
+            draw.rectangle((30, 30, 994, 470), fill=(0, 0, 0, transparency))
+
         draw.text((512, 360), title, text_color, font=big_font, anchor="ms")
         self.multiline_text(card, description, small_font, text_color, 380, 60)
 
@@ -191,7 +198,7 @@ class ImageManager:
         self,
         member: discord.Member,
         member_account: LevelingAccount,
-        background: Backgrounds,
+        background: Union[Backgrounds, str],
         text_color: Tuple[int, int, int],
         rank: int,
         font_path: str = None,
@@ -199,7 +206,12 @@ class ImageManager:
     ) -> discord.File:
         result_bytes = BytesIO()
 
-        card = Image.open(background.value).resize((850, 238))
+        card = (
+            Image.open(background.value)
+            if isinstance(background, Backgrounds)
+            else await self.convert_image(background)
+        )
+        card = card.resize((850, 238))
 
         font_path = font_path if font_path else self.load_asset("font.ttf")
         font_big = ImageFont.truetype(font_path, 36)
