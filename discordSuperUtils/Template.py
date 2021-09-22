@@ -580,7 +580,7 @@ class TemplateManager(DatabaseChecker):
                     "name": "string",
                     "position": "number",
                     "category": "snowflake",
-                    "bitrate": "smallnumber",
+                    "bitrate": "number",
                     "user_limit": "smallnumber",
                     "channel_id": "snowflake",
                 },
@@ -593,7 +593,7 @@ class TemplateManager(DatabaseChecker):
                     "position": "number",
                     "mentionable": "smallnumber",
                     "role_id": "snowflake",
-                    "permissions": "number",
+                    "permissions": "snowflake",
                 },
                 {
                     "id": "string",
