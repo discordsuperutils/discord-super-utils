@@ -599,8 +599,8 @@ class TemplateManager(DatabaseChecker):
                     "id": "string",
                     "overwrite_object": "snowflake",
                     "overwrite_key": "snowflake",
-                    "overwrite_pair": "number",
-                    "overwrite_second_pair": "number",
+                    "overwrite_pair": "snowflake",
+                    "overwrite_second_pair": "snowflake",
                 },
             ],
             [
@@ -615,6 +615,8 @@ class TemplateManager(DatabaseChecker):
         self.bot = bot
 
     async def get_templates(self, guild: discord.Guild = None) -> List[Template]:
+        self._check_database()
+
         return [
             await Template.get_template(self.database, self.tables, template["id"])
             for template in await self.database.select(
@@ -626,6 +628,8 @@ class TemplateManager(DatabaseChecker):
         ]
 
     async def get_template(self, template_id: str) -> Optional[Template]:
+        self._check_database()
+
         return await Template.get_template(self.database, self.tables, template_id)
 
     async def write_overwrites(
@@ -634,6 +638,8 @@ class TemplateManager(DatabaseChecker):
         overwrites_object: int,
         overwrites: discord.PermissionOverwrite,
     ) -> None:
+        self._check_database()
+
         for x, y in overwrites.items():
             pairs = [pair.value for pair in y.pair()]
 
@@ -649,6 +655,8 @@ class TemplateManager(DatabaseChecker):
             )
 
     async def create_template(self, guild: discord.Guild) -> Template:
+        self._check_database()
+
         template_id = str(uuid.uuid4())
 
         await self.database.insert(
