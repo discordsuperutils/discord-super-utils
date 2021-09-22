@@ -61,4 +61,5 @@ async def fetch_ytdl():
     )["entries"][0]["id"]
 
 
-asyncio.run(start_testing())
+loop = asyncio.get_event_loop()
+loop.run_until_complete(start_testing())

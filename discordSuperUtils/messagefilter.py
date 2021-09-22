@@ -1,18 +1,17 @@
 from __future__ import annotations
 
-import asyncio
 import re
 from abc import ABC, abstractmethod
 from datetime import timedelta
 from typing import TYPE_CHECKING, Union, Any, List
 
-from .Base import get_generator_response, EventManager, CacheBased
-from .Punishments import get_relevant_punishment
+from .base import get_generator_response, EventManager, CacheBased
+from .punishments import get_relevant_punishment
 
 if TYPE_CHECKING:
     from discord.ext import commands
     import discord
-    from .Punishments import Punishment
+    from .punishments import Punishment
 
 __all__ = (
     "MessageFilter",

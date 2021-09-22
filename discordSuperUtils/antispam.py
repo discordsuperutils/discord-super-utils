@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from abc import ABC, abstractmethod
 from datetime import timedelta
 from difflib import SequenceMatcher
@@ -8,12 +7,12 @@ from typing import TYPE_CHECKING, List, Union, Any, Iterable
 
 import discord
 
-from .Base import EventManager, get_generator_response, CacheBased
-from .Punishments import get_relevant_punishment
+from .base import EventManager, get_generator_response, CacheBased
+from .punishments import get_relevant_punishment
 
 if TYPE_CHECKING:
     from discord.ext import commands
-    from .Punishments import Punishment
+    from .punishments import Punishment
 
 __all__ = ("SpamManager", "SpamDetectionGenerator", "DefaultSpamDetectionGenerator")
 

@@ -7,12 +7,12 @@ from typing import TYPE_CHECKING, Union, Optional, List, Any, Dict
 import discord
 import discord.utils
 
-from .Base import DatabaseChecker
-from .Punishments import Punisher
+from .base import DatabaseChecker
+from .punishments import Punisher
 
 if TYPE_CHECKING:
     from discord.ext import commands
-    from .Punishments import Punishment
+    from .punishments import Punishment
 
 
 __all__ = ("AlreadyMuted", "MuteManager")

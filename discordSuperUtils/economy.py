@@ -1,7 +1,7 @@
 import discord
 from typing import List, Optional
 
-from .Base import DatabaseChecker
+from .base import DatabaseChecker
 
 
 class EconomyAccount:

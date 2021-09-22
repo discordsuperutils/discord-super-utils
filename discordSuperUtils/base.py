@@ -23,7 +23,7 @@ from motor import motor_asyncio
 
 if TYPE_CHECKING:
     from discord.ext import commands
-    from .Database import Database
+    from .database import Database
     from datetime import timedelta
 
 

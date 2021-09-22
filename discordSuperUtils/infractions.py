@@ -4,11 +4,11 @@ import uuid
 from datetime import datetime
 from typing import List, TYPE_CHECKING, Optional, Dict, Union
 
-from .Base import DatabaseChecker
-from .Punishments import Punisher, get_relevant_punishment
+from .base import DatabaseChecker
+from .punishments import Punisher, get_relevant_punishment
 
 if TYPE_CHECKING:
-    from .Punishments import Punishment
+    from .punishments import Punishment
     import discord
     from discord.ext import commands
 

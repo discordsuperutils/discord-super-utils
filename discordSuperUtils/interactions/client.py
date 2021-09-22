@@ -5,9 +5,9 @@ from typing import Dict, Any, List, Callable
 
 from discord.ext import commands
 
-from .Interaction import Interaction, OptionType
+from .interaction import Interaction, OptionType
 from .http import HTTPClient
-from ..Base import EventManager, maybe_coroutine
+from ..base import EventManager, maybe_coroutine
 
 # discord.ext.commands is not type hinted in order to use the converters.
 

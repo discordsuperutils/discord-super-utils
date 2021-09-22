@@ -4,12 +4,12 @@ from typing import TYPE_CHECKING
 
 import discord
 
-from .Base import EventManager
-from .Punishments import Punisher
+from .base import EventManager
+from .punishments import Punisher
 
 if TYPE_CHECKING:
     from discord.ext import commands
-    from .Punishments import Punishment
+    from .punishments import Punishment
 
 
 __all__ = ("KickManager",)

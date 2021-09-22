@@ -5,7 +5,7 @@ from typing import List, Union
 import discord
 from discord.ext import commands
 
-from .Base import get_generator_response
+from .base import get_generator_response
 
 __all__ = ("CommandResponseGenerator", "DefaultResponseGenerator", "CommandHinter")
 

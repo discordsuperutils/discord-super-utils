@@ -1,5 +1,5 @@
-from .Base import DatabaseChecker
-from .Paginator import EmojiError
+from .base import DatabaseChecker
+from .paginator import EmojiError
 
 
 class ReactionManager(DatabaseChecker):

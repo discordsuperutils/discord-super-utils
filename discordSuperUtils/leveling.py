@@ -4,7 +4,7 @@ import math
 import time
 from typing import Iterable, TYPE_CHECKING, List
 
-from .Base import DatabaseChecker
+from .base import DatabaseChecker
 
 if TYPE_CHECKING:
     import discord

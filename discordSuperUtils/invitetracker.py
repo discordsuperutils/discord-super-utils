@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Union, Optional
 
-from .Base import DatabaseChecker
+from .base import DatabaseChecker
 
 if TYPE_CHECKING:
     import discord

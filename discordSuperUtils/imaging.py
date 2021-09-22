@@ -13,7 +13,7 @@ import discord
 from PIL import Image, ImageFont, ImageDraw
 
 if TYPE_CHECKING:
-    from .Leveling import LevelingAccount
+    from .leveling import LevelingAccount
 
 
 __all__ = ("ImageManager", "Backgrounds")

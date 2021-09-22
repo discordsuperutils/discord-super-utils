@@ -3,7 +3,7 @@ from typing import Union, Any
 import discord
 from discord.ext import commands
 
-from .Base import DatabaseChecker
+from .base import DatabaseChecker
 
 
 class PrefixManager(DatabaseChecker):

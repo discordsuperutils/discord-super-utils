@@ -8,11 +8,11 @@ from typing import List, Dict, Any, TYPE_CHECKING, Optional, Union
 import discord
 from discord.guild import VerificationLevel
 
-from .Base import DatabaseChecker
+from .base import DatabaseChecker
 
 if TYPE_CHECKING:
     from discord.ext import commands
-    from .Database import Database
+    from .database import Database
 
 __all__ = (
     "DictionaryConvertible",
