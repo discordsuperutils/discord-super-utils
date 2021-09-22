@@ -233,9 +233,11 @@ class _SqlDatabase(Database):
     @with_commit
     async def create_table(self, cursor, table_name, columns=None, exists=False):
         query = f'CREATE TABLE {"IF NOT EXISTS" if exists else ""} {self.quote}{table_name}{self.quote} ('
+        columns = [] if columns is None else columns
 
-        for column in [] if columns is None else columns:
+        for column in columns:
             query += f"\n{self.quote}{column}{self.quote} {columns[column]},"
+
         query = query[:-1]
 
         query += "\n);"
