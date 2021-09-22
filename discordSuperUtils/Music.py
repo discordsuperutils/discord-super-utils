@@ -123,7 +123,29 @@ class Player:
 
     def __str__(self):
         return self.title
+    
+    @staticmethod
+    def _get_stream_url(player: dict) -> str:
+        """
+        Returns the stream url of a player.
 
+        :param dict player: The player.
+        :return: The stream url.
+        :rtype: str
+        """
+
+        stream_urls = [
+            x
+            for x in sorted(
+                player["streamingData"]["adaptiveFormats"],
+                key=lambda x: x.get("averageBitrate", 0),
+                reverse=True,
+            )
+            if "audio" in x["mimeType"] and "opus" not in x["mimeType"]
+        ]
+
+        return player["streamingData"].get("hlsManifestUrl") or stream_urls[0]["url"]
+    
     @classmethod
     async def make_multiple_players(
         cls, songs: Iterable[str], requester: Optional[discord.Member]
@@ -147,8 +169,8 @@ class Player:
 
         return [cls(requester, data=x[0]) for x in songs if x]
 
-    @staticmethod
-    async def fetch_song(query: str, playlist: bool = True) -> List[dict]:
+    @classmethod
+    async def fetch_song(cls, query: str, playlist: bool = True) -> List[dict]:
         """
         |coro|
 
@@ -169,18 +191,7 @@ class Player:
 
         players = []
         for player in data:
-            stream_url = [
-                x
-                for x in sorted(
-                    player["streamingData"]["adaptiveFormats"],
-                    key=lambda x: x.get("averageBitrate", 0),
-                    reverse=True,
-                )
-                if "audio" in x["mimeType"] and "opus" not in x["mimeType"]
-            ]
-            url = player["streamingData"].get("hlsManifestUrl") or stream_url[0]["url"]
-
-            player["url"] = url
+            player["url"] = cls._get_stream_url(player)
             players.append(
                 {x: y for x, y in player.items() if x in ["url", "videoDetails"]}
             )
@@ -209,18 +220,6 @@ class Player:
             cls(requester, data=player)
             for player in await cls.fetch_song(query, playlist)
         ]
-
-
-class Playlist:
-    """
-    Represents playlist of songs
-    """
-
-    __slots__ = ("playlist_data", "players")
-
-    def __init__(self, playlist_data: dict, players: List[Player]):
-        self.playlist_data = playlist_data
-        self.players = players
 
 
 class QueueManager:
@@ -508,7 +507,7 @@ class MusicManager(EventManager):
         )
 
     @staticmethod
-    async def fetch_data(query: str, playlist: bool = True) -> Tuple[dict, List[dict]]:
+    async def fetch_data(query: str, playlist: bool = True) -> List[dict]:
         """
         |coro|
 
@@ -521,13 +520,11 @@ class MusicManager(EventManager):
         :rtype: Optional[dict]
         """
 
-        playlist_data, songs = await YOUTUBE.get_videos(
+        return [
+            x
+            for x in await YOUTUBE.get_videos(
                 await YOUTUBE.get_query_id(query), playlist
             )
-
-        return playlist_data, [
-            x
-            for x in songs
             if "streamingData" in x
         ]
 
