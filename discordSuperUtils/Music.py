@@ -303,15 +303,18 @@ class MusicManager(EventManager):
         bot: commands.Bot,
         spotify_support: bool = True,
         inactivity_timeout: int = 60,
+        minimum_users: int = 1,
         **kwargs,
     ):
         super().__init__()
         self.bot = bot
+        self.bot.add_listener(self.__on_voice_state_update, "on_voice_state_update")
 
         self.client_id = kwargs.get("client_id")
         self.client_secret = kwargs.get("client_secret")
         self.spotify_support = spotify_support
         self.inactivity_timeout = inactivity_timeout
+        self.minimum_users = minimum_users
 
         self.queue = {}
 
@@ -322,6 +325,40 @@ class MusicManager(EventManager):
                 client_secret=self.client_secret,
                 loop=self.bot.loop,
             )
+
+    async def cleanup(self, voice_client: Optional[discord.VoiceClient], guild: discord.Guild) -> None:
+        """
+        |coro|
+
+        Cleans up after a guild.
+
+        :param Optional[discord.VoiceClient] voice_client: The voice client.
+        :param discord.Guild guild: The guild.
+        :return: None
+        :rtype: None
+        """
+
+        if voice_client:
+            await voice_client.disconnect()
+
+        if guild.id in self.queue:
+            self.queue[guild.id].cleanup()
+            del self.queue[guild.id]
+
+    async def __on_voice_state_update(self, member, before, after):
+        voice_client = member.guild.voice_client
+        channel_change = before.channel != after.channel
+
+        if member == self.bot.user and channel_change:
+            await self.cleanup(voice_client, member.guild)
+
+        elif voice_client and channel_change:
+            voice_members = list(filter(lambda x: not x.bot, voice_client.channel.members))
+
+            if len(voice_members) < self.minimum_users:
+                await asyncio.sleep(self.inactivity_timeout)
+
+                await self.cleanup(voice_client, member.guild)
 
     async def ensure_activity(self, ctx: commands.Context) -> None:
         """
@@ -470,10 +507,7 @@ class MusicManager(EventManager):
                 await self.call_event("on_play", ctx, player)
 
         except (IndexError, KeyError):
-            if ctx.guild.id in self.queue:
-                self.queue[ctx.guild.id].cleanup()
-                del self.queue[ctx.guild.id]
-
+            await self.cleanup(None, ctx.guild)
             await self.call_event("on_queue_end", ctx)
 
     async def get_player_played_duration(
