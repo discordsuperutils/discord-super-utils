@@ -10,7 +10,18 @@ from typing import Optional, TYPE_CHECKING, List, Union, Any, Tuple
 import aiohttp
 import discord
 
-from .exceptions import *
+from .exceptions import (
+    QueueEmpty,
+    NotPlaying,
+    NotConnected,
+    QueueError,
+    AlreadyPaused,
+    NotPaused,
+    InvalidSkipIndex,
+    SkipError,
+    AlreadyConnected,
+    UserNotConnected,
+)
 from .player import Player
 from ..base import EventManager
 from ..spotify import SpotifyClient
@@ -141,7 +152,9 @@ class MusicManager(EventManager):
                 loop=self.bot.loop,
             )
 
-    async def cleanup(self, voice_client: Optional[discord.VoiceClient], guild: discord.Guild) -> None:
+    async def cleanup(
+        self, voice_client: Optional[discord.VoiceClient], guild: discord.Guild
+    ) -> None:
         """
         |coro|
 
@@ -168,7 +181,9 @@ class MusicManager(EventManager):
             await self.cleanup(voice_client, member.guild)
 
         elif voice_client and channel_change:
-            voice_members = list(filter(lambda x: not x.bot, voice_client.channel.members))
+            voice_members = list(
+                filter(lambda x: not x.bot, voice_client.channel.members)
+            )
 
             if len(voice_members) < self.minimum_users:
                 await asyncio.sleep(self.inactivity_timeout)
@@ -260,9 +275,7 @@ class MusicManager(EventManager):
             player = queue.now_playing
 
         elif queue.loop == Loops.QUEUE_LOOP:
-            player = (
-                random.choice(queue.queue) if queue.shuffle else queue.remove(0)
-            )
+            player = random.choice(queue.queue) if queue.shuffle else queue.remove(0)
             queue.add(player)
 
         else:

@@ -74,7 +74,7 @@ class Player:
 
     @classmethod
     async def make_multiple_players(
-            cls, songs: Iterable[str], requester: Optional[discord.Member]
+        cls, songs: Iterable[str], requester: Optional[discord.Member]
     ) -> List[Player]:
         """
         |coro|
@@ -169,7 +169,7 @@ class Player:
 
     @classmethod
     async def make_players(
-            cls, query: str, requester: Optional[discord.Member], playlist: bool = True
+        cls, query: str, requester: Optional[discord.Member], playlist: bool = True
     ) -> List[Player]:
         """
         |coro|
