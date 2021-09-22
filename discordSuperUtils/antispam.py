@@ -53,7 +53,7 @@ class DefaultSpamDetectionGenerator(SpamDetectionGenerator):
         )
 
 
-class SpamManager(EventManager, CacheBased):
+class SpamManager(CacheBased, EventManager):
     """
     Represents a SpamManager which detects spam.
     """
@@ -64,14 +64,15 @@ class SpamManager(EventManager, CacheBased):
         self,
         bot: commands.Bot,
         generator: SpamDetectionGenerator = None,
-        wipe_cache_delay: timedelta = timedelta(minutes=5),
+        wipe_cache_delay: timedelta = timedelta(seconds=5),
     ):
-        super().__init__(bot, wipe_cache_delay)
+        CacheBased.__init__(self, bot, wipe_cache_delay)
+        EventManager.__init__(self)
+
         self.generator = (
             generator if generator is not None else DefaultSpamDetectionGenerator
         )
         self.punishments = []
-        self._last_messages = {}
 
         self.bot.add_listener(self.__handle_messages, "on_message")
         self.bot.add_listener(self.__handle_messages, "on_message_edit")
@@ -107,14 +108,9 @@ class SpamManager(EventManager, CacheBased):
         if not message.guild or message.author.bot:
             return
 
-        member_last_messages = self._last_messages.setdefault(message.guild.id, {}).get(
-            message.author.id, []
-        )
-
-        member_last_messages.append(message)
-        member_last_messages = member_last_messages[-5:]
-
-        self._last_messages[message.guild.id][message.author.id] = member_last_messages
+        member_last_messages = list(
+            filter(lambda x: x.author == message.author, self.bot.cached_messages)
+        )[-5:]
 
         if len(member_last_messages) <= 3 or not get_generator_response(
             self.generator, SpamDetectionGenerator, member_last_messages

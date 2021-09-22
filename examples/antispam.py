@@ -13,7 +13,7 @@ class MySpamDetector(discordSuperUtils.SpamDetectionGenerator):
         # similarity in the last 10 messages of the member.
         # You could also make this ignore roles, permissions, etc...
 
-        return "Hey detector, i am spamming!" in last_messages[0].content
+        return "Hey detector, i am spamming!" in last_messages[-1].content
         # Obviously, this isn't a good spam detection method.
         # I recommend using the default one which compares the similarity between the last 5 messages.
         # But of course, if you have a better idea to detect spam, you can make your custom spam detector.
@@ -21,7 +21,7 @@ class MySpamDetector(discordSuperUtils.SpamDetectionGenerator):
 
 bot = commands.Bot(command_prefix="-")
 KickManager = discordSuperUtils.KickManager(bot)
-AntiSpam = discordSuperUtils.SpamManager(bot, delete_message=True)
+AntiSpam = discordSuperUtils.SpamManager(bot)
 # Incase you want to use the default spam detector, don't pass a spam detector.
 AntiSpam.add_punishments([discordSuperUtils.Punishment(KickManager, punish_after=3)])
 

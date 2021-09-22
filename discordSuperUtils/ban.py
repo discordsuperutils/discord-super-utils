@@ -144,6 +144,26 @@ class BanManager(DatabaseChecker, Punisher):
             await guild.unban(user)
             return True
 
+    async def __handle_unban(
+        self, time_of_ban: Union[int, float], member: discord.Member, reason: str
+    ) -> None:
+        """
+        |coro|
+
+        A function that handles the member's unban that runs separately from the ban method so it wont be blocked.
+
+        :param Union[int, float] time_of_ban: The time until the member's unban timestamp.
+        :param discord.Member member: The member to unban.
+        :param str reason: The reason of the mute.
+        :return: None
+        :rtype: None
+        """
+
+        await asyncio.sleep(time_of_ban)
+
+        if await self.unban(member):
+            await self.call_event("on_unban", member, reason)
+
     async def ban(
         self,
         member: discord.Member,
@@ -182,7 +202,4 @@ class BanManager(DatabaseChecker, Punisher):
             },
         )
 
-        await asyncio.sleep(time_of_ban)
-
-        if await self.unban(member):
-            await self.call_event("on_unban", member, reason)
+        self.bot.loop.create_task(self.__handle_unban(time_of_ban, member, reason))

@@ -77,7 +77,9 @@ class MessageFilter(EventManager, CacheBased):
         delete_message: bool = True,
         wipe_cache_delay: timedelta = timedelta(minutes=5),
     ):
-        super().__init__(bot, wipe_cache_delay)
+        CacheBased.__init__(self, bot, wipe_cache_delay)
+        EventManager.__init__(self)
+
         self.generator = (
             generator if generator is not None else DefaultMessageResponseGenerator
         )
