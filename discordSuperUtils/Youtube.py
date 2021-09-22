@@ -1,6 +1,6 @@
 import asyncio
 import re
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional
 from urllib import parse
 
 import aiohttp
@@ -155,15 +155,15 @@ class YoutubeClient:
             if "gridVideoRenderer" in x
         ]
 
-    async def get_playlist_videos(self, playlist_id: str) -> Tuple[dict, List[str]]:
+    async def get_playlist_videos(self, playlist_id: str) -> List[str]:
         """
         |coro|
 
         Returns the video IDs in the playlist.
 
         :param str playlist_id: The playlist id.
-        :return: The playlist data and video ids.
-        :rtype: Tuple[dict, List[str]]
+        :return: The video IDs.
+        :rtype: List[str]
         """
 
         query = {
@@ -175,13 +175,12 @@ class YoutubeClient:
 
         r = await self.request(f"{self.BASE_URL}/next", query=query)
         if not r:
-            return {}, []
+            return []
 
         r_json = await r.json()
 
         # Youtube api lol
-        # TODO: fetch playlist info
-        return r_json, [
+        return [
             x["playlistPanelVideoRenderer"]["navigationEndpoint"]["watchEndpoint"][
                 "videoId"
             ]
@@ -192,7 +191,7 @@ class YoutubeClient:
 
     async def get_videos(
         self, video_id: str, playlist: bool = True
-    ) -> Tuple[dict, List[Dict[str, Any]]]:
+    ) -> List[Dict[str, Any]]:
         """
         |coro|
 
@@ -200,13 +199,12 @@ class YoutubeClient:
 
         :param bool playlist: Fetches playlists if True.
         :param str video_id: The video or playlist id.
-        :return Dict[str, Any]: The video data.
+        :return List[Dict[str, Any]]: The video data.
         """
 
         if not video_id:
-            return {}, []
+            return []
 
-        playlist_data = {}
         if len(video_id) == 11:  # Video
             queries = [
                 {
@@ -218,8 +216,6 @@ class YoutubeClient:
             ]
 
         else:  # Playlist
-            playlist_data, playlist_videos = await self.get_playlist_videos(video_id)
-
             queries = [
                 {
                     "key": self.ACCESS_KEY,
@@ -227,7 +223,7 @@ class YoutubeClient:
                     "contentCheckOk": True,
                     "racyCheckOk": True,
                 }
-                for playlist_video_id in playlist_videos
+                for playlist_video_id in await self.get_playlist_videos(video_id)
             ]
 
         queries = queries[:1] if not playlist else queries
@@ -236,6 +232,6 @@ class YoutubeClient:
             *[self.request(f"{self.BASE_URL}/player", query=query) for query in queries]
         )
         try:
-            return playlist_data, [await r.json() if r else {} for r in requests]
+            return [await r.json() if r else {} for r in requests]
         except asyncio.exceptions.TimeoutError:
-            return {}, []
+            return []
