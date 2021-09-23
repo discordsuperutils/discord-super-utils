@@ -4,8 +4,8 @@ import discordSuperUtils
 from discordSuperUtils import MusicManager
 import discord
 
-client_id = ""
-client_secret = ""
+client_id = "579dde2c1fe64feca4f3bd22e9a92ef9"
+client_secret = "876b40c7928e4d43bd07ae5f438794b6"
 
 bot = commands.Bot(command_prefix="-")
 MusicManager = MusicManager(
@@ -221,4 +221,4 @@ async def ls(ctx):
             await ctx.send(loop_status)
 
 
-bot.run("token")
+bot.run("ODYzNzMwNDE5MjQ5ODQwMTI4.YOrJow.tb9Ltc60O_8dPOanE1Q1poGqJNk")
