@@ -9,12 +9,15 @@ from .economy import EconomyManager, EconomyAccount
 from .fivem import FiveMServer
 from .imaging import ImageManager, Backgrounds
 from .infractions import InfractionManager
-from .interactions.interaction import Interaction, OptionType
 from .interactions.client import SlashManager
+from .interactions.interaction import Interaction, OptionType
 from .invitetracker import InviteTracker
 from .kick import KickManager
 from .leveling import LevelingManager
 from .messagefilter import MessageFilter, MessageResponseGenerator
+from .music.exceptions import *
+from .music.music import *
+from .music.player import Player
 from .mute import MuteManager, AlreadyMuted
 from .paginator import PageManager, generate_embeds, ButtonsPageManager
 from .prefix import PrefixManager
@@ -23,9 +26,6 @@ from .reactionroles import ReactionManager
 from .spotify import SpotifyClient
 from .template import TemplateManager
 from .youtube import YoutubeClient
-from .music.exceptions import *
-from .music.music import *
-from .music.player import Player
 
 __title__ = "discordSuperUtils"
 __version__ = "0.2.0"
