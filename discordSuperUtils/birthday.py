@@ -34,6 +34,15 @@ class BirthdayMember:
         )
         return datetime.utcfromtimestamp(birthday_data["utc_birthday"])
 
+    async def next_birthday(self) -> datetime:
+        current_datetime = datetime.utcnow()
+
+        new_date = (await self.birthday_date()).replace(year=current_datetime.year)
+        if new_date.timestamp() - current_datetime.timestamp() < 0:
+            new_date = new_date.replace(year=current_datetime.year + 1)
+
+        return new_date
+
     async def timezone(self) -> str:
         timezone_data = await self.birthday_manager.database.select(
             self.table, ["timezone"], self.__checks
@@ -132,29 +141,17 @@ class BirthdayManager(DatabaseChecker):
             self.tables["birthdays"], [], fetchall=True
         )
 
-        current_datetime = datetime.utcnow()
-        member_data_formatted = []
-        for member in member_data:
-            member["utc_birthday"] = datetime.utcfromtimestamp(member["utc_birthday"])
+        birthdays = {}
 
-            new_date = member["utc_birthday"].replace(year=current_datetime.year)
-            if new_date.timestamp() - current_datetime.timestamp() < 0:
-                new_date = new_date.replace(year=current_datetime.year + 1)
-
-            member["utc_birthday"] = new_date
-
-            member_data_formatted.append(member)
-
-        birthdays = []
-        for birthday_member in sorted(
-            member_data_formatted, key=lambda x: x["utc_birthday"]
-        ):
+        for birthday_member in member_data:
             member = guild.get_member(birthday_member["member"])
 
             if member:
-                birthdays.append(BirthdayMember(self, member))
+                birthday = BirthdayMember(self, member)
+                birthdays[birthday] = await birthday.next_birthday()
+                # Did this instead of running the method until complete in the sorted key lambda
 
-        return birthdays
+        return sorted(birthdays, key=lambda x: birthdays[x])
 
     @staticmethod
     def get_midnight_timezones() -> List[str]:
