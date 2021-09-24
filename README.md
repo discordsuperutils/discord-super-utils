@@ -66,9 +66,11 @@ from discord.ext import commands
 
 import discordSuperUtils
 
-bot = commands.Bot(command_prefix='-', intents=discord.Intents.all())
+bot = commands.Bot(command_prefix="-", intents=discord.Intents.all())
 LevelingManager = discordSuperUtils.LevelingManager(bot, award_role=True)
-ImageManager = discordSuperUtils.ImageManager()  # LevelingManager uses ImageManager to create the rank command.
+ImageManager = (
+    discordSuperUtils.ImageManager()
+)  # LevelingManager uses ImageManager to create the rank command.
 
 
 @bot.event
@@ -76,13 +78,15 @@ async def on_ready():
     database = discordSuperUtils.DatabaseManager.connect(...)
     await LevelingManager.connect_to_database(database, ["xp", "roles", "role_list"])
 
-    print('Leveling manager is ready.', bot.user)
+    print("Leveling manager is ready.", bot.user)
 
 
 @LevelingManager.event()
 async def on_level_up(message, member_data, roles):
-    await message.reply(f"You are now level {await member_data.level()}" + (f", you have received the {roles[0]}"
-                                                                            f" role." if roles else ""))
+    await message.reply(
+        f"You are now level {await member_data.level()}"
+        + (f", you have received the {roles[0]}" f" role." if roles else "")
+    )
 
 
 @bot.command()
@@ -96,12 +100,14 @@ async def rank(ctx):
     guild_leaderboard = await LevelingManager.get_leaderboard(ctx.guild)
     member = [x for x in guild_leaderboard if x.member == ctx.author.id]
 
-    image = await ImageManager.create_leveling_profile(ctx.author,
-                                                       member_data,
-                                                       discordSuperUtils.Backgrounds.GALAXY,
-                                                       (127, 255, 0),
-                                                       guild_leaderboard.index(member[0]) + 1 if member else -1,
-                                                       outline=5)
+    image = await ImageManager.create_leveling_profile(
+        ctx.author,
+        member_data,
+        discordSuperUtils.Backgrounds.GALAXY,
+        (127, 255, 0),
+        guild_leaderboard.index(member[0]) + 1 if member else -1,
+        outline=5,
+    )
     await ctx.send(file=image)
 
 
@@ -111,20 +117,26 @@ async def set_roles(ctx, interval: int, *roles: discord.Role):
     await LevelingManager.set_roles(ctx.guild, roles)
 
     await ctx.send(
-        f"Successfully set the interval to {interval} and role list to {', '.join(role.name for role in roles)}")
+        f"Successfully set the interval to {interval} and role list to {', '.join(role.name for role in roles)}"
+    )
 
 
 @bot.command()
 async def leaderboard(ctx):
     guild_leaderboard = await LevelingManager.get_leaderboard(ctx.guild)
-    formatted_leaderboard = [f"Member: {x.member}, XP: {await x.xp()}" for x in guild_leaderboard]
+    formatted_leaderboard = [
+        f"Member: {x.member}, XP: {await x.xp()}" for x in guild_leaderboard
+    ]
 
-    await discordSuperUtils.PageManager(ctx, discordSuperUtils.generate_embeds(
-        formatted_leaderboard,
-        title="Leveling Leaderboard",
-        fields=25,
-        description=f"Leaderboard of {ctx.guild}"
-    )).run()
+    await discordSuperUtils.PageManager(
+        ctx,
+        discordSuperUtils.generate_embeds(
+            formatted_leaderboard,
+            title="Leveling Leaderboard",
+            fields=25,
+            description=f"Leaderboard of {ctx.guild}",
+        ),
+    ).run()
 
 
 bot.run("token")
@@ -139,18 +151,22 @@ from discord.ext import commands
 
 import discordSuperUtils
 from discordSuperUtils import MusicManager
+import discord
 
 client_id = ""
 client_secret = ""
 
-bot = commands.Bot(command_prefix='-')
-MusicManager = MusicManager(bot, spotify_support=False)
+bot = commands.Bot(command_prefix="-")
+MusicManager = MusicManager(
+    bot, spotify_support=True, client_id=client_id, client_secret=client_secret
+)
 
 
 # MusicManager = MusicManager(bot, client_id=client_id,
 #                                   client_secret=client_secret, spotify_support=True)
 
 # if using spotify support use this instead ^^^
+
 
 @MusicManager.event()
 async def on_music_error(ctx, error):
@@ -175,7 +191,7 @@ async def on_play(ctx, player):
 
 @bot.event
 async def on_ready():
-    print('Music manager is ready.', bot.user)
+    print("Music manager is ready.", bot.user)
 
 
 @bot.command()
@@ -190,8 +206,10 @@ async def np(ctx):
         duration_played = await MusicManager.get_player_played_duration(ctx, player)
         # You can format it, of course.
 
-        await ctx.send(f"Currently playing: {player}, \n"
-                       f"Duration: {duration_played}/{player.duration}")
+        await ctx.send(
+            f"Currently playing: {player}, \n"
+            f"Duration: {duration_played}/{player.duration}"
+        )
 
 
 @bot.command()
@@ -209,11 +227,44 @@ async def play(ctx, *, query: str):
         players = await MusicManager.create_player(query, ctx.author)
 
     if players:
-        if await MusicManager.queue_add(players=players, ctx=ctx) and not await MusicManager.play(ctx):
+        if await MusicManager.queue_add(
+            players=players, ctx=ctx
+        ) and not await MusicManager.play(ctx):
             await ctx.send("Added to queue")
 
     else:
         await ctx.send("Query not found.")
+
+
+@bot.command()
+async def lyrics(ctx, query: str = None):
+    if response := await MusicManager.lyrics(ctx, query):
+        title, author, query_lyrics = response
+
+        splitted = query_lyrics.split("\n")
+        res = []
+        current = ""
+        for i, split in enumerate(splitted):
+            if len(splitted) <= i + 1 or len(current) + len(splitted[i + 1]) > 1024:
+                res.append(current)
+                current = ""
+                continue
+            current += split + "\n"
+
+        page_manager = discordSuperUtils.PageManager(
+            ctx,
+            [
+                discord.Embed(
+                    title=f"Lyrics for '{title}' by '{author}', (Page {i + 1}/{len(res)})",
+                    description=x,
+                )
+                for i, x in enumerate(res)
+            ],
+            public=True,
+        )
+        await page_manager.run()
+    else:
+        await ctx.send("No lyrics found.")
 
 
 @bot.command()
@@ -240,6 +291,18 @@ async def loop(ctx):
 
 
 @bot.command()
+async def shuffle(ctx):
+    is_shuffle = await MusicManager.shuffle(ctx)
+    await ctx.send(f"Shuffle toggled to {is_shuffle}")
+
+
+@bot.command()
+async def autoplay(ctx):
+    is_autoplay = await MusicManager.autoplay(ctx)
+    await ctx.send(f"Autoplay toggled to {is_autoplay}")
+
+
+@bot.command()
 async def queueloop(ctx):
     is_loop = await MusicManager.queueloop(ctx)
     await ctx.send(f"Queue looping toggled to {is_loop}")
@@ -248,14 +311,17 @@ async def queueloop(ctx):
 @bot.command()
 async def history(ctx):
     formatted_history = [
-        f"Title: '{x.title}'\nRequester: {x.requester.mention}" for x in (await MusicManager.get_queue(ctx)).history
+        f"Title: '{x.title}'\nRequester: {x.requester.mention}"
+        for x in (await MusicManager.get_queue(ctx)).history
     ]
 
-    embeds = discordSuperUtils.generate_embeds(formatted_history,
-                                               "Song History",
-                                               "Shows all played songs",
-                                               25,
-                                               string_format="{}")
+    embeds = discordSuperUtils.generate_embeds(
+        formatted_history,
+        "Song History",
+        "Shows all played songs",
+        25,
+        string_format="{}",
+    )
 
     page_manager = discordSuperUtils.PageManager(ctx, embeds, public=True)
     await page_manager.run()
@@ -269,17 +335,39 @@ async def skip(ctx, index: int = None):
 @bot.command()
 async def queue(ctx):
     formatted_queue = [
-        f"Title: '{x.title}\nRequester: {x.requester.mention}" for x in (await MusicManager.get_queue(ctx)).queue
+        f"Title: '{x.title}\nRequester: {x.requester.mention}"
+        for x in (await MusicManager.get_queue(ctx)).queue
     ]
 
-    embeds = discordSuperUtils.generate_embeds(formatted_queue,
-                                               "Queue",
-                                               f"Now Playing: {await MusicManager.now_playing(ctx)}",
-                                               25,
-                                               string_format="{}")
+    embeds = discordSuperUtils.generate_embeds(
+        formatted_queue,
+        "Queue",
+        f"Now Playing: {await MusicManager.now_playing(ctx)}",
+        25,
+        string_format="{}",
+    )
 
     page_manager = discordSuperUtils.PageManager(ctx, embeds, public=True)
     await page_manager.run()
+
+
+@bot.command()
+async def ls(ctx):
+    if queue := await MusicManager.get_queue(ctx):
+        loop = queue.loop
+        loop_status = None
+
+        if loop == discordSuperUtils.Loops.LOOP:
+            loop_status = "Looping enabled."
+
+        elif loop == discordSuperUtils.Loops.QUEUE_LOOP:
+            loop_status = "Queue looping enabled."
+
+        elif loop == discordSuperUtils.Loops.NO_LOOP:
+            loop_status = "No loop enabled."
+
+        if loop_status:
+            await ctx.send(loop_status)
 
 
 bot.run("token")
