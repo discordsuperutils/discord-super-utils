@@ -3,4 +3,5 @@ include LICENSE
 include requirements.txt
 include discordSuperUtils/*
 include discordSuperUtils/assets/*
-include discordSuperUtils/Interactions/*
+include discordSuperUtils/interactions/*
+include discordSuperUtils/music/*
