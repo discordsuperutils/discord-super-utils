@@ -104,6 +104,13 @@ class QueueManager:
         return self.queue.pop(index)
 
     def cleanup(self):
+        """
+        Clears the queue.
+
+        :return: None
+        :rtype: None
+        """
+
         self.clear()
         self.history.clear()
         del self.history
