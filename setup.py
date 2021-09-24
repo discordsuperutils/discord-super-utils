@@ -9,7 +9,8 @@ setup(
     package_data={
         "discordSuperUtils.assets": ["*"],
         "": ["*.png", "*.ttf"],
-        "discordSuperUtils.Interactions": ["*"],
+        "discordSuperUtils.interactions": ["*"],
+        "discordSuperUtils.music": ["*"],
     },
     include_package_data=True,
     version="0.2.1",
@@ -39,7 +40,6 @@ setup(
         "database manager",
     ],
     install_requires=[
-        "youtube-dl",
         "discord.py",
         "Pillow",
         "requests",
