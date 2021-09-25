@@ -283,7 +283,9 @@ class MusicManager(EventManager):
             player = queue.now_playing
 
         elif queue.loop == Loops.QUEUE_LOOP:
-            player = random.choice(queue.queue) if queue.shuffle else queue.remove(0)
+            player = queue.remove(
+                random.randint(0, len(queue.queue)) if queue.shuffle else 0
+            )
             queue.add(player)
 
         else:
@@ -294,8 +296,8 @@ class MusicManager(EventManager):
                 ]
 
             else:
-                player = (
-                    random.choice(queue.queue) if queue.shuffle else queue.remove(0)
+                player = queue.remove(
+                    random.randint(0, len(queue.queue)) if queue.shuffle else 0
                 )
 
         return player
