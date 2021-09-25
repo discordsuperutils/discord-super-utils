@@ -322,7 +322,8 @@ class MusicManager(EventManager):
             player = await self._get_next_player(queue)
 
             if player is None:
-                return
+                await self.cleanup(None, ctx.guild)
+                await self.call_event("on_queue_end", ctx)
 
             queue.now_playing = player
 
