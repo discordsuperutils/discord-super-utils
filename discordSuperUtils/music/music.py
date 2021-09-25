@@ -70,7 +70,7 @@ class QueueManager:
         self.shuffle = False
         self.loop = Loops.NO_LOOP
         self.now_playing = None
-        self.vote_skips = 0
+        self.vote_skips = []
 
     def add(self, player: Player) -> None:
         """
@@ -341,7 +341,7 @@ class MusicManager(EventManager):
             player.start_timestamp = time.time()
 
             queue.history.append(player)
-            queue.vote_skips = 0
+            queue.vote_skips = []
             await self.call_event("on_play", ctx, player)
 
         except (IndexError, KeyError):
