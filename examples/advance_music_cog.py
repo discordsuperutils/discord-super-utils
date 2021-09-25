@@ -317,32 +317,35 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     #history
     @commands.command()
     async def history(self, ctx):
-        history = (await self.MusicManager.get_queue(ctx)).queue
-        #checking if history is empty or not
-        if history == []:
-            formatted_history = ["Empty history"]
+        if history := (await self.MusicManager.get_queue(ctx)).history:
+            #checking if history is empty or not
+            if history == []:
+                formatted_history = ["Empty history"]
+            else:
+                formatted_history = [
+                    f"Title: '{x.title}\nRequester: {x.requester.mention}"
+                    for x in history
+                ]
+
+            embeds = discordSuperUtils.generate_embeds(
+                formatted_history,
+                "Song History",
+                "Shows all played songs",
+                25,
+                string_format="{}",
+            )
+            
+            for embed in embeds:
+                embed.timestamp = datetime.datetime.utcnow()
+
+            await discordSuperUtils.PageManager(
+                    ctx, 
+                    embeds, 
+                    public=True
+                ).run()
         else:
-            formatted_history = [
-                f"Title: '{x.title}\nRequester: {x.requester.mention}"
-                for x in history
-            ]
-
-        embeds = discordSuperUtils.generate_embeds(
-            formatted_history,
-            "Song History",
-            "Shows all played songs",
-            25,
-            string_format="{}",
-        )
+            await ctx.send('Not playing any music right now...')
         
-        for embed in embeds:
-            embed.timestamp = datetime.datetime.utcnow()
-
-        await discordSuperUtils.PageManager(
-                ctx, 
-                embeds, 
-                public=True
-            ).run()
     #stop command
     @commands.command()
     async def stop(self, ctx):
@@ -390,30 +393,31 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     #queue command
     @commands.command()
     async def queue(self, ctx):
-        queue = (await self.MusicManager.get_queue(ctx)).queue
-        #checking if queue is empty or not
-        if queue == []:
-            formatted_queue = ["Empty queue"]
+        if queue := (await self.MusicManager.get_queue(ctx)).queue:
+            #checking if queue is empty or not
+            if queue == []:
+                formatted_queue = ["Empty queue"]
+            else:
+                formatted_queue = [
+                    f"Title: '{x.title}\nRequester: {x.requester.mention}"
+                    for x in queue
+                ]
+
+            embeds = discordSuperUtils.generate_embeds(
+                formatted_queue,
+                "Queue",#title of embed
+                f"Now Playing: {await self.MusicManager.now_playing(ctx)}",
+                25, #number of rows in one pane
+                string_format="{}",
+                color = 11658814 #color of embed in decimal color
+            )
+
+            for embed in embeds:
+                embed.timestamp = datetime.datetime.utcnow()
+
+            await discordSuperUtils.PageManager(ctx, embeds, public=True).run()
         else:
-            formatted_queue = [
-                f"Title: '{x.title}\nRequester: {x.requester.mention}"
-                for x in queue
-            ]
-
-        embeds = discordSuperUtils.generate_embeds(
-            formatted_queue,
-            "Queue",#title of embed
-            f"Now Playing: {await self.MusicManager.now_playing(ctx)}",
-            25, #number of rows in one pane
-            string_format="{}",
-            color = 11658814 #color of embed in decimal color
-        )
-
-        for embed in embeds:
-            embed.timestamp = datetime.datetime.utcnow()
-
-        await discordSuperUtils.PageManager(ctx, embeds, public=True).run()
-    
+            await ctx.send("Not playing any music right now...")
     #loop status
     @commands.command()
     async def loop_check(self, ctx):
