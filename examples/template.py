@@ -50,14 +50,12 @@ async def delete_template(ctx, template_id: str):
 
 
 @bot.command()
-@commands.has_permissions(administrator=True)
 async def get_guild_templates(ctx):
     templates = await TemplateManager.get_templates(ctx.guild)
     await ctx.send(templates)
 
 
 @bot.command()
-@commands.has_permissions(administrator=True)
 async def get_templates(ctx):
     templates = await TemplateManager.get_templates()
     await ctx.send(templates)
@@ -65,7 +63,6 @@ async def get_templates(ctx):
 
 
 @bot.command()
-@commands.has_permissions(administrator=True)
 async def get_template(ctx, template_id: str):
     template = await TemplateManager.get_template(template_id)
     if not template:
