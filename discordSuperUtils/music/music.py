@@ -476,7 +476,7 @@ class MusicManager(EventManager):
 
         async with aiohttp.ClientSession() as session:
             request = await session.get(url)
-            request_json = await request.json()
+            request_json = await request.json(content_type=None)
 
             authors = request_json.get("author")
             title = request_json.get("title")
