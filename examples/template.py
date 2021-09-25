@@ -24,6 +24,7 @@ async def on_ready():
 
 
 @bot.command()
+@commands.has_permissions(administrator=True)
 async def apply_template(ctx, template_id: str):
     # Check permissions here.
     template = await TemplateManager.get_template(template_id)
@@ -36,6 +37,7 @@ async def apply_template(ctx, template_id: str):
 
 
 @bot.command()
+@commands.has_permissions(administrator=True)
 async def delete_template(ctx, template_id: str):
     template = await TemplateManager.get_template(template_id)
     # Here, you could check permissions, I recommend checking if ctx is the template guild.
@@ -48,12 +50,14 @@ async def delete_template(ctx, template_id: str):
 
 
 @bot.command()
+@commands.has_permissions(administrator=True)
 async def get_guild_templates(ctx):
     templates = await TemplateManager.get_templates(ctx.guild)
     await ctx.send(templates)
 
 
 @bot.command()
+@commands.has_permissions(administrator=True)
 async def get_templates(ctx):
     templates = await TemplateManager.get_templates()
     await ctx.send(templates)
@@ -61,6 +65,7 @@ async def get_templates(ctx):
 
 
 @bot.command()
+@commands.has_permissions(administrator=True)
 async def get_template(ctx, template_id: str):
     template = await TemplateManager.get_template(template_id)
     if not template:
@@ -71,6 +76,7 @@ async def get_template(ctx, template_id: str):
 
 
 @bot.command()
+@commands.has_permissions(administrator=True)
 async def create_template(ctx):
     # Again, you should check permissions here to make sure this isn't abused.
     # You can also get all the templates a guild has, using TemplateManager.get_templates
