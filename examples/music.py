@@ -9,7 +9,7 @@ client_secret = ""
 
 bot = commands.Bot(command_prefix="-")
 MusicManager = MusicManager(
-    bot, spotify_support=True, client_id=client_id, client_secret=client_secret
+    bot, spotify_support=False
 )
 
 
