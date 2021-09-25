@@ -5,9 +5,11 @@ from discord.ext import commands
 
 def isfloat(string: str) -> bool:
     """
-    This function receives a string and returns if it is a float or not
-    :param string:
-    :return:
+    This function receives a string and returns if it is a float or not.
+
+    :param str string: The string to check.
+    :return: A boolean representing if the string is a float.
+    :rtype: bool
     """
 
     try:

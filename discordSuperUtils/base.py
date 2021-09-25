@@ -115,14 +115,13 @@ async def maybe_coroutine(function: Callable, *args, **kwargs) -> Any:
     """
     |coro|
 
-    Returns the coroutine version of the function.
+    Returns the return value of the function.
 
-    :param function: The function to convert.
-    :type function: Union[Awaitable, Callable]
+    :param Callable function: The function to call.
     :param args: The arguments.
     :param kwargs: The key arguments:
-    :return: The coroutine version of the function.
-    :rtype: Awaitable
+    :return: The value.
+    :rtype: Any
     """
 
     value = function(*args, **kwargs)
