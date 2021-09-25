@@ -35,7 +35,7 @@ async def rank(ctx):
         return
 
     guild_leaderboard = await LevelingManager.get_leaderboard(ctx.guild)
-    member = [x for x in guild_leaderboard if x.member == ctx.author.id]
+    member = [x for x in guild_leaderboard if x.member == ctx.author]
 
     image = await ImageManager.create_leveling_profile(
         ctx.author,

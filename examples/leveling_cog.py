@@ -1,4 +1,3 @@
-import aiosqlite
 import discord
 from discord.ext import commands
 
@@ -26,7 +25,7 @@ class Leveling(commands.Cog, discordSuperUtils.CogManager.Cog):
             database, ["xp", "roles", "role_list"]
         )
 
-        print("Leveling manager is ready.", self.bot.user)
+        print("Leveling manager is ready.", bot.user)
 
     @discordSuperUtils.CogManager.event(discordSuperUtils.LevelingManager)
     async def on_level_up(self, message, member_data, roles):
@@ -46,7 +45,7 @@ class Leveling(commands.Cog, discordSuperUtils.CogManager.Cog):
             return
 
         guild_leaderboard = await self.LevelingManager.get_leaderboard(ctx.guild)
-        member = [x for x in guild_leaderboard if x.member == ctx.author.id]
+        member = [x for x in guild_leaderboard if x.member == ctx.author]
 
         image = await self.ImageManager.create_leveling_profile(
             ctx.author,
