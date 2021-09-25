@@ -30,8 +30,6 @@ class CommandResponseGenerator(ABC):
         :rtype: Optional[Union[str, discord.Embed]]
         """
 
-        pass
-
 
 class DefaultResponseGenerator(CommandResponseGenerator):
     __slots__ = ()
