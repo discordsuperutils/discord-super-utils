@@ -14,7 +14,9 @@ if sys.version_info >= (3, 8) and sys.platform.lower().startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
-async def create_mysql(host: str, port: int, user: str, password: str, dbname: str) -> aiomysql.pool.Pool:
+async def create_mysql(
+    host: str, port: int, user: str, password: str, dbname: str
+) -> aiomysql.pool.Pool:
     """
     |coro|
 

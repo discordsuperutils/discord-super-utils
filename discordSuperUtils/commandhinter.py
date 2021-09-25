@@ -67,7 +67,9 @@ class CommandHinter:
 
     __slots__ = ("bot", "generator")
 
-    def __init__(self, bot: commands.Bot, generator: Optional[CommandResponseGenerator] = None):
+    def __init__(
+        self, bot: commands.Bot, generator: Optional[CommandResponseGenerator] = None
+    ):
         """
         :param commands.Bot bot: The bot.
         :param Optional[CommandResponseGenerator] generator: The command response generator.
