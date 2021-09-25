@@ -3,15 +3,12 @@ from __future__ import annotations
 import asyncio
 from typing import Optional, TYPE_CHECKING, List, Iterable
 
-from ..youtube import YoutubeClient
-
 if TYPE_CHECKING:
+    from ..youtube import YoutubeClient
     import discord
 
 
 __all__ = ("Player",)
-
-YOUTUBE = YoutubeClient()
 
 
 class Player:
@@ -74,13 +71,17 @@ class Player:
 
     @classmethod
     async def make_multiple_players(
-        cls, songs: Iterable[str], requester: Optional[discord.Member]
+        cls,
+        youtube: YoutubeClient,
+        songs: Iterable[str],
+        requester: Optional[discord.Member],
     ) -> List[Player]:
         """
         |coro|
 
         Returns a list of players from a iterable of queries.
 
+        :param YoutubeClient youtube: The youtube client.
         :param requester: The requester.
         :type requester: Optional[discord.Member]
         :param songs: The queries.
@@ -89,27 +90,30 @@ class Player:
         :rtype: List[Player]
         """
 
-        tasks = [cls.fetch_song(song, playlist=False) for song in songs]
+        tasks = [cls.fetch_song(youtube, song, playlist=False) for song in songs]
 
         songs = await asyncio.gather(*tasks)
 
         return [cls(requester, data=x[0]) for x in songs if x]
 
     @classmethod
-    async def get_similar_videos(cls, video_id: str) -> List[Player]:
+    async def get_similar_videos(
+        cls, video_id: str, youtube: YoutubeClient
+    ) -> List[Player]:
         """
         |coro|
 
         Creates similar videos related to the video id.
 
         :param str video_id: The video id
+        :param YoutubeClient youtube: The youtube client.
         :return: The list of similar players
         :rtype: List[Player]
         """
 
-        similar_video = await YOUTUBE.get_similar_videos(video_id)
+        similar_video = await youtube.get_similar_videos(video_id)
         players = await cls.make_players(
-            f"https://youtube.com/watch/?v={similar_video[0]}", None, False
+            youtube, f"https://youtube.com/watch/?v={similar_video[0]}", None, False
         )
         for player in players:
             player.autoplayed = True
@@ -117,35 +121,40 @@ class Player:
         return players
 
     @staticmethod
-    async def fetch_data(query: str, playlist: bool = True) -> List[dict]:
+    async def fetch_data(
+        youtube: YoutubeClient, query: str, playlist: bool = True
+    ) -> List[dict]:
         """
         |coro|
 
         Fetches the youtube data of the query.
 
+        :param YoutubeClient youtube: The youtube client.
         :param bool playlist: Indicating if it should fetch playlists.
-        :param query: The query.
-        :type query: str
+        :param str query: The query.
         :return: The youtube data.
         :rtype: Optional[dict]
         """
 
         return [
             x
-            for x in await YOUTUBE.get_videos(
-                await YOUTUBE.get_query_id(query), playlist
+            for x in await youtube.get_videos(
+                await youtube.get_query_id(query), playlist
             )
             if "streamingData" in x
         ]
 
     @classmethod
-    async def fetch_song(cls, query: str, playlist: bool = True) -> List[dict]:
+    async def fetch_song(
+        cls, youtube: YoutubeClient, query: str, playlist: bool = True
+    ) -> List[dict]:
         """
         |coro|
 
         Fetches the song's or playlist's data.
         Will return the first song in the playlist if playlist is False.
 
+        :param YoutubeClient youtube: The youtube client.
         :param query: The query.
         :type query: str
         :param playlist: A bool indicating if the function should fetch playlists or get the first video.
@@ -154,7 +163,7 @@ class Player:
         :rtype: List[dict]
         """
 
-        data = await cls.fetch_data(query, playlist)
+        data = await cls.fetch_data(youtube, query, playlist)
         if not data:
             return []
 
@@ -169,13 +178,18 @@ class Player:
 
     @classmethod
     async def make_players(
-        cls, query: str, requester: Optional[discord.Member], playlist: bool = True
+        cls,
+        youtube: YoutubeClient,
+        query: str,
+        requester: Optional[discord.Member],
+        playlist: bool = True,
     ) -> List[Player]:
         """
         |coro|
 
         Returns a list of players from the query.
 
+        :param YoutubeClient youtube: The youtube client.
         :param Optional[discord.Member] requester: The song requester.
         :param query: The query.
         :type query: str
@@ -187,5 +201,5 @@ class Player:
 
         return [
             cls(requester, data=player)
-            for player in await cls.fetch_song(query, playlist)
+            for player in await cls.fetch_song(youtube, query, playlist)
         ]
