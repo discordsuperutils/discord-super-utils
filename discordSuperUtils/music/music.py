@@ -25,6 +25,7 @@ from .exceptions import (
 from .player import Player
 from ..base import EventManager
 from ..spotify import SpotifyClient
+from ..youtube import YoutubeClient
 
 if TYPE_CHECKING:
     from discord.ext import commands
@@ -151,6 +152,7 @@ class MusicManager(EventManager):
         self.minimum_users = minimum_users
 
         self.queue = {}
+        self.youtube = YoutubeClient(loop=self.bot.loop)
 
         if spotify_support:
             self.spotify = SpotifyClient(
@@ -266,8 +268,7 @@ class MusicManager(EventManager):
 
         return True
 
-    @staticmethod
-    async def _get_next_player(queue: QueueManager) -> Player:
+    async def _get_next_player(self, queue: QueueManager) -> Player:
         """
         |coro|
 
@@ -288,7 +289,9 @@ class MusicManager(EventManager):
         else:
             if not queue.queue and queue.autoplay:
                 last_video_id = queue.history[-1].data["videoDetails"]["videoId"]
-                player = (await Player.get_similar_videos(last_video_id))[0]
+                player = (await Player.get_similar_videos(last_video_id, self.youtube))[
+                    0
+                ]
 
             else:
                 player = (
@@ -388,10 +391,12 @@ class MusicManager(EventManager):
 
         if SPOTIFY_RE.match(query) and self.spotify_support:
             return await Player.make_multiple_players(
-                [song for song in await self.spotify.get_songs(query)], requester
+                self.youtube,
+                [song for song in await self.spotify.get_songs(query)],
+                requester,
             )
 
-        return await Player.make_players(query, requester)
+        return await Player.make_players(self.youtube, query, requester)
 
     async def queue_add(
         self, players: List[Player], ctx: commands.Context
@@ -607,7 +612,7 @@ class MusicManager(EventManager):
 
         if queue.autoplay:
             last_video_id = queue.history[-1].data["videoDetails"]["videoId"]
-            player = (await Player.get_similar_videos(last_video_id))[0]
+            player = (await Player.get_similar_videos(last_video_id, self.youtube))[0]
             queue.add(player)
         else:
             player = queue.queue[0]
