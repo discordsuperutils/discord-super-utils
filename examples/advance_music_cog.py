@@ -61,7 +61,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
         # If using spotify support use this instead ^^^
 
         super().__init__()
-    #cog error handler
+    # Cog error handler
     async def cog_command_error(self, ctx: commands.Context, error: commands.CommandError):
         print('An error occurred: {}'.format(str(error)))
     
