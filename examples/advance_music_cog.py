@@ -8,7 +8,10 @@ import datetime
 import time
 from typing import Optional
 
-bot = commands.Bot(command_prefix = commands.when_mentioned_or("*"), intents = discord.Intents.all())
+bot = commands.Bot(
+    command_prefix=commands.when_mentioned_or("-"),
+    intents=discord.Intents.all(),
+)
 
 # Format duration
 def parse_duration(duration: Optional[float]) -> str:
@@ -18,6 +21,7 @@ def parse_duration(duration: Optional[float]) -> str:
         else duration
     )
 
+
 # Format view count
 def parse_count(count):
     original_count = count
@@ -25,10 +29,10 @@ def parse_count(count):
     count = float("{:.3g}".format(count))
     magnitude = 0
     matches = ["", "K", "M", "B", "T", "Qua", "Qui"]
-    
+
     while abs(count) >= 1000:
         if magnitude >= 5:
-             break
+            break
 
         magnitude += 1
         count /= 1000.0
@@ -39,32 +43,36 @@ def parse_count(count):
         )
     except IndexError:
         return original_count
-      
+
+
 # Music commands
 class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     def __init__(self, bot):
         self.bot = bot
-        self.skip_votes = {} # Skip vote counter dictionary
-        
+        self.skip_votes = {}  # Skip vote counter dictionary
+
         # self.client_secret = "" # spotify client_secret
         # self.client_id = "" # spotify client_id
-        
+
         # Get your's from here https://developer.spotify.com/
-        
+
         self.MusicManager = MusicManager(self.bot, spotify_support=False)
 
-        # self.MusicManager = MusicManager(bot, 
+        # self.MusicManager = MusicManager(bot,
         #                                  client_id=self.client_id,
-        #                                  client_secret=self.client_secret, 
+        #                                  client_secret=self.client_secret,
         #                                  spotify_support=True)
 
         # If using spotify support use this instead ^^^
 
         super().__init__()
-    #cog error handler
-    async def cog_command_error(self, ctx: commands.Context, error: commands.CommandError):
-        print('An error occurred: {}'.format(str(error)))
-    
+
+    # cog error handler
+    async def cog_command_error(
+        self, ctx: commands.Context, error: commands.CommandError
+    ):
+        print("An error occurred: {}".format(str(error)))
+
     # Error handler
     @discordSuperUtils.CogManager.event(discordSuperUtils.MusicManager)
     async def on_music_error(self, ctx, error):
@@ -84,35 +92,30 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
             if isinstance(error, error_type):
                 await ctx.send(response)
                 return
-        
+
         print("unexpected error")
         raise error
 
     # On music play event
     @discordSuperUtils.CogManager.event(discordSuperUtils.MusicManager)
-    async def on_play(self, ctx, player): # This returns a player object
-        
-        # Extracting useful data from player object
-        thumbnail = player.data['videoDetails']['thumbnail']['thumbnails'][-1]['url']
-        title = player.data['videoDetails']['title']
-        url = player.url
-        uploader = player.data['videoDetails']['author']
-        
-        embed = discord.Embed(
-            title= "Now Playing",
-            color = discord.Color.from_rgb(255, 255, 0),
-            timestamp = datetime.datetime.now(datetime.timezone.utc),
-            description = f"[**{title}**]({url}) by **{uploader}**"
-            )
-        embed.add_field(
-            name = "Requested by",
-            value = player.requester.mention
-            )
-        embed.set_thumbnail(
-            url = thumbnail
-            )
+    async def on_play(self, ctx, player):  # This returns a player object
 
-        await ctx.send(embed = embed)
+        # Extracting useful data from player object
+        thumbnail = player.data["videoDetails"]["thumbnail"]["thumbnails"][-1]["url"]
+        title = player.data["videoDetails"]["title"]
+        url = player.url
+        uploader = player.data["videoDetails"]["author"]
+
+        embed = discord.Embed(
+            title="Now Playing",
+            color=discord.Color.from_rgb(255, 255, 0),
+            timestamp=datetime.datetime.now(datetime.timezone.utc),
+            description=f"[**{title}**]({url}) by **{uploader}**",
+        )
+        embed.add_field(name="Requested by", value=player.requester.mention)
+        embed.set_thumbnail(url=thumbnail)
+
+        await ctx.send(embed=embed)
         # Clearing skip votes for each song
         if self.skip_votes.get(ctx.guild.id):
             self.skip_votes.pop[ctx.guild.id]
@@ -130,23 +133,24 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
         print(f"I have left {ctx} due to inactivity")
         await ctx.send("Left Music Channel due to inactivity")
 
-    # On ready event 
+    # On ready event
     @commands.Cog.listener()
     async def on_ready(self):
         print("Music manager is ready.", self.bot.user)
+
     # You can add this to your existing on_ready function
-    
+
     # Leave command
     @commands.command()
     async def leave(self, ctx):
         if await self.MusicManager.leave(ctx):
-            await ctx.send("👋") 
-            # Or 
+            await ctx.send("👋")
+            # Or
             # await message.add_reaction("👋")
-    
+
     # Lyrics command
     @commands.command()
-    async def lyrics(self, ctx, *, query = None):
+    async def lyrics(self, ctx, *, query=None):
         if response := await self.MusicManager.lyrics(ctx, query):
             # If lyrics are found
             title, author, query_lyrics = response
@@ -162,13 +166,13 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
                 current += split + "\n"
             # Creating embeds list for PageManager
             embeds = [
-                        discord.Embed(
-                            title=f"Lyrics for '{title}' by '{author}', (Page {i + 1}/{len(res)})",
-                            description=x,
-                            )
-                        for i, x in enumerate(res)
-                    ]
-            #editing the embeds
+                discord.Embed(
+                    title=f"Lyrics for '{title}' by '{author}', (Page {i + 1}/{len(res)})",
+                    description=x,
+                )
+                for i, x in enumerate(res)
+            ]
+            # editing the embeds
             for embed in embeds:
                 embed.timestamp = datetime.datetime.utcnow()
 
@@ -177,19 +181,21 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
                 embeds,
                 public=True,
             )
-            
+
             await page_manager.run()
-          
+
         else:
             await ctx.send("No lyrics were found for the song")
-    
+
     # Now playing command
     @commands.command()
     async def now_playing(self, ctx):
         if player := await self.MusicManager.now_playing(ctx):
             # Played duration
-            duration_played = round(await self.MusicManager.get_player_played_duration(ctx, player))
-            
+            duration_played = round(
+                await self.MusicManager.get_player_played_duration(ctx, player)
+            )
+
             # Loop status
             loop = (await self.MusicManager.get_queue(ctx)).loop
             if loop == discordSuperUtils.Loops.LOOP:
@@ -198,67 +204,38 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
                 loop_status = "Queue looping enabled."
             else:
                 loop_status = "Looping Disabled"
-            
-            # Fecthing other details   
-            thumbnail = player.data['videoDetails']['thumbnail']['thumbnails'][-1]['url']
-            title = player.data['videoDetails']['title']
+
+            # Fecthing other details
+            thumbnail = player.data["videoDetails"]["thumbnail"]["thumbnails"][-1][
+                "url"
+            ]
+            title = player.data["videoDetails"]["title"]
             url = player.url
-            uploader = player.data['videoDetails']['author']
-            views = player.data['videoDetails']['viewCount']
-            rating = player.data['videoDetails']['averageRating']
-            
+            uploader = player.data["videoDetails"]["author"]
+            views = player.data["videoDetails"]["viewCount"]
+            rating = player.data["videoDetails"]["averageRating"]
+
             embed = discord.Embed(
-                title = 'Now playing',
-                description = f"**{title}**",
-                timestamp = datetime.datetime.utcnow(),
-                color = discord.Color.from_rgb(0, 255, 255)
-                )
-            embed.add_field(
-                name = 'Played',
-                value = parse_duration(duration_played)
-                )
-            embed.add_field(
-                name = 'Duration',
-                value = parse_duration(player.duration)
-                )
-            embed.add_field(
-                name = 'Loop',
-                value = loop_status
-                )
-            embed.add_field(
-                name = 'Requested by',
-                value = player.requester.mention
-                )
-            embed.add_field(
-                name = 'Uploader',
-                value = uploader
-                )
-            embed.add_field(
-                name = 'URL',
-                value = f'[Click]({url})'
-                )
-            embed.add_field(
-                name = 'Views',
-                value = parse_count(int(views))
-                )
-            embed.add_field(
-                name ='Rating',
-                value = rating
-                )
-            embed.set_thumbnail(
-                url = thumbnail
-                )
-            embed.set_image(
-                url = r"https://i.imgur.com/ufxvZ0j.gif"
-                )
-            embed.set_author(
-                name = ctx.author.name,
-                icon_url = ctx.author.avatar_url
-                )
+                title="Now playing",
+                description=f"**{title}**",
+                timestamp=datetime.datetime.utcnow(),
+                color=discord.Color.from_rgb(0, 255, 255),
+            )
+            embed.add_field(name="Played", value=parse_duration(duration_played))
+            embed.add_field(name="Duration", value=parse_duration(player.duration))
+            embed.add_field(name="Loop", value=loop_status)
+            embed.add_field(name="Requested by", value=player.requester.mention)
+            embed.add_field(name="Uploader", value=uploader)
+            embed.add_field(name="URL", value=f"[Click]({url})")
+            embed.add_field(name="Views", value=parse_count(int(views)))
+            embed.add_field(name="Rating", value=rating)
+            embed.set_thumbnail(url=thumbnail)
+            embed.set_image(url=r"https://i.imgur.com/ufxvZ0j.gif")
+            embed.set_author(name=ctx.author.name, icon_url=ctx.author.avatar_url)
 
             await ctx.send(embed=embed)
 
-    # Join voice channel command        
+    # Join voice channel command
     @commands.command()
     async def join(self, ctx):
         if await self.MusicManager.join(ctx):
@@ -272,15 +249,14 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
             await self.MusicManager.join(ctx)
 
         # Searching while showing typing status
-        async with ctx.typing(): 
+        async with ctx.typing():
             players = await self.MusicManager.create_player(query, ctx.author)
         # ^^^change to async ctx.defer() if using slash commands
 
         # If song found
         if players:
             if await self.MusicManager.queue_add(
-                players=players, 
-                ctx=ctx
+                players=players, ctx=ctx
             ) and not await self.MusicManager.play(ctx):
                 # Sending a message
                 await ctx.send(f"Added {players[0].title} to song queue.")
@@ -311,7 +287,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     async def loop(self, ctx):
         if await self.MusicManager.get_queue(ctx):
             is_loop = await self.MusicManager.loop(ctx)
-            
+
             if is_loop == True:
                 await ctx.send(f"Looping Enabled")
             else:
@@ -322,7 +298,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     async def queueloop(self, ctx):
         if await self.MusicManager.get_queue(ctx):
             is_loop = await self.MusicManager.queueloop(ctx)
-            
+
             if is_loop:
                 await ctx.send(f"Queue looping enabled")
             else:
@@ -332,11 +308,10 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     @commands.command()
     async def history(self, ctx):
         if history := (await self.MusicManager.get_queue(ctx)).history:
-           
+
             formatted_history = [
-                f"Title: '{x.title}\nRequester: {x.requester.mention}"
-                for x in history
-                ]
+                f"Title: '{x.title}\nRequester: {x.requester.mention}" for x in history
+            ]
 
             embeds = discordSuperUtils.generate_embeds(
                 formatted_history,
@@ -345,16 +320,12 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
                 25,
                 string_format="{}",
             )
-            
+
             for embed in embeds:
                 embed.timestamp = datetime.datetime.utcnow()
 
-            await discordSuperUtils.PageManager(
-                    ctx, 
-                    embeds, 
-                    public=True
-                ).run()
-        
+            await discordSuperUtils.PageManager(ctx, embeds, public=True).run()
+
     # Stop command
     @commands.command()
     async def stop(self, ctx):
@@ -364,57 +335,56 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     # Skip command with voting
     @commands.command()
     async def skip(self, ctx, index: int = None):
-        if player := await self.MusicManager.now_playing(ctx):
-            # Getting the queue
-            queue = (await self.MusicManager.get_queue(ctx)).queue
-            
+        if queue := (await self.MusicManager.get_queue(ctx)).queue:
+
             # Checking if queue is empty or not
             if queue == []:
                 await ctx.send("Can't skip the last song of queue.")
-  
+
             else:
                 # Checking if guild id list is in skip votes dictionary
                 if not self.skip_votes.get(ctx.guild.id):
                     self.skip_votes[ctx.guild.id] = []
-                
+
                 # Checking the voter
                 voter = ctx.author
-                
+
                 # If voter is requester than skips automatically
-                if voter == player.requester:
-                    await ctx.send('Skipped by requester')
+                if voter == (await self.MusicManager.now_playing(ctx)).requester:
+                    await ctx.send("Skipped by requester")
                     await self.MusicManager.skip(ctx, index)
-                    
-                    #clearing the skip votes
+
+                    # clearing the skip votes
                     self.skip_votes.pop[ctx.guild.id]
-                
+
                 # Voting
-                elif voter.id not in self.skip_votes[ctx.guild.id]: # Checking if someone already voted
+                elif (
+                    voter.id not in self.skip_votes[ctx.guild.id]
+                ):  # Checking if someone already voted
                     # Adding the voter id to skip votes
                     self.skip_votes[ctx.guild.id].append(voter.id)
-                    
+
                     # Calculating total votes
                     total_votes = len(self.skip_votes[ctx.guild.id])
-                    
+
                     # If total votes >=3 then it will skip
                     if total_votes >= 3:
-                        await ctx.send('Skipped on vote')
+                        await ctx.send("Skipped on vote")
                         await self.MusicManager.skip(ctx, index)
-                        
+
                         # Clearing skip votes of the guild
                         self.skip_votes.pop[ctx.guild.id]
-                    
+
                     # Shows voting status
                     else:
-                        await ctx.send(f'Skip vote added, currently at **{total_votes}/3**')
-                
+                        await ctx.send(
+                            f"Skip vote added, currently at **{total_votes}/3**"
+                        )
+
                 # If someone uses vote command twice
                 else:
-                    await ctx.send('You have already voted to skip this song.')
-                
-        else:
-            await ctx.send('Not playing any music right now...')
-    
+                    await ctx.send("You have already voted to skip this song.")
+
     # Queue command
     @commands.command()
     async def queue(self, ctx):
@@ -426,18 +396,18 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
 
             embeds = discordSuperUtils.generate_embeds(
                 formatted_queue,
-                "Queue", # Title of embed
+                "Queue",  # Title of embed
                 f"Now Playing: {await self.MusicManager.now_playing(ctx)}",
-                25, # Number of rows in one pane
-                string_format = "{}",
-                color = 11658814 #Color of embed in decimal color
+                25,  # Number of rows in one pane
+                string_format="{}",
+                color=11658814,  # Color of embed in decimal color
             )
 
             for embed in embeds:
                 embed.timestamp = datetime.datetime.utcnow()
 
             await discordSuperUtils.PageManager(ctx, embeds, public=True).run()
-    
+
     # Loop status command
     @commands.command()
     async def loop_check(self, ctx):
@@ -456,13 +426,13 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
 
             if loop_status:
                 embed = discord.Embed(
-                    title = loop_status, 
-                    color = 0x00FF00,
-                    timestamp = datetime.datetime.utcnow()
+                    title=loop_status,
+                    color=0x00FF00,
+                    timestamp=datetime.datetime.utcnow(),
                 )
 
-                await ctx.send(embed = embed)
-    
+                await ctx.send(embed=embed)
+
     # Before invoke checks. Add more commands if you wish to
     @join.before_invoke
     @play.before_invoke
@@ -476,6 +446,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
                 ctx.send("Bot is already in a voice channel.")
                 raise commands.CommandError()
         # Or raise a custom error
+
 
 bot.add_cog(Music(bot))
 bot.run("token")
