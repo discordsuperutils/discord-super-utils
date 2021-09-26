@@ -117,7 +117,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
 
         await ctx.send(embed = embed)
         # Clearing skip votes for each song
-        if self.skip_votes.get[ctx.guild.id]:
+        if self.skip_votes.get(ctx.guild.id, default = None)::
             self.skip_votes.pop[ctx.guild.id]
 
     # On queue end event
