@@ -61,7 +61,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
         # If using spotify support use this instead ^^^
 
         super().__init__()
-    # Cog error handler
+    #cog error handler
     async def cog_command_error(self, ctx: commands.Context, error: commands.CommandError):
         print('An error occurred: {}'.format(str(error)))
     
@@ -69,25 +69,22 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     @discordSuperUtils.CogManager.event(discordSuperUtils.MusicManager)
     async def on_music_error(self, ctx, error):
         errors = {
-            discordSuperUtils.NotPlaying: "I am not playing anything!",
-            discordSuperUtils.NotConnected: "I am not connected to a voice channel!",
-            discordSuperUtils.NotPaused: "The currently playing player is not paused!",
+            discordSuperUtils.NotPlaying: "Not playing any music right now...",
+            discordSuperUtils.NotConnected: f"Bot not connected to a voice channel!",
+            discordSuperUtils.NotPaused: "Player is not paused!",
             discordSuperUtils.QueueEmpty: "The queue is empty!",
-            discordSuperUtils.AlreadyConnected: "I am already connected to a voice channel!",
+            discordSuperUtils.AlreadyConnected: "Already connected to voice channel!",
             discordSuperUtils.QueueError: "There has been a queue error!",
             discordSuperUtils.SkipError: "There is no song to skip to!",
             discordSuperUtils.UserNotConnected: "User is not connected to a voice channel!",
             discordSuperUtils.InvalidSkipIndex: "That skip index is invalid!",
         }
 
-        embed = discord.Embed(title="Error!", color=0xFF0000)
-
         for error_type, response in errors.items():
             if isinstance(error, error_type):
-                embed.description = response
-                await ctx.send(embed=embed)
+                await ctx.send(response)
                 return
-
+        
         print("unexpected error")
         raise error
 
@@ -117,7 +114,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
 
         await ctx.send(embed = embed)
         # Clearing skip votes for each song
-        if self.skip_votes.get(ctx.guild.id, default = None)::
+        if self.skip_votes.get(ctx.guild.id):
             self.skip_votes.pop[ctx.guild.id]
 
     # On queue end event
@@ -312,22 +309,24 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     # Song loop command
     @commands.command()
     async def loop(self, ctx):
-        is_loop = await self.MusicManager.loop(ctx)
-        
-        if is_loop == True:
-            await ctx.send(f"Looping Enabled")
-        else:
-            await ctx.send(f"Looping Disabled")
+        if await self.MusicManager.get_queue(ctx):
+            is_loop = await self.MusicManager.loop(ctx)
+            
+            if is_loop == True:
+                await ctx.send(f"Looping Enabled")
+            else:
+                await ctx.send(f"Looping Disabled")
 
     # Queue loop command
     @commands.command()
     async def queueloop(self, ctx):
-        is_loop = await self.MusicManager.queueloop(ctx)
-        
-        if is_loop:
-            await ctx.send(f"Queue looping enabled")
-        else:
-            await ctx.send(f"Queue looping disabled")
+        if await self.MusicManager.get_queue(ctx):
+            is_loop = await self.MusicManager.queueloop(ctx)
+            
+            if is_loop:
+                await ctx.send(f"Queue looping enabled")
+            else:
+                await ctx.send(f"Queue looping disabled")
 
     # History command
     @commands.command()
@@ -335,8 +334,8 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
         if history := (await self.MusicManager.get_queue(ctx)).history:
            
             formatted_history = [
-                    f"Title: '{x.title}\nRequester: {x.requester.mention}"
-                    for x in history
+                f"Title: '{x.title}\nRequester: {x.requester.mention}"
+                for x in history
                 ]
 
             embeds = discordSuperUtils.generate_embeds(
@@ -479,4 +478,4 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
         # Or raise a custom error
 
 bot.add_cog(Music(bot))
-bot.run("Token")
+bot.run("token")
