@@ -11,15 +11,41 @@ from discord.ext import commands
 from .base import DatabaseChecker
 
 
+__all__ = ("PartialBirthdayMember", "BirthdayManager", "BirthdayMember")
+
+
 class PartialBirthdayMember:
+    """
+    Represents a partial birthday member.
+    """
+
+    __slots__ = ("member", "birthday_date", "timezone")
+
     def __init__(self, member: discord.Member, birthday_date: datetime, timezone: str):
+        """
+        :param discord.Member member: The member.
+        :param datetime birthday_date: The birthday date in a datetime.
+        :param str timezone: The timezone.
+        """
+
         self.member = member
         self.birthday_date = birthday_date
         self.timezone = timezone
 
 
 class BirthdayMember:
+    """
+    Represents a birthday member.
+    """
+
+    __slots__ = ("birthday_manager", "member", "table")
+
     def __init__(self, birthday_manager: BirthdayManager, member: discord.Member):
+        """
+        :param BirthdayManager birthday_manager: The birthday manager.
+        :param discord.Member member: The member.
+        """
+
         self.birthday_manager = birthday_manager
         self.member = member
         self.table = self.birthday_manager.tables["birthdays"]
@@ -29,12 +55,30 @@ class BirthdayMember:
         return {"guild": self.member.guild.id, "member": self.member.id}
 
     async def birthday_date(self) -> datetime:
+        """
+        |coro|
+
+        Returns the birthday date in UTC of the member.
+
+        :return: The birthday.
+        :rtype: datetime
+        """
+
         birthday_data = await self.birthday_manager.database.select(
             self.table, ["utc_birthday"], self.__checks
         )
         return datetime.utcfromtimestamp(birthday_data["utc_birthday"])
 
     async def next_birthday(self) -> datetime:
+        """
+        |coro|
+
+        Returns the next birthday of the member.
+
+        :return: The next birthday of the member.
+        :rtype: datetime
+        """
+
         current_datetime = datetime.utcnow()
 
         new_date = (await self.birthday_date()).replace(year=current_datetime.year)
@@ -44,12 +88,30 @@ class BirthdayMember:
         return new_date
 
     async def timezone(self) -> str:
+        """
+        |coro|
+
+        Returns the timezone.
+
+        :return: The timezone.
+        :rtype: str
+        """
+
         timezone_data = await self.birthday_manager.database.select(
             self.table, ["timezone"], self.__checks
         )
         return timezone_data["timezone"]
 
     async def delete(self) -> PartialBirthdayMember:
+        """
+        |coro|
+
+        Deletes the birthday and returns a PartialBirthdayMember.
+
+        :return: The partial birthday.
+        :rtype: PartialBirthdayMember
+        """
+
         partial = PartialBirthdayMember(
             self.member, await self.birthday_date(), await self.timezone()
         )
@@ -57,16 +119,45 @@ class BirthdayMember:
         return partial
 
     async def set_birthday_date(self, timestamp: float) -> None:
+        """
+        |coro|
+
+        Sets the birthday date.
+
+        :param float timestamp: The timestamp.
+        :return: None
+        :rtype: None
+        """
+
         await self.birthday_manager.database.update(
             self.table, {"utc_birthday": timestamp}, self.__checks
         )
 
     async def set_timezone(self, timezone: str) -> None:
+        """
+        |coro|
+
+        Sets the member's timezone.
+
+        :param str timezone: The timezone.
+        :return: None
+        :rtype: None
+        """
+
         await self.birthday_manager.database.update(
             self.table, {"timezone": timezone}, self.__checks
         )
 
     async def age(self) -> int:
+        """
+        |coro|
+
+        Returns the current age of the member.
+
+        :return: The member age.
+        :rtype: int
+        """
+
         current_birthday = await self.birthday_date()
         current_datetime = datetime.utcnow()
 
@@ -85,7 +176,15 @@ class BirthdayMember:
 
 
 class BirthdayManager(DatabaseChecker):
+    """
+    Represents a birthday manager.
+    """
+
     def __init__(self, bot: commands.Bot):
+        """
+        :param commands.Bot bot: The bot.
+        """
+
         super().__init__(
             [
                 {
@@ -98,14 +197,26 @@ class BirthdayManager(DatabaseChecker):
             ["birthdays"],
         )
         self.bot = bot
-        self.add_event(self.on_database_connect)
+        self.add_event(self._on_database_connect, "on_database_connect")
 
-    async def on_database_connect(self):
+    async def _on_database_connect(self):
         self.bot.loop.create_task(self.__detect_birthdays())
 
     async def create_birthday(
         self, member: discord.Member, member_birthday: float, timezone: str = "UTC"
     ) -> None:
+        """
+        |coro|
+
+        Makes a birthday for the member.
+
+        :param discord.Member member: The member.
+        :param float member_birthday: The member birthday timestamp in UTC.
+        :param str timezone: The timezone.
+        :return: None
+        :rtype: None
+        """
+
         self._check_database()
 
         await self.database.insertifnotexists(
@@ -120,6 +231,16 @@ class BirthdayManager(DatabaseChecker):
         )
 
     async def get_birthday(self, member: discord.Member) -> Optional[BirthdayMember]:
+        """
+        |coro|
+
+        Returns the BirthdayMember object of the member.
+
+        :param discord.Member member: The member.
+        :return: The BirthdayMember object if applicable.
+        :rtype: Optional[BirthdayMember]
+        """
+
         self._check_database()
 
         member_data = await self.database.select(
@@ -135,6 +256,16 @@ class BirthdayManager(DatabaseChecker):
         return None
 
     async def get_upcoming(self, guild: discord.Guild) -> List[BirthdayMember]:
+        """
+        |coro|
+
+        Returns the upcoming birthdays in the guild.
+
+        :param discord.Guild guild: The guild.
+        :return: The birthdays, sorted by their nearest birthday date.
+        :rtype: List[BirthdayMember]
+        """
+
         self._check_database()
 
         member_data = await self.database.select(
@@ -157,7 +288,9 @@ class BirthdayManager(DatabaseChecker):
     def get_midnight_timezones() -> List[str]:
         """
         This method returns a list of timezones where the current time is 12 am.
-        :return:
+
+        :return: The list of timezones.
+        :rtype: List[str]
         """
 
         current_utc_time = datetime.utcnow()
@@ -185,11 +318,14 @@ class BirthdayManager(DatabaseChecker):
         self, timezones: List[str]
     ) -> List[Dict[str, Any]]:
         """
+        |coro|
+
         This function receives a list of timezones and returns a list of members that have birthdays in that date
         and timezone.
 
-        :param timezones:
-        :return:
+        :param List[str] timezones: The timezones.
+        :return: Returns the members that have a birthday.
+        :rtype: List[Dict[str, Any]]
         """
 
         result_members = []
@@ -211,12 +347,13 @@ class BirthdayManager(DatabaseChecker):
         return result_members
 
     @staticmethod
-    def round_to_nearest(timedelta_to_round):
+    def round_to_nearest(timedelta_to_round: timedelta) -> float:
         """
         This function receives a timedelta to round to and gets the amount of seconds before that timestamp.
 
-        :param timedelta_to_round:
-        :return:
+        :param timedelta timedelta_to_round: The timedelta to round to.
+        :return: The seconds until the nearest rounded timedelta.
+        :rtype: float
         """
 
         now = datetime.now()

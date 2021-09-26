@@ -135,9 +135,15 @@ class YoutubeClient:
 
         r_json = await r.json()
 
-        suggestions = r_json["contents"]["singleColumnWatchNextResults"]["results"][
+        suggestions_list = r_json["contents"]["singleColumnWatchNextResults"][
             "results"
-        ]["contents"][1]
+        ]["results"]["contents"]
+
+        suggestions = {}
+        for suggestion_object in suggestions_list:
+            if "shelfRenderer" in suggestion_object:
+                suggestions = suggestion_object
+                break
 
         return [
             x["gridVideoRenderer"]["videoId"]

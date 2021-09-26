@@ -14,7 +14,23 @@ if sys.version_info >= (3, 8) and sys.platform.lower().startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
-async def create_mysql(host, port, user, password, dbname):
+async def create_mysql(
+    host: str, port: int, user: str, password: str, dbname: str
+) -> aiomysql.pool.Pool:
+    """
+    |coro|
+
+    Returns a mysql connection pool.
+
+    :param str host: The host address.
+    :param int port: The port.
+    :param str user: The user.
+    :param str password: The password.
+    :param str dbname: The dbname.
+    :return: The pool
+    :rtype: aiomysql.pool.Pool
+    """
+
     # Created this function to make sure the user has autocommit enabled.
     # we must make sure autocommit is enabled because manual commits are not working on aiomysql :)
     return await aiomysql.create_pool(
@@ -27,6 +43,8 @@ class UnsupportedDatabase(Exception):
 
 
 class Database(ABC):
+    __slots__ = ("database",)
+
     def __init__(self, database):
         self.database = database
 
@@ -365,8 +383,20 @@ DATABASES: List = [_SqlDatabase, _MongoDatabase]
 
 
 class DatabaseManager:
+    """
+    Represents a DatabaseManager.
+    """
+
     @staticmethod
-    def connect(database):
+    def connect(database: Any) -> Any:
+        """
+        Connects to a database.
+
+        :param Any database: The database.
+        :return: The database.
+        :rtype: Any
+        """
+
         if type(database) not in DATABASE_TYPES:
             raise UnsupportedDatabase(
                 f"Database of type {type(database)} is not supported by the database manager."

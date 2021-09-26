@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from difflib import SequenceMatcher
-from typing import List, Union
+from typing import List, Union, Optional
 
 import discord
 from discord.ext import commands
@@ -11,19 +11,39 @@ __all__ = ("CommandResponseGenerator", "DefaultResponseGenerator", "CommandHinte
 
 
 class CommandResponseGenerator(ABC):
+    """
+    Represents the default abstract CommandResponseGenerator.
+    """
+
     __slots__ = ()
 
     @abstractmethod
     def generate(
         self, invalid_command: str, suggestions: List[str]
-    ) -> Union[str, discord.Embed]:
-        pass
+    ) -> Optional[Union[str, discord.Embed]]:
+        """
+        The generate method of the generator.
+
+        :param str invalid_command: The invalid command.
+        :param List[str] suggestions: The list of suggestions.
+        :return: The generator response.
+        :rtype: Optional[Union[str, discord.Embed]]
+        """
 
 
 class DefaultResponseGenerator(CommandResponseGenerator):
     __slots__ = ()
 
     def generate(self, invalid_command: str, suggestions: List[str]) -> discord.Embed:
+        """
+        The default generate method of the generator.
+
+        :param str invalid_command: The invalid command.
+        :param List[str] suggestions: The list of suggestions.
+        :return: The generator response.
+        :rtype: discord.Embed
+        """
+
         embed = discord.Embed(
             title="Invalid command!",
             description=f"**`{invalid_command}`** is invalid. Did you mean:",
@@ -39,9 +59,20 @@ class DefaultResponseGenerator(CommandResponseGenerator):
 
 
 class CommandHinter:
+    """
+    Represents a command hinter.
+    """
+
     __slots__ = ("bot", "generator")
 
-    def __init__(self, bot: commands.Bot, generator=None):
+    def __init__(
+        self, bot: commands.Bot, generator: Optional[CommandResponseGenerator] = None
+    ):
+        """
+        :param commands.Bot bot: The bot.
+        :param Optional[CommandResponseGenerator] generator: The command response generator.
+        """
+
         self.bot = bot
         self.generator = DefaultResponseGenerator if generator is None else generator
 
@@ -49,6 +80,13 @@ class CommandHinter:
 
     @property
     def command_names(self) -> List[str]:
+        """
+        Returns the command names of all commands of the bot.
+
+        :return: The command names.
+        :rtype: List[str]
+        """
+
         names = []
 
         for command in self.bot.commands:

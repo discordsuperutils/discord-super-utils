@@ -59,6 +59,7 @@ class QueueManager:
         "now_playing",
         "autoplay",
         "shuffle",
+        "vote_skips",
     )
 
     def __init__(self, volume: float, queue: List[Player]):
@@ -69,6 +70,7 @@ class QueueManager:
         self.shuffle = False
         self.loop = Loops.NO_LOOP
         self.now_playing = None
+        self.vote_skips = []
 
     def add(self, player: Player) -> None:
         """
@@ -283,7 +285,9 @@ class MusicManager(EventManager):
             player = queue.now_playing
 
         elif queue.loop == Loops.QUEUE_LOOP:
-            player = random.choice(queue.queue) if queue.shuffle else queue.remove(0)
+            player = queue.remove(
+                random.randint(0, len(queue.queue)) if queue.shuffle else 0
+            )
             queue.add(player)
 
         else:
@@ -294,8 +298,8 @@ class MusicManager(EventManager):
                 ]
 
             else:
-                player = (
-                    random.choice(queue.queue) if queue.shuffle else queue.remove(0)
+                player = queue.remove(
+                    random.randint(0, len(queue.queue)) if queue.shuffle else 0
                 )
 
         return player
@@ -320,7 +324,8 @@ class MusicManager(EventManager):
             player = await self._get_next_player(queue)
 
             if player is None:
-                return
+                await self.cleanup(None, ctx.guild)
+                await self.call_event("on_queue_end", ctx)
 
             queue.now_playing = player
 
@@ -336,6 +341,7 @@ class MusicManager(EventManager):
             player.start_timestamp = time.time()
 
             queue.history.append(player)
+            queue.vote_skips = []
             await self.call_event("on_play", ctx, player)
 
         except (IndexError, KeyError):
@@ -476,7 +482,7 @@ class MusicManager(EventManager):
 
         async with aiohttp.ClientSession() as session:
             request = await session.get(url)
-            request_json = await request.json()
+            request_json = await request.json(content_type=None)
 
             authors = request_json.get("author")
             title = request_json.get("title")
