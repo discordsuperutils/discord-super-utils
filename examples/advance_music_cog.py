@@ -375,7 +375,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
   
             else:
                 # Checking if guild id list is in skip votes dictionary
-                if not self.skip_votes.get[ctx.guild.id]:
+                if not self.skip_votes.get(ctx.guild.id):
                     self.skip_votes[ctx.guild.id] = []
                 
                 # Checking the voter
