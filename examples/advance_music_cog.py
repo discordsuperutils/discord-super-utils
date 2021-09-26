@@ -479,4 +479,4 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
         # Or raise a custom error
 
 bot.add_cog(Music(bot))
-bot.run("ODg0NzM1MjY4NzI3NDMxMTk4.YTcz7Q.Hs8oF0el6iTn75Q68LClEiurut0")
+bot.run("Token")
