@@ -118,7 +118,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
         await ctx.send(embed=embed)
         # Clearing skip votes for each song
         if self.skip_votes.get(ctx.guild.id):
-            self.skip_votes.pop[ctx.guild.id]
+            self.skip_votes.pop(ctx.guild.id)
 
     # On queue end event
     @discordSuperUtils.CogManager.event(discordSuperUtils.MusicManager)
@@ -251,7 +251,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
         # Searching while showing typing status
         async with ctx.typing():
             players = await self.MusicManager.create_player(query, ctx.author)
-        # ^^^change to async ctx.defer() if using slash commands
+        # Change to async ctx.defer() if using slash commands ^^^
 
         # If song found
         if players:
@@ -279,38 +279,27 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     # Volume command
     @commands.command()
     async def volume(self, ctx, volume: int):
-        if await self.MusicManager.volume(ctx, volume):
-            await ctx.send(f"Volume set to {volume}%")
+        if current_volume := await self.MusicManager.volume(ctx, volume) is not None:
+            await ctx.send(f"Volume set to {current_volume}%")
 
     # Song loop command
     @commands.command()
     async def loop(self, ctx):
-        if await self.MusicManager.get_queue(ctx):
-            is_loop = await self.MusicManager.loop(ctx)
-
-            if is_loop == True:
-                await ctx.send(f"Looping Enabled")
-            else:
-                await ctx.send(f"Looping Disabled")
+        if is_loop := await self.MusicManager.loop(ctx) is not None:
+            await ctx.send(f"Looping {'Enabled' if is_loop else 'Disabled'}")
 
     # Queue loop command
     @commands.command()
     async def queueloop(self, ctx):
-        if await self.MusicManager.get_queue(ctx):
-            is_loop = await self.MusicManager.queueloop(ctx)
-
-            if is_loop:
-                await ctx.send(f"Queue looping enabled")
-            else:
-                await ctx.send(f"Queue looping disabled")
+        if is_loop := await self.MusicManager.queueloop(ctx) is not None:
+            await ctx.send(f"Queue Looping {'Enabled' if is_loop else 'Disabled'}")
 
     # History command
     @commands.command()
     async def history(self, ctx):
-        if history := (await self.MusicManager.get_queue(ctx)).history:
-
+        if queue := await self.MusicManager.get_queue(ctx):
             formatted_history = [
-                f"Title: '{x.title}\nRequester: {x.requester.mention}" for x in history
+                f"Title: '{x.title}\nRequester: {x.requester.mention}" for x in queue.history
             ]
 
             embeds = discordSuperUtils.generate_embeds(
@@ -338,7 +327,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
         if queue := (await self.MusicManager.get_queue(ctx)).queue:
 
             # Checking if queue is empty or not
-            if queue == []:
+            if not queue:
                 await ctx.send("Can't skip the last song of queue.")
 
             else:
