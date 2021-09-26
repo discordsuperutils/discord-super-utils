@@ -36,8 +36,8 @@ class ImageManager:
     async def convert_image(cls, url: str) -> Image:
         return PIL.Image.open(BytesIO(await cls.make_request(url))).convert("RGBA")
 
-    @classmethod
-    def human_format(cls, num):
+    @staticmethod
+    def human_format(num):
         original_num = num
 
         num = float("{:.3g}".format(num))
