@@ -8,7 +8,7 @@ import datetime
 import time
 from typing import Optional
 
-bot = commands.Bot(command_prefix = commands.when_mentioned_or("*"),owner_id = 592915779662643240, intents = discord.Intents.all())
+bot = commands.Bot(command_prefix = commands.when_mentioned_or("*"), intents = discord.Intents.all())
 
 # Format duration
 def parse_duration(duration: Optional[float]) -> str:
