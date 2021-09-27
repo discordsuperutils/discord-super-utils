@@ -150,7 +150,7 @@ class MusicManager(EventManager):
 
         self.client_id = kwargs.get("client_id")
         self.client_secret = kwargs.get("client_secret")
-        self.default_volume = kwargs.get('default_volume') or 0.1
+        self.default_volume = kwargs.get("default_volume") or 0.1
         self.spotify_support = spotify_support
         self.inactivity_timeout = inactivity_timeout
         self.minimum_users = minimum_users
@@ -575,7 +575,9 @@ class MusicManager(EventManager):
 
         return True
 
-    async def previous(self, ctx: commands.Context, index: int = None) -> Optional[List[Player]]:
+    async def previous(
+        self, ctx: commands.Context, index: int = None
+    ) -> Optional[List[Player]]:
         if not await self.__check_connection(ctx, True, check_queue=True):
             return
 
@@ -583,14 +585,16 @@ class MusicManager(EventManager):
         current = await self.now_playing(ctx)
 
         previous_index = 1 if index is None else index
-        if not 0 < previous_index:
+        if 0 >= previous_index:
             if index:
                 await self.call_event(
-                    "on_music_error", ctx, InvalidPreviousIndex("Previous index invalid.")
+                    "on_music_error",
+                    ctx,
+                    InvalidPreviousIndex("Previous index invalid."),
                 )
                 return
 
-        last_players = queue.history[-1 - previous_index:-1]
+        last_players = queue.history[-1 - previous_index : -1]
         queue.queue = [*last_players, current] + queue.queue
 
         ctx.voice_client.stop()

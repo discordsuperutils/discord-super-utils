@@ -12,18 +12,9 @@ class ModMailManager(DatabaseChecker):
         self.bot = bot
         self.trigger = trigger
 
-        super().__init__([
-            {
-                "guild": "snowflake",
-                "channel": "snowflake"
-            }
-        ],
-            [
-                "modmail"
-            ]
-        )
+        super().__init__([{"guild": "snowflake", "channel": "snowflake"}], ["modmail"])
 
-        self.bot.add_listener(self._handle_modmail_requests, 'on_message')
+        self.bot.add_listener(self._handle_modmail_requests, "on_message")
 
     async def _handle_modmail_requests(self, message: discord.Message):
         if not isinstance(message.channel, discord.DMChannel):
@@ -33,9 +24,10 @@ class ModMailManager(DatabaseChecker):
             return
 
         if self.trigger.lower() == (message.content.split())[0].lower():
-            await self.call_event('on_modmail_request',
-                                  await self.bot.get_context(message=message, cls=commands.Context)
-                                  )
+            await self.call_event(
+                "on_modmail_request",
+                await self.bot.get_context(message=message, cls=commands.Context),
+            )
 
     async def set_channel(self, channel: discord.TextChannel) -> None:
         """
@@ -50,7 +42,7 @@ class ModMailManager(DatabaseChecker):
         table_data = {"guild": channel.guild.id, "channel": channel.id}
 
         await self.database.updateorinsert(
-            self.tables['modmail'], table_data, {"guild": channel.guild.id}, table_data
+            self.tables["modmail"], table_data, {"guild": channel.guild.id}, table_data
         )
 
     async def get_channel(self, guild: discord.Guild) -> discord.TextChannel:
@@ -62,9 +54,9 @@ class ModMailManager(DatabaseChecker):
         """
 
         channel_id = await self.database.select(
-            self.tables['modmail'], ['channel'], {"guild": guild.id}, fetchall=False
+            self.tables["modmail"], ["channel"], {"guild": guild.id}, fetchall=False
         )
-        return self.bot.get_channel(channel_id['channel'])
+        return self.bot.get_channel(channel_id["channel"])
 
     async def get_mutual_guilds(self, user: discord.User) -> List[discord.Guild]:
         """
@@ -77,7 +69,9 @@ class ModMailManager(DatabaseChecker):
 
         return [x for x in self.bot.guilds if discord.utils.get(x.members, id=user.id)]
 
-    async def get_modmail_guild(self, ctx: commands.Context, guilds: List[discord.Guild]) -> Optional[discord.Guild]:
+    async def get_modmail_guild(
+        self, ctx: commands.Context, guilds: List[discord.Guild]
+    ) -> Optional[discord.Guild]:
         """
         :param ctx: Used to fetch channel
         :type ctx: commands.Context
@@ -86,8 +80,10 @@ class ModMailManager(DatabaseChecker):
         :return:
         :rtype: discord.Guild
         """
-        embed = discord.Embed(title="ModMail",
-                              description="Please type the Guild ID to send modmail to that server")
+        embed = discord.Embed(
+            title="ModMail",
+            description="Please type the Guild ID to send modmail to that server",
+        )
         for guild in guilds:
             embed.add_field(name=f"{guild}", value=f"{guild.id}")
 
@@ -96,7 +92,7 @@ class ModMailManager(DatabaseChecker):
                 return message.author.id == ctx.author.id
 
         await ctx.send(embed=embed)
-        msg = await self.bot.wait_for('message', check=check, timeout=60)
+        msg = await self.bot.wait_for("message", check=check, timeout=60)
 
         guildids = [guild.id for guild in guilds]
 
@@ -112,14 +108,14 @@ class ModMailManager(DatabaseChecker):
         :rtype: str
         """
 
-        embed = discord.Embed(title="ModMail",
-                              description="Please type your message to the Mods.")
+        embed = discord.Embed(
+            title="ModMail", description="Please type your message to the Mods."
+        )
         await ctx.send(embed=embed)
 
         def check(message):
             if isinstance(message.channel, discord.DMChannel):
                 return message.author.id == ctx.author.id
 
-        msg = await self.bot.wait_for('message', check=check, timeout=60)
+        msg = await self.bot.wait_for("message", check=check, timeout=60)
         return msg.content
-
