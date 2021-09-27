@@ -36,15 +36,24 @@ async def rank(ctx):
 
     guild_leaderboard = await LevelingManager.get_leaderboard(ctx.guild)
     member = [x for x in guild_leaderboard if x.member == ctx.author]
-
-    image = await ImageManager.create_leveling_profile(
-        ctx.author,
-        member_data,
-        discordSuperUtils.Backgrounds.GALAXY,
-        (127, 255, 0),
-        guild_leaderboard.index(member[0]) + 1 if member else -1,
-        outline=5,
-    )
+    rank = guild_leaderboard.index(member[0]) + 1 if member else -1
+    
+    image = await self.ImageManager.create_leveling_profile(
+            member = mem_obj,
+            member_account = member_data,
+            background = discordSuperUtils.Backgrounds.GALAXY,
+            name_color = (255,255,255),
+            rank_color = (127, 255, 0),
+            level_color = (255,255,255),
+            xp_color = (255,255,255),
+            bar_outline_color = (255,255,255),
+            bar_fill_color = (127, 255, 0),
+            bar_blank_color = (72,75,78),
+            profile_outline_color = (100,100,100),
+            rank = rank,
+            font_path = None,
+            outline=5,
+        )
     await ctx.send(file=image)
 
 
