@@ -199,7 +199,14 @@ class ImageManager:
         member: discord.Member,
         member_account: LevelingAccount,
         background: Union[Backgrounds, str],
-        text_color: Tuple[int, int, int],
+        name_color: Tuple[int, int, int],
+        rank_color: Tuple[int, int, int],
+        level_color: Tuple[int, int, int],
+        xp_color: Tuple[int, int, int],
+        bar_outline_color: Tuple[int, int, int],
+        bar_fill_color: Tuple[int, int, int],
+        bar_blank_color: Tuple[int, int, int],
+        profile_outline_color: Tuple[int, int, int],
         rank: int,
         font_path: str = None,
         outline: int = 5,
@@ -215,33 +222,36 @@ class ImageManager:
 
         font_path = font_path if font_path else self.load_asset("font.ttf")
         font_big = ImageFont.truetype(font_path, 36)
+        font_medium = ImageFont.truetype(font_path, 30)
+        font_normal = ImageFont.truetype(font_path, 25)
         font_small = ImageFont.truetype(font_path, 20)
 
         draw = ImageDraw.Draw(card)
-        draw.text((245, 90), str(member), text_color, font=font_big, anchor="ls")
-        draw.text((800, 90), f"Rank #{rank}", text_color, font=font_big, anchor="rs")
+        draw.text((245, 90), str(member), name_color, font=font_big, anchor="ls")
+        draw.text((800, 90), f"Rank #{rank}", rank_color, font=font_medium, anchor="rs")
         draw.text(
             (245, 165),
             f"Level {await member_account.level()}",
-            text_color,
-            font=font_small,
+            level_color,
+            font=font_normal,
             anchor="ls",
         )
         draw.text(
             (800, 165),
             f"{self.human_format(await member_account.xp())} /"
             f" {self.human_format(await member_account.next_level())} XP",
-            text_color,
+            xp_color,
             font=font_small,
             anchor="rs",
         )
-
+        
         draw.rounded_rectangle(
-            (245, 185, 800, 205), fill=(0, 0, 0, 0), outline=text_color, radius=10
+            (242, 182, 803, 208),fill=bar_blank_color, outline=bar_outline_color, radius=13 , width = 3
         )
+        
         length_of_bar = await member_account.percentage_next_level() * 5.5 + 250
         draw.rounded_rectangle(
-            (245, 185, length_of_bar, 205), fill=text_color, radius=10
+            (245, 185, length_of_bar, 205), fill=bar_fill_color, radius=10
         )
 
         final_card = await self.draw_profile_picture(
@@ -249,7 +259,7 @@ class ImageManager:
             member,
             (109, 119),
             outline_thickness=outline,
-            outline_color=text_color,
+            outline_color=profile_outline_color,
         )
 
         final_card.save(result_bytes, format="PNG")
