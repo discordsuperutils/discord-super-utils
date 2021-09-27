@@ -9,6 +9,7 @@ __all__ = (
     "SkipError",
     "UserNotConnected",
     "InvalidSkipIndex",
+    "InvalidPreviousIndex",
 )
 
 
@@ -18,6 +19,10 @@ class NotPlaying(Exception):
 
 class NotConnected(Exception):
     """Raises error when client is not connected to a voice channel"""
+
+
+class InvalidPreviousIndex(Exception):
+    """Raises error when the previous index is < 0"""
 
 
 class NotPaused(Exception):

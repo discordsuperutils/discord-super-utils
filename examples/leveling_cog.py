@@ -47,7 +47,7 @@ class Leveling(commands.Cog, discordSuperUtils.CogManager.Cog):
 
         guild_leaderboard = await self.LevelingManager.get_leaderboard(ctx.guild)
         member = [x for x in guild_leaderboard if x.member == mem_obj]
-        rank = guild_leaderboard.index(member[0]) + 1 if member else -1
+        member_rank = guild_leaderboard.index(member[0]) + 1 if member else -1
 
         image = await self.ImageManager.create_leveling_profile(
             member=mem_obj,
@@ -61,7 +61,7 @@ class Leveling(commands.Cog, discordSuperUtils.CogManager.Cog):
             # bar_fill_color=(127, 255, 0),
             # bar_blank_color=(72, 75, 78),
             # profile_outline_color=(100, 100, 100),
-            rank=rank,
+            rank=member_rank,
             font_path=None,
             outline=5,
         )

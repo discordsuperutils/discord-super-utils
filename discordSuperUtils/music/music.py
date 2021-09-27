@@ -21,6 +21,7 @@ from .exceptions import (
     SkipError,
     AlreadyConnected,
     UserNotConnected,
+    InvalidPreviousIndex,
 )
 from .player import Player
 from ..base import EventManager
@@ -572,6 +573,27 @@ class MusicManager(EventManager):
         now_playing.start_timestamp += time.time() - now_playing.last_pause_timestamp
 
         return True
+
+    async def previous(self, ctx: commands.Context, index: int = None) -> Optional[List[Player]]:
+        if not await self.__check_connection(ctx, True, check_queue=True):
+            return
+
+        queue = self.queue[ctx.guild.id]
+        current = await self.now_playing(ctx)
+
+        previous_index = 1 if index is None else index
+        if not 0 < previous_index:
+            if index:
+                await self.call_event(
+                    "on_music_error", ctx, InvalidPreviousIndex("Previous index invalid.")
+                )
+                return
+
+        last_players = queue.history[-1 - previous_index:-1]
+        queue.queue = [*last_players, current] + queue.queue
+
+        ctx.voice_client.stop()
+        return last_players
 
     async def skip(self, ctx: commands.Context, index: int = None) -> Optional[Player]:
         """

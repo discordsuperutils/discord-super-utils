@@ -203,6 +203,11 @@ async def queue(ctx):
 
 
 @bot.command()
+async def rewind(ctx, index: int = None):
+    await MusicManager.previous(ctx, index)
+
+
+@bot.command()
 async def ls(ctx):
     if queue := await MusicManager.get_queue(ctx):
         loop = queue.loop
