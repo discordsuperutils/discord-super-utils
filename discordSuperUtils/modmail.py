@@ -60,7 +60,6 @@ class ModMailManager(DatabaseChecker):
 
     async def get_mutual_guilds(self, user: discord.User) -> List[discord.Guild]:
         """
-
         :param user: User to fetch the mutual guilds with the bot.
         :type user: discord.User
         :return:

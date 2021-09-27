@@ -31,20 +31,52 @@ class ImageManager:
 
     @staticmethod
     def load_asset(name: str) -> str:
+        """
+        Returns the asset path of the asset.
+
+        :param str name: The asset.
+        :return: The asset path.
+        :rtype: str
+        """
+
         return os.path.join(os.path.dirname(__file__), "assets", name)
 
     @staticmethod
     async def make_request(url: str) -> Optional[bytes]:
+        """
+        Returns the bytes of the URL response, if applicable.
+
+        :param str url: The url.
+        :return: The response bytes.
+        :rtype: Optional[bytes]
+        """
+
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as response:
                 return await response.read()
 
     @classmethod
-    async def convert_image(cls, url: str) -> Image:
+    async def convert_image(cls, url: str) -> Image.Image:
+        """
+        Converts the image to a PIL image.
+
+        :param str url: The URL.
+        :return: The converted image.
+        :rtype: Image.Image
+        """
+
         return PIL.Image.open(BytesIO(await cls.make_request(url))).convert("RGBA")
 
     @staticmethod
-    def human_format(num):
+    def human_format(num: int) -> str:
+        """
+        Converts the number to a human readable format.
+
+        :param int num: The number.
+        :return: The human readable format.
+        :rtype: str
+        """
+
         original_num = num
 
         num = float("{:.3g}".format(num))
@@ -107,14 +139,30 @@ class ImageManager:
 
     async def draw_profile_picture(
         self,
-        card: Image,
+        card: Image.Image,
         member: discord.Member,
         location: Tuple[int, int],
         size: int = 180,
         outline_thickness: int = 5,
         status: bool = True,
         outline_color: Tuple[int, int, int] = (255, 255, 255),
-    ):
+    ) -> Image.Image:
+        """
+        |coro|
+
+        Pastes the profile picture on the card.
+
+        :param Image.Image card: The card.
+        :param discord.Member member: The member to get the profile picture from.
+        :param Tuple[int, int] location: The center of the picture.
+        :param int size: The size of the pasted profile picture.
+        :param int outline_thickness: The outline thickness.
+        :param bool status: A bool indicating if it should paste the member's status icon.
+        :param Tuple[int, int, int] outline_color: The outline color.
+        :return: The result image.
+        :rtype: Image.Image
+        """
+
         blank = Image.new("RGBA", card.size, (255, 255, 255, 0))
 
         location = tuple(
@@ -164,8 +212,26 @@ class ImageManager:
         description_color: Tuple[int, int, int] = (255, 255, 255),
         font_path: str = None,
         outline: int = 5,
-        transparency: Optional[int] = 0,
+        transparency: int = 0,
     ) -> discord.File:
+        """
+        |coro|
+
+        Creates a welcome image for the member and returns it as a discord.File.
+
+        :param discord.Member member: The joined member.
+        :param Union[Backgrounds, str] background: The background of the image, can be a Backgrounds enum or a URL.
+        :param str title: The title.
+        :param str description: The description.
+        :param Tuple[int, int, int] title_color: The color of the title.
+        :param Tuple[int, int, int] description_color: The color of the description.
+        :param str font_path: The font path, uses the default font if not passed.
+        :param int outline: The outline thickness.
+        :param int transparency: The transparency of the background made.
+        :return: The discord file.
+        :rtype: discord.File
+        """
+
         result_bytes = BytesIO()
 
         card = (
@@ -212,6 +278,29 @@ class ImageManager:
         font_path: str = None,
         outline: int = 5,
     ) -> discord.File:
+        """
+        |coro|
+
+        Creates a leveling image, converted to a discord.File.
+
+        :param discord.Member member: The member.
+        :param LevelingAccount member_account: The leveling account of the member.
+        :param Union[Backgrounds, str] background: The background of the image.
+        :param int rank: The guild rank of the member.
+        :param Tuple[int, int, int] name_color: The color of the member's name.
+        :param Tuple[int, int, int] rank_color: The color of the member's rank.
+        :param Tuple[int, int, int] level_color: The color of the member's level.
+        :param Tuple[int, int, int] xp_color: The color of the member's xp.
+        :param Tuple[int, int, int] bar_outline_color: The color of the member's progress bar outline.
+        :param Tuple[int, int, int] bar_fill_color: The color of the member's progress bar fill.
+        :param Tuple[int, int, int] bar_blank_color: The color of the member's progress bar blank.
+        :param Tuple[int, int, int] profile_outline_color: The color of the member's outliine.
+        :param str font_path: The font path, uses the default font if not passed.
+        :param int outline: The outline thickness.
+        :return: The image, converted to a discord.File.
+        :rtype: discord.File
+        """
+
         result_bytes = BytesIO()
 
         card = (
