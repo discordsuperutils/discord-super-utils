@@ -150,6 +150,7 @@ class MusicManager(EventManager):
 
         self.client_id = kwargs.get("client_id")
         self.client_secret = kwargs.get("client_secret")
+        self.default_volume = kwargs.get('default_volume') or 0.1
         self.spotify_support = spotify_support
         self.inactivity_timeout = inactivity_timeout
         self.minimum_users = minimum_users
@@ -428,7 +429,7 @@ class MusicManager(EventManager):
         if ctx.guild.id in self.queue:
             self.queue[ctx.guild.id].queue += players
         else:
-            self.queue[ctx.guild.id] = QueueManager(0.1, players)
+            self.queue[ctx.guild.id] = QueueManager(self.default_volume, players)
 
         return True
 
