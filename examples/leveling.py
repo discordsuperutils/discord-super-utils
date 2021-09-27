@@ -27,15 +27,16 @@ async def on_level_up(message, member_data, roles):
 
 
 @bot.command()
-async def rank(ctx):
-    member_data = await LevelingManager.get_account(ctx.author)
+async def rank(ctx, member: discord.Member = None):
+    mem_obj = member if member else ctx.author
+    member_data = await LevelingManager.get_account(mem_obj)
 
     if not member_data:
         await ctx.send(f"I am still creating your account! please wait a few seconds.")
         return
 
     guild_leaderboard = await LevelingManager.get_leaderboard(ctx.guild)
-    member = [x for x in guild_leaderboard if x.member == ctx.author]
+    member = [x for x in guild_leaderboard if x.member == mem_obj]
     rank = guild_leaderboard.index(member[0]) + 1 if member else -1
     
     image = await self.ImageManager.create_leveling_profile(
