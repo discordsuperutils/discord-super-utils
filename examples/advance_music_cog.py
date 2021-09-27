@@ -299,7 +299,8 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     async def history(self, ctx):
         if queue := await self.MusicManager.get_queue(ctx):
             formatted_history = [
-                f"Title: '{x.title}\nRequester: {x.requester.mention}" for x in queue.history
+                f"Title: '{x.title}\nRequester: {x.requester.mention}"
+                for x in queue.history
             ]
 
             embeds = discordSuperUtils.generate_embeds(
@@ -427,12 +428,12 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     @play.before_invoke
     async def ensure_voice_state(self, ctx: commands.Context):
         if not ctx.author.voice or not ctx.author.voice.channel:
-            ctx.send("You are not connected to any voice channel.")
+            await ctx.send("You are not connected to any voice channel.")
             raise commands.CommandError()
 
         if ctx.voice_client:
             if ctx.voice_client.channel != ctx.author.voice.channel:
-                ctx.send("Bot is already in a voice channel.")
+                await ctx.send("Bot is already in a voice channel.")
                 raise commands.CommandError()
         # Or raise a custom error
 

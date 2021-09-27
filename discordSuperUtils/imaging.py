@@ -10,7 +10,8 @@ import PIL
 import PIL.ImageShow
 import aiohttp
 import discord
-from PIL import Image, ImageFont, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
+from PIL.ImageFont import FreeTypeFont
 
 if TYPE_CHECKING:
     from .leveling import LevelingAccount
@@ -20,7 +21,13 @@ __all__ = ("ImageManager", "Backgrounds")
 
 
 class ImageManager:
+    """
+    An image manager that manages picture creation.
+    """
+
     __slots__ = ()
+
+    DEFAULT_COLOR = (127, 255, 0)
 
     @staticmethod
     def load_asset(name: str) -> str:
@@ -59,13 +66,27 @@ class ImageManager:
 
     @staticmethod
     def multiline_text(
-        card: ImageDraw,
+        card: Image.Image,
         text: str,
-        font: ImageFont,
+        font: FreeTypeFont,
         text_color: Tuple[int, int, int],
         start_height: Union[int, float],
         width: int,
-    ):
+    ) -> None:
+        """
+        Draws multiline text on the card.
+
+        :param Image.Image card: The card to draw on.
+        :param str text: The text to write.
+        :param FreeTypeFont font: The font.
+        :param Tuple[int, int, int] text_color: The text color.
+        :param Union[int, float] start_height:
+            The start height of the text, the text will start there, and make its way downwards.
+        :param int width: The width of the wrap.
+        :return: None
+        :rtype: None
+        """
+
         draw = ImageDraw.Draw(card)
         image_width, image_height = card.size
 
@@ -74,12 +95,14 @@ class ImageManager:
 
         for line in lines:
             line_width, line_height = font.getsize(line)
+
             draw.text(
                 ((image_width - line_width) / 2, y_text),
                 line,
                 font=font,
                 fill=text_color,
             )
+
             y_text += line_height
 
     async def draw_profile_picture(
@@ -135,9 +158,10 @@ class ImageManager:
         self,
         member: discord.Member,
         background: Union[Backgrounds, str],
-        text_color: Tuple[int, int, int],
         title: str,
         description: str,
+        title_color: Tuple[int, int, int] = (255, 255, 255),
+        description_color: Tuple[int, int, int] = (255, 255, 255),
         font_path: str = None,
         outline: int = 5,
         transparency: Optional[int] = 0,
@@ -160,8 +184,8 @@ class ImageManager:
         if transparency:
             draw.rectangle((30, 30, 994, 470), fill=(0, 0, 0, transparency))
 
-        draw.text((512, 360), title, text_color, font=big_font, anchor="ms")
-        self.multiline_text(card, description, small_font, text_color, 380, 60)
+        draw.text((512, 360), title, title_color, font=big_font, anchor="ms")
+        self.multiline_text(card, description, small_font, description_color, 380, 60)
 
         final_card = await self.draw_profile_picture(
             card, member, (512, 180), 260, outline_thickness=outline
@@ -171,43 +195,20 @@ class ImageManager:
         result_bytes.seek(0)
         return discord.File(result_bytes, filename="welcome_card.png")
 
-    async def merge_image(
-        self,
-        foreground: str,
-        background: str,
-        blend_level: float = 0.6,
-        discord_file: bool = True,
-    ) -> Union[discord.File, Image]:
-        """Merges two images together"""
-        foreground = await self.convert_image(foreground)
-        background = await self.convert_image(background)
-        result_bytes = BytesIO()
-        width, height = background.size
-
-        foreground = foreground.resize((width, height), PIL.Image.ANTIALIAS)
-        result = PIL.Image.blend(background, foreground, alpha=blend_level)
-
-        if discord_file:
-            result.save(result_bytes, format="PNG")
-            result_bytes.seek(0)
-            return discord.File(result_bytes, filename="mergedimage.png")
-
-        return result
-
     async def create_leveling_profile(
         self,
         member: discord.Member,
         member_account: LevelingAccount,
         background: Union[Backgrounds, str],
-        name_color: Tuple[int, int, int],
-        rank_color: Tuple[int, int, int],
-        level_color: Tuple[int, int, int],
-        xp_color: Tuple[int, int, int],
-        bar_outline_color: Tuple[int, int, int],
-        bar_fill_color: Tuple[int, int, int],
-        bar_blank_color: Tuple[int, int, int],
-        profile_outline_color: Tuple[int, int, int],
         rank: int,
+        name_color: Tuple[int, int, int] = DEFAULT_COLOR,
+        rank_color: Tuple[int, int, int] = DEFAULT_COLOR,
+        level_color: Tuple[int, int, int] = DEFAULT_COLOR,
+        xp_color: Tuple[int, int, int] = DEFAULT_COLOR,
+        bar_outline_color: Tuple[int, int, int] = (255, 255, 255),
+        bar_fill_color: Tuple[int, int, int] = DEFAULT_COLOR,
+        bar_blank_color: Tuple[int, int, int] = (255, 255, 255),
+        profile_outline_color: Tuple[int, int, int] = DEFAULT_COLOR,
         font_path: str = None,
         outline: int = 5,
     ) -> discord.File:
@@ -244,11 +245,15 @@ class ImageManager:
             font=font_small,
             anchor="rs",
         )
-        
+
         draw.rounded_rectangle(
-            (242, 182, 803, 208),fill=bar_blank_color, outline=bar_outline_color, radius=13 , width = 3
+            (242, 182, 803, 208),
+            fill=bar_blank_color,
+            outline=bar_outline_color,
+            radius=13,
+            width=3,
         )
-        
+
         length_of_bar = await member_account.percentage_next_level() * 5.5 + 250
         draw.rounded_rectangle(
             (245, 185, length_of_bar, 205), fill=bar_fill_color, radius=10

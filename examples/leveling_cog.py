@@ -35,7 +35,7 @@ class Leveling(commands.Cog, discordSuperUtils.CogManager.Cog):
         )
 
     @commands.command()
-    async def rank(self, ctx,  member: discord.Member = None):
+    async def rank(self, ctx, member: discord.Member = None):
         mem_obj = member if member else ctx.author
         member_data = await self.LevelingManager.get_account(mem_obj)
 
@@ -50,22 +50,22 @@ class Leveling(commands.Cog, discordSuperUtils.CogManager.Cog):
         rank = guild_leaderboard.index(member[0]) + 1 if member else -1
 
         image = await self.ImageManager.create_leveling_profile(
-            member = mem_obj,
-            member_account = member_data,
-            background = discordSuperUtils.Backgrounds.GALAXY,
-            name_color = (255,255,255),
-            rank_color = (127, 255, 0),
-            level_color = (255,255,255),
-            xp_color = (255,255,255),
-            bar_outline_color = (255,255,255),
-            bar_fill_color = (127, 255, 0),
-            bar_blank_color = (72,75,78),
-            profile_outline_color = (255,255,255),
-            rank = rank,
-            font_path = None,
+            member=mem_obj,
+            member_account=member_data,
+            background=discordSuperUtils.Backgrounds.GALAXY,
+            # name_color=(255, 255, 255),
+            # rank_color=(127, 255, 0),
+            # level_color=(255, 255, 255),
+            # xp_color=(255, 255, 255),
+            # bar_outline_color=(255, 255, 255),
+            # bar_fill_color=(127, 255, 0),
+            # bar_blank_color=(72, 75, 78),
+            # profile_outline_color=(100, 100, 100),
+            rank=rank,
+            font_path=None,
             outline=5,
         )
-        
+
         await ctx.send(file=image)
 
     @commands.command()
