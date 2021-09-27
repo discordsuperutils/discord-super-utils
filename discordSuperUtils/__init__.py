@@ -15,6 +15,7 @@ from .invitetracker import InviteTracker
 from .kick import KickManager
 from .leveling import LevelingManager
 from .messagefilter import MessageFilter, MessageResponseGenerator
+from .modmail import ModMailManager
 from .music.exceptions import *
 from .music.music import *
 from .music.player import Player
