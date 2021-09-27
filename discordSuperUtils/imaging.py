@@ -194,7 +194,7 @@ class ImageManager:
 
         return result
 
-async def create_leveling_profile(
+    async def create_leveling_profile(
         self,
         member: discord.Member,
         member_account: LevelingAccount,
