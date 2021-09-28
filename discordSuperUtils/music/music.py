@@ -578,6 +578,17 @@ class MusicManager(EventManager):
     async def previous(
         self, ctx: commands.Context, index: int = None
     ) -> Optional[List[Player]]:
+        """
+        |coro|
+
+        Plays the (index) player from the history.
+
+        :param commands.Context ctx: The ctx.
+        :param int index: The index.
+        :return: The list of Players that have been added back.
+        :rtype: Optional[List[Player]]
+        """
+
         if not await self.__check_connection(ctx, True, check_queue=True):
             return
 
@@ -611,7 +622,7 @@ class MusicManager(EventManager):
         :type index: int
         :param ctx: The context.
         :type ctx: commands.Context
-        :return: A bool indicating if the skip was successful
+        :return: The skiped player if applicable.
         :rtype: Optional[Player]
         """
 
