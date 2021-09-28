@@ -13,7 +13,7 @@ setup(
         "discordSuperUtils.music": ["*"],
     },
     include_package_data=True,
-    version="0.2.1",
+    version="0.2.2",
     license="MIT",
     description="Discord Bot Development made easy!",
     long_description=README,
