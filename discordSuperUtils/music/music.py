@@ -5,7 +5,7 @@ import random
 import re
 import time
 from enum import Enum
-from typing import Optional, TYPE_CHECKING, List, Union, Any, Tuple
+from typing import Optional, TYPE_CHECKING, List, Union, Any, Tuple, Dict
 
 import aiohttp
 import discord
@@ -155,7 +155,7 @@ class MusicManager(EventManager):
         self.inactivity_timeout = 0 if not inactivity_timeout else inactivity_timeout
         self.minimum_users = minimum_users
 
-        self.queue = {}
+        self.queue: Dict[int, QueueManager] = {}
         self.youtube = YoutubeClient(loop=self.bot.loop)
 
         if spotify_support:
@@ -433,7 +433,7 @@ class MusicManager(EventManager):
 
         return True
 
-    async def queue_remove(self, ctx: commands.Context, index: int) -> None:
+    async def queue_remove(self, ctx: commands.Context, index: int) -> Optional[Player]:
         """
         |coro|
 
@@ -444,15 +444,15 @@ class MusicManager(EventManager):
         :type ctx: commands.Context
         :param index: The index.
         :type index: int
-        :return: None
-        :rtype: None
+        :return: The player that was removed, if applicable.
+        :rtype: Optional[Player]
         """
 
         if not await self.__check_connection(ctx, check_queue=True):
             return
 
         try:
-            self.queue[ctx.guild.id].remove(index)
+            return self.queue[ctx.guild.id].remove(index)
         except IndexError:
             await self.call_event(
                 "on_music_error",
