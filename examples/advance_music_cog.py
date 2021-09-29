@@ -285,7 +285,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     # Song loop command
     @commands.command()
     async def loop(self, ctx):
-        is_loop = await MusicManager.loop(ctx)
+        is_loop = await self.MusicManager.loop(ctx)
 
         if is_loop is not None:
             await ctx.send(f"Looping {'Enabled' if is_loop else 'Disabled'}")
@@ -293,7 +293,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     # Queue loop command
     @commands.command()
     async def queueloop(self, ctx):
-        is_loop = await MusicManager.queueloop(ctx)
+        is_loop = await self.MusicManager.queueloop(ctx)
 
         if is_loop is not None:
             await ctx.send(f"Queue Looping {'Enabled' if is_loop else 'Disabled'}")
