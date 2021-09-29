@@ -143,7 +143,7 @@ async def loop(ctx):
 
 @bot.command()
 async def shuffle(ctx):
-    is_shuffle = await MusicManager.loop(ctx)
+    is_shuffle = await MusicManager.shuffle(ctx)
 
     if is_shuffle is not None:
         await ctx.send(f"Shuffle toggled to {is_shuffle}")
