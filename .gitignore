@@ -4,3 +4,4 @@ venv/
 *.sqlite
 *.egg-info
 *.pyc
+/docs/
