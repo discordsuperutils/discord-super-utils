@@ -285,13 +285,17 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     # Song loop command
     @commands.command()
     async def loop(self, ctx):
-        if is_loop := await self.MusicManager.loop(ctx) is not None:
+        is_loop = await MusicManager.loop(ctx)
+
+        if is_loop is not None:
             await ctx.send(f"Looping {'Enabled' if is_loop else 'Disabled'}")
 
     # Queue loop command
     @commands.command()
     async def queueloop(self, ctx):
-        if is_loop := await self.MusicManager.queueloop(ctx) is not None:
+        is_loop = await MusicManager.queueloop(ctx)
+
+        if is_loop is not None:
             await ctx.send(f"Queue Looping {'Enabled' if is_loop else 'Disabled'}")
 
     # History command
@@ -345,7 +349,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
                     await self.MusicManager.skip(ctx, index)
 
                     # clearing the skip votes
-                    self.skip_votes.pop[ctx.guild.id]
+                    self.skip_votes.pop(ctx.guild.id)
 
                 # Voting
                 elif (
@@ -363,7 +367,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
                         await self.MusicManager.skip(ctx, index)
 
                         # Clearing skip votes of the guild
-                        self.skip_votes.pop[ctx.guild.id]
+                        self.skip_votes.pop(ctx.guild.id)
 
                     # Shows voting status
                     else:

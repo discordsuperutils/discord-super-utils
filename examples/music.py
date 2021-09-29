@@ -135,25 +135,33 @@ async def volume(ctx, volume: int):
 
 @bot.command()
 async def loop(ctx):
-    if is_loop := await MusicManager.loop(ctx) is not None:
+    is_loop = await MusicManager.loop(ctx)
+
+    if is_loop is not None:
         await ctx.send(f"Looping toggled to {is_loop}")
 
 
 @bot.command()
 async def shuffle(ctx):
-    if is_shuffle := await MusicManager.shuffle(ctx) is not None:
+    is_shuffle = await MusicManager.loop(ctx)
+
+    if is_shuffle is not None:
         await ctx.send(f"Shuffle toggled to {is_shuffle}")
 
 
 @bot.command()
 async def autoplay(ctx):
-    if is_autoplay := await MusicManager.autoplay(ctx) is not None:
+    is_autoplay = await MusicManager.autoplay(ctx)
+
+    if is_autoplay is not None:
         await ctx.send(f"Autoplay toggled to {is_autoplay}")
 
 
 @bot.command()
 async def queueloop(ctx):
-    if is_loop := await MusicManager.queueloop(ctx) is not None:
+    is_loop = await MusicManager.queueloop(ctx)
+
+    if is_loop is not None:
         await ctx.send(f"Queue looping toggled to {is_loop}")
 
 
