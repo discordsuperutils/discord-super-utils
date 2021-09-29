@@ -344,7 +344,8 @@ class MusicManager(EventManager):
 
             queue.history.append(player)
             queue.vote_skips = []
-            await self.call_event("on_play", ctx, player)
+            if queue.loop == Loops.QUEUE_LOOP or queue.loop == Loops.NO_LOOP:
+                await self.call_event("on_play", ctx, player)
 
         except (IndexError, KeyError):
             await self.cleanup(None, ctx.guild)
