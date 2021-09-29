@@ -3,7 +3,9 @@ from discord.ext import commands
 import discordSuperUtils
 
 bot = commands.Bot(command_prefix="-")
-PrefixManager = discordSuperUtils.PrefixManager(bot, default_prefix="-", mentioned=True)
+PrefixManager = discordSuperUtils.PrefixManager(
+    bot, default_prefixes=("-",), mentioned=True
+)
 
 
 @bot.command()

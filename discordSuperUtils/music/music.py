@@ -152,7 +152,7 @@ class MusicManager(EventManager):
         self.client_secret = kwargs.get("client_secret")
         self.default_volume = kwargs.get("default_volume") or 0.1
         self.spotify_support = spotify_support
-        self.inactivity_timeout = inactivity_timeout
+        self.inactivity_timeout = 0 if not inactivity_timeout else inactivity_timeout
         self.minimum_users = minimum_users
 
         self.queue = {}

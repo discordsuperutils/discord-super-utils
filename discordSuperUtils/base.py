@@ -387,7 +387,7 @@ class DatabaseChecker(EventManager):
     ):
         super().__init__()
 
-        self.database = None
+        self.database: Optional[Database] = None
         self.table_identifiers = table_identifiers
         self.tables = {}
         self.tables_column_data = tables_column_data
