@@ -493,27 +493,21 @@ class MusicManager(EventManager):
             return (title, authors, lyrics) if lyrics else None
 
     async def play(
-        self, ctx: commands.Context, player: Player = None
+        self, ctx: commands.Context,
     ) -> Optional[bool]:
         """
         |coro|
 
-        Plays the player or the next song in the queue if the player is not passed.
+        Plays the player or the next song in the queue.
 
         :param ctx: The context.
         :type ctx: commands.Context
-        :param player: The player.
-        :type player: Player
         :return: A bool indicating if the play was successful
         :rtype: Optional[bool]
         """
 
         if not await self.__check_connection(ctx):
             return
-
-        if player is not None:
-            ctx.voice_client.play(player.source)
-            return True
 
         if not ctx.voice_client.is_playing():
             await self.__check_queue(ctx)
