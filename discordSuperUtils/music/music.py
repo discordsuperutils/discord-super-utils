@@ -24,7 +24,7 @@ from .exceptions import (
     InvalidPreviousIndex,
 )
 from .player import Player
-from ..base import EventManager
+from ..base import EventManager, create_task
 from ..spotify import SpotifyClient
 from ..youtube import YoutubeClient
 
@@ -338,7 +338,7 @@ class MusicManager(EventManager):
 
             ctx.voice_client.play(
                 player.source,
-                after=lambda x: self.bot.loop.create_task(self.__check_queue(ctx)),
+                after=lambda x: create_task(self.bot.loop, self.__check_queue(ctx)),
             )
             player.start_timestamp = time.time()
 
@@ -543,7 +543,7 @@ class MusicManager(EventManager):
 
         (await self.now_playing(ctx)).last_pause_timestamp = time.time()
         ctx.voice_client.pause()
-        self.bot.loop.create_task(self.ensure_activity(ctx))
+        create_task(self.bot.loop, self.ensure_activity(ctx))
         return True
 
     async def resume(self, ctx: commands.Context) -> Optional[bool]:

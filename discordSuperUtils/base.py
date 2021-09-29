@@ -12,7 +12,7 @@ from typing import (
     Tuple,
     Callable,
     Dict,
-    Awaitable,
+    Coroutine,
 )
 
 import aiomysql
@@ -36,6 +36,7 @@ __all__ = (
     "generate_column_types",
     "questionnaire",
     "EventManager",
+    "create_task",
     "CogManager",
     "DatabaseChecker",
     "CacheBased",
@@ -320,6 +321,37 @@ class EventManager:
 
         if name in self.events:
             self.events[name].remove(func)
+
+
+def handle_task_exceptions(task: asyncio.Task) -> None:
+    """
+    Handles the task's exceptions.
+
+    :param asyncio.Task task: The task.
+    :return: None
+    :rtype: None
+    """
+
+    try:
+        task.result()
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        raise e
+
+
+def create_task(loop: asyncio.AbstractEventLoop, coroutine: Coroutine) -> None:
+    """
+    Creates a task and handles exceptions.
+
+    :param asyncio.AbstractEventLoop loop: The loop to run the coroutine on.
+    :param Coroutine coroutine: The coroutine.
+    :return: None
+    :rtype: None
+    """
+
+    task = loop.create_task(coroutine)
+    task.add_done_callback(handle_task_exceptions)
 
 
 class CogManager:
