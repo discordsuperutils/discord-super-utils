@@ -357,7 +357,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
                 if voter == (await self.MusicManager.now_playing(ctx)).requester:
                     await ctx.send("Skipped by requester")
                     
-                    if not queue.queue:
+                    if queue.queue == []:
                         await ctx.send("Autoplaying next song.")
                     
                     await self.MusicManager.skip(ctx, index)
@@ -379,7 +379,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
                     if total_votes >= 3:
                         await ctx.send("Skipped on vote")
 
-                        if not queue.queue:
+                        if queue.queue == []:
                             await ctx.send("Autoplaying next song.")
                         
                         await self.MusicManager.skip(ctx, index)
