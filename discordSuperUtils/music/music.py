@@ -51,26 +51,64 @@ class Loops(Enum):
 
 
 class QueueManager:
+    """
+    Represents a queue manager that manages a queue.
+    """
+
     __slots__ = (
         "queue",
         "volume",
-        "history",
+        "pos",
         "loop",
-        "now_playing",
         "autoplay",
         "shuffle",
         "vote_skips",
+        "played_history",
+        "queue_loop_start",
     )
 
     def __init__(self, volume: float, queue: List[Player]):
+        self.pos = -1
         self.queue = queue
         self.volume = volume
-        self.history = []
         self.autoplay = False
         self.shuffle = False
+        self.queue_loop_start = 0
         self.loop = Loops.NO_LOOP
-        self.now_playing = None
         self.vote_skips = []
+        self.played_history: List[Player] = []
+
+    def is_finished(self) -> bool:
+        """
+        Returns a boolean representing if the queue is finished.
+
+        :return: A boolean representing if the queue is finished.
+        :rtype: bool
+        """
+
+        return self.pos >= len(self.queue)
+
+    @property
+    def now_playing(self) -> Player:
+        """
+        Returns the currently playing song.
+
+        :return: The currently playing song.
+        :rtype: Player
+        """
+
+        return self.queue[self.pos]
+
+    @property
+    def history(self) -> List[Player]:
+        """
+        Returns the player history.
+
+        :return: The history.
+        :rtype: List[Player]
+        """
+
+        return self.queue[:self.pos]
 
     def add(self, player: Player) -> None:
         """
@@ -116,7 +154,7 @@ class QueueManager:
 
         self.clear()
         self.history.clear()
-        del self.history
+        del self.played_history
         del self.queue
 
 
@@ -291,26 +329,31 @@ class MusicManager(EventManager):
         :rtype: Player
         """
 
+        if queue.loop != Loops.LOOP:
+            queue.pos += 1
+
         if queue.loop == Loops.LOOP:
             player = queue.now_playing
 
         elif queue.loop == Loops.QUEUE_LOOP:
-            player = queue.remove(
-                random.randint(0, len(queue.queue)) if queue.shuffle else 0
-            )
-            queue.add(player)
+            if queue.is_finished():
+                queue.pos = queue.queue_loop_start
+
+            player = queue.queue[
+                random.randint(queue.pos, len(queue.queue) - queue.pos) if queue.shuffle else queue.pos
+            ]
 
         else:
             if not queue.queue and queue.autoplay:
-                last_video_id = queue.history[-1].data["videoDetails"]["videoId"]
+                last_video_id = queue.played_history[-1].data["videoDetails"]["videoId"]
                 player = (await Player.get_similar_videos(last_video_id, self.youtube))[
                     0
                 ]
 
             else:
-                player = queue.remove(
-                    random.randint(0, len(queue.queue)) if queue.shuffle else 0
-                )
+                player = queue.queue[
+                    random.randint(queue.pos, len(queue.queue) - queue.pos) if queue.shuffle else queue.pos
+                ]
 
         return player
 
@@ -337,8 +380,6 @@ class MusicManager(EventManager):
                 await self.cleanup(None, ctx.guild)
                 await self.call_event("on_queue_end", ctx)
 
-            queue.now_playing = player
-
             player.source = (
                 discord.PCMVolumeTransformer(
                     discord.FFmpegPCMAudio(
@@ -358,12 +399,12 @@ class MusicManager(EventManager):
             )
             player.start_timestamp = time.time()
 
-            queue.history.append(player)
+            queue.played_history.append(player)
             queue.vote_skips = []
             if queue.loop == Loops.QUEUE_LOOP or queue.loop == Loops.NO_LOOP:
                 await self.call_event("on_play", ctx, player)
 
-        except (IndexError, KeyError):
+        except (IndexError, KeyError) as e:
             await self.cleanup(None, ctx.guild)
             await self.call_event("on_queue_end", ctx)
 
@@ -469,7 +510,9 @@ class MusicManager(EventManager):
             return
 
         try:
-            return self.queue[ctx.guild.id].remove(index)
+            queue = self.queue[ctx.guild.id]
+
+            return queue.remove(queue.pos + index)
         except IndexError:
             await self.call_event(
                 "on_music_error",
@@ -606,9 +649,8 @@ class MusicManager(EventManager):
             return
 
         queue = self.queue[ctx.guild.id]
-        current = await self.now_playing(ctx)
 
-        previous_index = 1 if index is None else index
+        previous_index = 2 if index is None else index + 1
         if 0 >= previous_index:
             if index:
                 await self.call_event(
@@ -618,14 +660,18 @@ class MusicManager(EventManager):
                 )
                 return
 
-        last_players = queue.history[-1 - previous_index: -1]
-        if no_autoplay:
-            last_players = [x for x in last_players if x.requester is not None]
+        original_queue_position = queue.pos
+        queue.pos -= previous_index
+        previous_players = queue.queue[queue.pos + 1:original_queue_position]
 
-        queue.queue = [*last_players, current] + queue.queue
+        if no_autoplay:
+            for player in previous_players[:]:
+                if not player.requester:
+                    previous_players.remove(player)
+                    queue.queue.remove(player)
 
         ctx.voice_client.stop()
-        return last_players
+        return previous_players
 
     async def skip(self, ctx: commands.Context, index: int = None) -> Optional[Player]:
         """
@@ -650,32 +696,28 @@ class MusicManager(EventManager):
         # Created duplicate to make sure InvalidSkipIndex isn't raised when the user does pass an index and the queue
         # is empty.
         skip_index = 0 if index is None else index - 1
-        if not -1 < skip_index < len(queue.queue):
+        if not queue.pos < skip_index < len(queue.queue):
             if index:
                 await self.call_event(
                     "on_music_error", ctx, InvalidSkipIndex("Skip index invalid.")
                 )
                 return
 
-        if not queue.autoplay and len(queue.queue) <= skip_index:
+        if not queue.autoplay and queue.loop != Loops.QUEUE_LOOP and (len(queue.queue) - 1) <= queue.pos + skip_index:
             await self.call_event(
                 "on_music_error", ctx, SkipError("No song to skip to.")
             )
             return
 
-        if skip_index > 0:
-            removed_songs = queue.queue[:skip_index]
-
-            queue.queue = queue.queue[skip_index:]
-            if queue.loop == Loops.QUEUE_LOOP:
-                queue.queue += removed_songs
+        original_position = queue.pos
+        queue.pos += skip_index
 
         if queue.autoplay:
-            last_video_id = queue.history[-1].data["videoDetails"]["videoId"]
+            last_video_id = queue.played_history[-1].data["videoDetails"]["videoId"]
             player = (await Player.get_similar_videos(last_video_id, self.youtube))[0]
             queue.add(player)
         else:
-            player = queue.queue[0]
+            player = queue.queue[original_position] if not queue.shuffle else None
 
         ctx.voice_client.stop()
         return player
@@ -803,16 +845,18 @@ class MusicManager(EventManager):
         if not await self.__check_connection(ctx, check_playing=True, check_queue=True):
             return
 
-        self.queue[ctx.guild.id].loop = (
+        queue = self.queue[ctx.guild.id]
+
+        queue.loop = (
             Loops.QUEUE_LOOP
             if self.queue[ctx.guild.id].loop != Loops.QUEUE_LOOP
             else Loops.NO_LOOP
         )
 
-        if self.queue[ctx.guild.id].loop == Loops.QUEUE_LOOP:
-            self.queue[ctx.guild.id].add(self.queue[ctx.guild.id].now_playing)
+        if queue.loop == Loops.QUEUE_LOOP:
+            queue.queue_loop_start = queue.pos
 
-        return self.queue[ctx.guild.id].loop == Loops.QUEUE_LOOP
+        return queue.loop == Loops.QUEUE_LOOP
 
     async def shuffle(self, ctx: commands.Context) -> Optional[bool]:
         """
