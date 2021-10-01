@@ -108,7 +108,7 @@ class QueueManager:
         :rtype: List[Player]
         """
 
-        return self.queue[:self.pos]
+        return self.queue[: self.pos]
 
     def add(self, player: Player) -> None:
         """
@@ -340,7 +340,9 @@ class MusicManager(EventManager):
                 queue.pos = queue.queue_loop_start
 
             player = queue.queue[
-                random.randint(queue.pos, len(queue.queue) - queue.pos) if queue.shuffle else queue.pos
+                random.randint(queue.pos, len(queue.queue) - queue.pos)
+                if queue.shuffle
+                else queue.pos
             ]
 
         else:
@@ -352,7 +354,9 @@ class MusicManager(EventManager):
 
             else:
                 player = queue.queue[
-                    random.randint(queue.pos, len(queue.queue) - queue.pos) if queue.shuffle else queue.pos
+                    random.randint(queue.pos, len(queue.queue) - queue.pos)
+                    if queue.shuffle
+                    else queue.pos
                 ]
 
         return player
@@ -662,7 +666,7 @@ class MusicManager(EventManager):
 
         original_queue_position = queue.pos
         queue.pos -= previous_index
-        previous_players = queue.queue[queue.pos + 1:original_queue_position]
+        previous_players = queue.queue[queue.pos + 1 : original_queue_position]
 
         if no_autoplay:
             for player in previous_players[:]:
@@ -703,7 +707,11 @@ class MusicManager(EventManager):
                 )
                 return
 
-        if not queue.autoplay and queue.loop != Loops.QUEUE_LOOP and (len(queue.queue) - 1) <= queue.pos + skip_index:
+        if (
+            not queue.autoplay
+            and queue.loop != Loops.QUEUE_LOOP
+            and (len(queue.queue) - 1) <= queue.pos + skip_index
+        ):
             await self.call_event(
                 "on_music_error", ctx, SkipError("No song to skip to.")
             )
