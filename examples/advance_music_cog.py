@@ -13,6 +13,7 @@ bot = commands.Bot(
     intents=discord.Intents.all(),
 )
 
+
 # Format duration
 def parse_duration(duration: Optional[float]) -> str:
     return (
@@ -356,10 +357,10 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
                 # If voter is requester than skips automatically
                 if voter == (await self.MusicManager.now_playing(ctx)).requester:
                     await ctx.send("Skipped by requester")
-                    
+
                     if not queue.queue:
                         await ctx.send("Autoplaying next song.")
-                    
+
                     await self.MusicManager.skip(ctx, index)
 
                     # clearing the skip votes
@@ -381,7 +382,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
 
                         if not queue.queue:
                             await ctx.send("Autoplaying next song.")
-                        
+
                         await self.MusicManager.skip(ctx, index)
 
                         # Clearing skip votes of the guild
@@ -445,7 +446,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
                 )
 
                 await ctx.send(embed=embed)
-    
+
     # Autoplay command
     @commands.command()
     async def autoplay(self, ctx):
@@ -456,7 +457,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
 
     # Shuffle command
     @commands.command()
-    async def shuffle(self,ctx):
+    async def shuffle(self, ctx):
         is_shuffle = await self.MusicManager.shuffle(ctx)
 
         if is_shuffle is not None:
@@ -464,7 +465,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
 
     # Previous/Rewind command
     @commands.command()
-    async def previous(self,ctx, index: int = None):
+    async def previous(self, ctx, index: int = None):
         if previous_player := await self.MusicManager.previous(ctx, index):
             await ctx.send(f"Rewinding from {previous_player[0].title}")
 

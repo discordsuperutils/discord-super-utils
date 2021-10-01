@@ -136,12 +136,13 @@ class MusicManager(EventManager):
     )
 
     def __init__(
-            self,
-            bot: commands.Bot,
-            spotify_support: bool = True,
-            inactivity_timeout: int = 60,
-            minimum_users: int = 1,
-            **kwargs,
+        self,
+        bot: commands.Bot,
+        spotify_support: bool = True,
+        inactivity_timeout: int = 60,
+        minimum_users: int = 1,
+        opus_players: bool = False,
+        **kwargs,
     ):
         super().__init__()
         self.bot = bot
@@ -157,6 +158,13 @@ class MusicManager(EventManager):
 
         self.queue: Dict[int, QueueManager] = {}
         self.youtube = YoutubeClient(loop=self.bot.loop)
+        self.opus_players = opus_players
+
+        if not discord.opus.is_loaded():
+            try:
+                discord.opus._load_default()
+            except OSError:
+                raise RuntimeError("Could not load an opus lib.")
 
         if spotify_support:
             self.spotify = SpotifyClient(
@@ -166,7 +174,7 @@ class MusicManager(EventManager):
             )
 
     async def cleanup(
-            self, voice_client: Optional[discord.VoiceClient], guild: discord.Guild
+        self, voice_client: Optional[discord.VoiceClient], guild: discord.Guild
     ) -> None:
         """
         |coro|
@@ -230,10 +238,10 @@ class MusicManager(EventManager):
             await self.call_event("on_inactivity_disconnect", ctx)
 
     async def __check_connection(
-            self,
-            ctx: commands.Context,
-            check_playing: bool = False,
-            check_queue: bool = False,
+        self,
+        ctx: commands.Context,
+        check_playing: bool = False,
+        check_queue: bool = False,
     ) -> Optional[bool]:
         """
         |coro|
@@ -331,9 +339,17 @@ class MusicManager(EventManager):
 
             queue.now_playing = player
 
-            player.source = discord.PCMVolumeTransformer(
-                discord.FFmpegPCMAudio(player.stream_url, **FFMPEG_OPTIONS, executable=self.executable),
-                queue.volume,
+            player.source = (
+                discord.PCMVolumeTransformer(
+                    discord.FFmpegPCMAudio(
+                        player.stream_url, **FFMPEG_OPTIONS, executable=self.executable
+                    ),
+                    queue.volume,
+                )
+                if not self.opus_players
+                else discord.FFmpegOpusAudio(
+                    player.stream_url, **FFMPEG_OPTIONS, executable=self.executable
+                )
             )
 
             ctx.voice_client.play(
@@ -352,7 +368,7 @@ class MusicManager(EventManager):
             await self.call_event("on_queue_end", ctx)
 
     async def get_player_played_duration(
-            self, ctx: commands.Context, player: Player
+        self, ctx: commands.Context, player: Player
     ) -> Optional[float]:
         """
         |coro|
@@ -373,7 +389,7 @@ class MusicManager(EventManager):
         start_timestamp = player.start_timestamp
         if ctx.voice_client.is_paused():
             start_timestamp = (
-                    player.start_timestamp + time.time() - player.last_pause_timestamp
+                player.start_timestamp + time.time() - player.last_pause_timestamp
             )
 
         time_played = time.time() - start_timestamp
@@ -382,7 +398,7 @@ class MusicManager(EventManager):
         )
 
     async def create_player(
-            self, query: str, requester: discord.Member
+        self, query: str, requester: discord.Member
     ) -> List[Player]:
         """
         |coro|
@@ -408,7 +424,7 @@ class MusicManager(EventManager):
         return await Player.make_players(self.youtube, query, requester)
 
     async def queue_add(
-            self, players: List[Player], ctx: commands.Context
+        self, players: List[Player], ctx: commands.Context
     ) -> Optional[bool]:
         """
         |coro|
@@ -462,7 +478,7 @@ class MusicManager(EventManager):
             )
 
     async def lyrics(
-            self, ctx: commands.Context, query: str = None
+        self, ctx: commands.Context, query: str = None
     ) -> Optional[Tuple[str, str, str]]:
         """
         |coro|
@@ -494,7 +510,8 @@ class MusicManager(EventManager):
             return (title, authors, lyrics) if lyrics else None
 
     async def play(
-            self, ctx: commands.Context,
+        self,
+        ctx: commands.Context,
     ) -> Optional[bool]:
         """
         |coro|
@@ -571,7 +588,7 @@ class MusicManager(EventManager):
         return True
 
     async def previous(
-            self, ctx: commands.Context, index: int = None, no_autoplay: bool = False
+        self, ctx: commands.Context, index: int = None, no_autoplay: bool = False
     ) -> Optional[List[Player]]:
         """
         |coro|
@@ -664,7 +681,7 @@ class MusicManager(EventManager):
         return player
 
     async def volume(
-            self, ctx: commands.Context, volume: int = None
+        self, ctx: commands.Context, volume: int = None
     ) -> Optional[float]:
         """
         |coro|
