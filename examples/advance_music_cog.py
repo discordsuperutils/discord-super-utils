@@ -105,6 +105,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
         title = player.data["videoDetails"]["title"]
         url = player.url
         uploader = player.data["videoDetails"]["author"]
+        requester = player.requester.mention if player.requester else "Autoplay"
 
         embed = discord.Embed(
             title="Now Playing",
@@ -112,7 +113,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
             timestamp=datetime.datetime.now(datetime.timezone.utc),
             description=f"[**{title}**]({url}) by **{uploader}**",
         )
-        embed.add_field(name="Requested by", value=player.requester.mention)
+        embed.add_field(name="Requested by", value=requester)
         embed.set_thumbnail(url=thumbnail)
 
         await ctx.send(embed=embed)
@@ -214,6 +215,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
             uploader = player.data["videoDetails"]["author"]
             views = player.data["videoDetails"]["viewCount"]
             rating = player.data["videoDetails"]["averageRating"]
+            requester = player.requester.mention if player.requester else "Autoplay"
 
             embed = discord.Embed(
                 title="Now playing",
@@ -224,7 +226,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
             embed.add_field(name="Played", value=parse_duration(duration_played))
             embed.add_field(name="Duration", value=parse_duration(player.duration))
             embed.add_field(name="Loop", value=loop_status)
-            embed.add_field(name="Requested by", value=player.requester.mention)
+            embed.add_field(name="Requested by", value=requester)
             embed.add_field(name="Uploader", value=uploader)
             embed.add_field(name="URL", value=f"[Click]({url})")
             embed.add_field(name="Views", value=parse_count(int(views)))
@@ -302,8 +304,9 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     @commands.command()
     async def history(self, ctx):
         if queue := await self.MusicManager.get_queue(ctx):
+            auto = "Autoplay"
             formatted_history = [
-                f"Title: '{x.title}\nRequester: {x.requester.mention}"
+                f"Title: '{x.title}\nRequester: {x.requester.mention if x.requester else auto}"
                 for x in queue.history
             ]
 
@@ -329,10 +332,17 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     # Skip command with voting
     @commands.command()
     async def skip(self, ctx, index: int = None):
-        if queue := (await self.MusicManager.get_queue(ctx)).queue:
+        if queue := (await self.MusicManager.get_queue(ctx)):
+            voter = ctx.author
+            requester = (await self.MusicManager.now_playing(ctx)).requester
 
-            # Checking if queue is empty or not
-            if not queue:
+            # Checking if the song is autoplayed
+            if requester == None:
+                await ctx.send("Skipped autoplayed song")
+                await self.MusicManager.skip(ctx, index)
+
+            # Checking if queue is empty and autoplay is disabled
+            elif not queue.queue and not queue.autoplay:
                 await ctx.send("Can't skip the last song of queue.")
 
             else:
@@ -346,6 +356,10 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
                 # If voter is requester than skips automatically
                 if voter == (await self.MusicManager.now_playing(ctx)).requester:
                     await ctx.send("Skipped by requester")
+                    
+                    if not queue.queue:
+                        await ctx.send("Autoplaying next song.")
+                    
                     await self.MusicManager.skip(ctx, index)
 
                     # clearing the skip votes
@@ -364,6 +378,10 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
                     # If total votes >=3 then it will skip
                     if total_votes >= 3:
                         await ctx.send("Skipped on vote")
+
+                        if not queue.queue:
+                            await ctx.send("Autoplaying next song.")
+                        
                         await self.MusicManager.skip(ctx, index)
 
                         # Clearing skip votes of the guild
@@ -383,8 +401,9 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     @commands.command()
     async def queue(self, ctx):
         if queue := await self.MusicManager.get_queue(ctx):
+            auto = "Autoplay"
             formatted_queue = [
-                f"Title: '{x.title}\nRequester: {x.requester and x.requester.mention}"
+                f"Title: '{x.title}\nRequester: {x.requester.mention if x.requester else auto}"
                 for x in queue.queue
             ]
 
@@ -426,6 +445,28 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
                 )
 
                 await ctx.send(embed=embed)
+    
+    # Autoplay command
+    @commands.command()
+    async def autoplay(self, ctx):
+        is_autoplay = await self.MusicManager.autoplay(ctx)
+
+        if is_autoplay is not None:
+            await ctx.send(f"Autoplay toggled to {is_autoplay}")
+
+    # Shuffle command
+    @commands.command()
+    async def shuffle(self,ctx):
+        is_shuffle = await self.MusicManager.shuffle(ctx)
+
+        if is_shuffle is not None:
+            await ctx.send(f"Shuffle toggled to {is_shuffle}")
+
+    # Previous/Rewind command
+    @commands.command()
+    async def previous(self,ctx, index: int = None):
+        if previous_player := await self.MusicManager.previous(ctx, index):
+            await ctx.send(f"Rewinding from {previous_player[0].title}")
 
     # Before invoke checks. Add more commands if you wish to
     @join.before_invoke
