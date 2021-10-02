@@ -356,12 +356,12 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
 
                 # If voter is requester than skips automatically
                 if voter == (await self.MusicManager.now_playing(ctx)).requester:
+                    skipped_player = await self.MusicManager.skip(ctx, index)
+                    
                     await ctx.send("Skipped by requester")
 
-                    if not queue.queue:
+                    if not skipped_player.requester:
                         await ctx.send("Autoplaying next song.")
-
-                    await self.MusicManager.skip(ctx, index)
 
                     # clearing the skip votes
                     self.skip_votes.pop(ctx.guild.id)
@@ -378,12 +378,12 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
 
                     # If total votes >=3 then it will skip
                     if total_votes >= 3:
+                        skipped_player = await self.MusicManager.skip(ctx, index)
+                        
                         await ctx.send("Skipped on vote")
 
-                        if not queue.queue:
+                        if not skipped_player.requester:
                             await ctx.send("Autoplaying next song.")
-
-                        await self.MusicManager.skip(ctx, index)
 
                         # Clearing skip votes of the guild
                         self.skip_votes.pop(ctx.guild.id)
@@ -468,6 +468,32 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     async def previous(self, ctx, index: int = None):
         if previous_player := await self.MusicManager.previous(ctx, index):
             await ctx.send(f"Rewinding from {previous_player[0].title}")
+
+    # Spotify song from user
+    @commands.command()
+    async def play_user_spotify(self, ctx, user: discord.Member = None):
+        user = user if user else ctx.guild.get_member(ctx.author.id)
+        spotify_result = next((activity for activity in user.activities if isinstance(activity, discord.Spotify)), None)
+
+        if spotify_result:
+            await ctx.send(f'{user.name} is not listening to Spotify.')
+            return
+        
+        query = f"{spotify_result.title} {spotify_result.artist}"
+
+        player = await self.MusicManager.create_player(query, user)
+        
+        if player:
+            if not ctx.voice_client or not ctx.voice_client.is_connected():
+                await self.MusicManager.join(ctx)
+
+            await self.MusicManager.queue_add(players=player, ctx=ctx)
+            if not await self.MusicManager.play(ctx):
+                await ctx.send(f"Added {player[0].title} to song queue.")
+            else:
+                await ctx.send("✅")
+        else:
+            await ctx.send("Query not found.")
 
     # Before invoke checks. Add more commands if you wish to
     @join.before_invoke
