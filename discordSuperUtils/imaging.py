@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import textwrap
 import time
-import requests
+import datetime
 from enum import Enum
 from io import BytesIO
 from typing import Optional, Tuple, Union, TYPE_CHECKING
@@ -364,13 +364,13 @@ class ImageManager:
 
     async def create_spotify_card(
         self,
-        spotify_result: discord.Spotify,
+        spotify_activity: discord.Spotify,
         font_path: str = None
     ) -> discord.File:
         """
         |coro|
 
-        Creates a welcome image for the member and returns it as a discord.File.
+        Creates a Spotify activity image for the Spotify song and returns it as a discord.File.
 
         :param discord.Spotify spotify_result: The Spotify activity.
         :param str font_path: The font path, uses the default font if not passed.
@@ -381,17 +381,12 @@ class ImageManager:
         result_bytes = BytesIO()
 
         track_background_image = Image.open(
-            ImageManager.load_asset(
+            self.load_asset(
                 "spotify_template.png"
             )
         )
         
-        album_image = Image.open(
-                requests.get(
-                    spotify_result.album_cover_url, 
-                    stream=True
-                ).raw
-            ).convert('RGBA')
+        album_image = await self.convert_image(spotify_activity.album_cover_url)
         
         font_path = font_path if font_path else self.load_asset("font.ttf")
         
@@ -408,11 +403,19 @@ class ImageManager:
         album_text_position = 150, 80
         start_duration_text_position = 150, 122
         end_duration_text_position = 515, 122
-
-        duration = time.strftime(
+        
+        played_duration = datetime.datetime.utcnow() - spotify_activity.start
+        
+        start_duration = time.strftime(
             "%H:%M:%S", 
             time.gmtime(
-                spotify_result.duration.total_seconds()
+                played_duration.total_seconds()
+                )
+            )
+        end_duration = time.strftime(
+            "%H:%M:%S", 
+            time.gmtime(
+                spotify_activity.duration.total_seconds()
                 )
             )
         
@@ -423,35 +426,35 @@ class ImageManager:
 
         draw_on_image.text(
             title_text_position, 
-            spotify_result.title, 
+            spotify_activity.title, 
             'white', 
             font=title_font
         )
 
         draw_on_image.text(
             artist_text_position, 
-            f'by {spotify_result.artist}', 
+            f'by {spotify_activity.artist}', 
             'white', 
             font=artist_font
         )
 
         draw_on_image.text(
             album_text_position, 
-            spotify_result.album, 
+            spotify_activity.album, 
             'white', 
             font=album_font
         )
 
         draw_on_image.text(
             start_duration_text_position, 
-            '0:00', 
+            start_duration, 
             'white', 
             font=start_duration_font
         )
 
         draw_on_image.text(
             end_duration_text_position,
-            duration,
+            end_duration,
             'white', 
             font=end_duration_font
         )
