@@ -300,9 +300,11 @@ class MusicManager(EventManager):
         if SPOTIFY_RE.match(player.used_query) and self.spotify_support:
             return {}
 
-        return YoutubePlaylist.from_dict(await self.youtube.get_playlist_information(
-            await self.youtube.get_query_id(player.used_query)
-        ))
+        return YoutubePlaylist.from_dict(
+            await self.youtube.get_playlist_information(
+                await self.youtube.get_query_id(player.used_query)
+            )
+        )
 
     async def get_player_played_duration(
         self, ctx: commands.Context, player: Player

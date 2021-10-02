@@ -68,12 +68,12 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
 
         self.ImageManager = discordSuperUtils.ImageManager()
         super().__init__()
-    
+
     # Play function
     async def play_cmd(self, ctx, query):
         async with ctx.typing():
             player = await self.MusicManager.create_player(query, ctx.author)
-        
+
         if player:
             if not ctx.voice_client or not ctx.voice_client.is_connected():
                 await self.MusicManager.join(ctx)
@@ -359,7 +359,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
                 # If voter is requester than skips automatically
                 if voter == (await self.MusicManager.now_playing(ctx)).requester:
                     skipped_player = await self.MusicManager.skip(ctx, index)
-                    
+
                     await ctx.send("Skipped by requester")
 
                     if not skipped_player.requester:
@@ -381,7 +381,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
                     # If total votes >=3 then it will skip
                     if total_votes >= 3:
                         skipped_player = await self.MusicManager.skip(ctx, index)
-                        
+
                         await ctx.send("Skipped on vote")
 
                         if not skipped_player.requester:
@@ -475,15 +475,21 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     @commands.command()
     async def spotify_user_song(self, ctx, member: discord.Member = None):
         member = member if member else ctx.author
-        spotify_result = next((activity for activity in member.activities if isinstance(activity, discord.Spotify)), None)
+        spotify_result = next(
+            (
+                activity
+                for activity in member.activities
+                if isinstance(activity, discord.Spotify)
+            ),
+            None,
+        )
 
         if spotify_result is None:
-            await ctx.send(f'{member.mention} is not listening to Spotify.')
+            await ctx.send(f"{member.mention} is not listening to Spotify.")
             return
 
         image = await self.ImageManager.create_spotify_card(
-            spotify_activity=spotify_result,
-            font_path=None
+            spotify_activity=spotify_result, font_path=None
         )
 
         await ctx.send(file=image)
@@ -492,12 +498,19 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     @commands.command()
     async def play_user_spotify(self, ctx, member: discord.Member = None):
         member = member if member else ctx.author
-        spotify_result = next((activity for activity in member.activities if isinstance(activity, discord.Spotify)), None)
+        spotify_result = next(
+            (
+                activity
+                for activity in member.activities
+                if isinstance(activity, discord.Spotify)
+            ),
+            None,
+        )
 
         if spotify_result:
-            await ctx.send(f'{member.mention} is not listening to Spotify.')
+            await ctx.send(f"{member.mention} is not listening to Spotify.")
             return
-        
+
         query = f"{spotify_result.title} {spotify_result.artist}"
 
         # Calling the play function

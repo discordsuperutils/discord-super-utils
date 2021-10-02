@@ -23,10 +23,7 @@ class YoutubeAuthor:
 
     @classmethod
     def from_dict(cls, dictionary: Dict[str, str]) -> YoutubeAuthor:
-        return cls(
-            dictionary["name"],
-            dictionary["id"]
-        )
+        return cls(dictionary["name"], dictionary["id"])
 
 
 class YoutubePlaylist:
@@ -36,7 +33,9 @@ class YoutubePlaylist:
 
     __slots__ = ("title", "author", "songs", "id")
 
-    def __init__(self, title: str, author: YoutubeAuthor, songs: List[str], id_: str) -> None:
+    def __init__(
+        self, title: str, author: YoutubeAuthor, songs: List[str], id_: str
+    ) -> None:
         self.title = title
         self.author = author
         self.songs = songs

@@ -236,7 +236,9 @@ class YoutubeClient:
                     "contentCheckOk": True,
                     "racyCheckOk": True,
                 }
-                for playlist_video_id in (await self.get_playlist_information(video_id))["songs"]
+                for playlist_video_id in (
+                    await self.get_playlist_information(video_id)
+                )["songs"]
             ]
 
         queries = queries[:1] if not playlist else queries

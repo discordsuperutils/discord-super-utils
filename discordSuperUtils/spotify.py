@@ -4,7 +4,7 @@ from typing import Optional, List, Dict, Union
 import spotipy
 from spotipy import SpotifyClientCredentials
 
-FIELD = "items.track.name,items.track.artists(name),total"
+FIELD = "items.track.name,items.track.artists(name),"
 INITIAL_FIELD = "items.track.name,items.track.artists(name),total,"
 
 
@@ -70,9 +70,7 @@ class SpotifyClient:
 
         initial_request = await self.loop.run_in_executor(
             None,
-            lambda: self.sp.playlist_items(
-                playlist_id=url, fields=INITIAL_FIELD
-            ),
+            lambda: self.sp.playlist_items(playlist_id=url, fields=INITIAL_FIELD),
         )
         total_tracks = initial_request.get("total")
 
