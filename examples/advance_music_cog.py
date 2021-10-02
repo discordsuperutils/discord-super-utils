@@ -66,6 +66,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
 
         # If using spotify support use this instead ^^^
 
+        self.ImageManager = discordSuperUtils.ImageManager()
         super().__init__()
     
     # Play function
@@ -469,6 +470,23 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     async def previous(self, ctx, index: int = None):
         if previous_player := await self.MusicManager.previous(ctx, index):
             await ctx.send(f"Rewinding from {previous_player[0].title}")
+
+    # Spotify song details of a user
+    @commands.command()
+    async def spotify_user_song(self, ctx, member: discord.Member = None):
+        member = member if member else ctx.author
+        spotify_result = next((activity for activity in member.activities if isinstance(activity, discord.Spotify)), None)
+
+        if spotify_result is None:
+            await ctx.send(f'{member.mention} is not listening to Spotify.')
+            return
+
+        image = await self.ImageManager.create_spotify_card(
+            spotify_activity=spotify_result,
+            font_path=None
+        )
+
+        await ctx.send(file=image)
 
     # Spotify song from user
     @commands.command()
