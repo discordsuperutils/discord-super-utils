@@ -19,6 +19,8 @@ from .modmail import ModMailManager
 from .music.exceptions import *
 from .music.music import *
 from .music.player import Player
+from .music.enums import *
+from .music.queue import QueueManager
 from .mute import MuteManager, AlreadyMuted
 from .paginator import PageManager, generate_embeds, ButtonsPageManager
 from .prefix import PrefixManager
