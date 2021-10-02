@@ -24,7 +24,7 @@ from .exceptions import (
     InvalidPreviousIndex,
 )
 from .player import Player
-from .playlist import YoutubePlaylist
+from .playlist import YoutubePlaylist, SpotifyPlaylist
 from .queue import QueueManager
 from ..base import EventManager, create_task
 from ..spotify import SpotifyClient
@@ -296,15 +296,17 @@ class MusicManager(EventManager):
             await self.cleanup(None, ctx.guild)
             await self.call_event("on_queue_end", ctx)
 
-    async def get_playlist(self, player: Player) -> Union[YoutubePlaylist, dict]:
+    async def get_playlist(
+        self, player: Player
+    ) -> Union[YoutubePlaylist, SpotifyPlaylist]:
         if SPOTIFY_RE.match(player.used_query) and self.spotify_support:
-            return {}
+            spotify_info = await self.spotify.fetch_full_playlist(player.used_query)
+            return SpotifyPlaylist.from_dict(spotify_info) if spotify_info else None
 
-        return YoutubePlaylist.from_dict(
-            await self.youtube.get_playlist_information(
-                await self.youtube.get_query_id(player.used_query)
-            )
+        playlist_info = await self.youtube.get_playlist_information(
+            await self.youtube.get_query_id(player.used_query)
         )
+        return YoutubePlaylist.from_dict(playlist_info) if playlist_info else None
 
     async def get_player_played_duration(
         self, ctx: commands.Context, player: Player

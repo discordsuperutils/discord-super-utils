@@ -176,6 +176,10 @@ class YoutubeClient:
             return {}
 
         r_json = await r.json()
+
+        if "contents" not in r_json:
+            return {}
+
         playlist_info = r_json["contents"]["singleColumnWatchNextResults"]["playlist"][
             "playlist"
         ]

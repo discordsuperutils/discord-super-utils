@@ -1,11 +1,11 @@
 import asyncio
-from typing import Optional, List, Dict, Union
+from typing import Optional, List, Dict, Union, Any
 
 import spotipy
 from spotipy import SpotifyClientCredentials
 
 FIELD = "items.track.name,items.track.artists(name),"
-INITIAL_FIELD = "items.track.name,items.track.artists(name),total,"
+INITIAL_FIELD = "items.track.name,items.track.artists(name),total,name"
 
 
 class SpotifyClient:
@@ -60,18 +60,35 @@ class SpotifyClient:
             ),
         )
 
-    async def fetch_full_playlist(self, url: str) -> List[Dict[str, dict]]:
+    async def fetch_full_playlist(self, url: str) -> Dict[str, Any]:
         """
-        This function receives a url and returns all the tracks in that URL.
+        |coro|
 
-        :param url:
-        :return:
+        This function receives a url and returns the playlist information..
+
+        :param str url: The url.
+        :return: The playlist information.
+        :rtype: Dict[str, Any]
         """
 
-        initial_request = await self.loop.run_in_executor(
-            None,
-            lambda: self.sp.playlist_items(playlist_id=url, fields=INITIAL_FIELD),
-        )
+        try:
+            name_request, initial_request = await asyncio.gather(
+                *[
+                    self.loop.run_in_executor(
+                        None,
+                        lambda: self.sp.playlist(playlist_id=url, fields=INITIAL_FIELD),
+                    ),
+                    self.loop.run_in_executor(
+                        None,
+                        lambda: self.sp.playlist_items(
+                            playlist_id=url, fields=INITIAL_FIELD
+                        ),
+                    ),
+                ]
+            )
+        except spotipy.exceptions.SpotifyException:
+            return {}
+
         total_tracks = initial_request.get("total")
 
         requests = list(
@@ -88,7 +105,12 @@ class SpotifyClient:
         for request in requests:
             result_tracks += request.get("items")
 
-        return result_tracks
+        initial_request.pop("items")
+        initial_request["tracks"] = result_tracks
+        initial_request["name"] = name_request.get("name")
+        initial_request["url"] = url
+
+        return initial_request
 
     async def get_songs(self, url: str) -> List[str]:
         """
@@ -104,7 +126,7 @@ class SpotifyClient:
         if playlist_type == "playlist":
             return [
                 self.make_title(song["track"])
-                for song in await self.fetch_full_playlist(url)
+                for song in (await self.fetch_full_playlist(url))["tracks"]
             ]
 
         if playlist_type == "track":

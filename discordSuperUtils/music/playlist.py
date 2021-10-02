@@ -3,7 +3,59 @@ from __future__ import annotations
 from typing import Dict, List, Any
 
 
-__slots__ = ("YoutubeAuthor", "YoutubePlaylist")
+__slots__ = ("SpotifyTrack", "SpotifyPlaylist", "YoutubeAuthor", "YoutubePlaylist")
+
+
+class SpotifyTrack:
+    """
+    Represents a spotify track.
+    """
+
+    __slots__ = ("name", "authors")
+
+    def __init__(self, name: str, authors: List[str]) -> None:
+        self.name = name
+        self.authors = authors
+
+    def __str__(self):
+        return f"<{self.__class__.__name__} name={self.name}>"
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} name={self.name}, authors={self.authors}>"
+
+    @classmethod
+    def from_dict(cls, dictionary: Dict[str, Any]) -> SpotifyTrack:
+        return cls(
+            dictionary["track"]["name"],
+            [artist["name"] for artist in dictionary["track"]["artists"]],
+        )
+
+
+class SpotifyPlaylist:
+    """
+    Represents a spotify playlist.
+    """
+
+    __slots__ = ("title", "songs", "url")
+
+    def __init__(self, title: str, songs: List[SpotifyTrack], url: str) -> None:
+        self.title = title
+        self.songs = songs
+        self.url = url
+
+    def __str__(self):
+        return f"<{self.__class__.__name__} title={self.title}, url={self.url}>"
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} title={self.title}, url={self.url}>, total_songs={len(self.songs)}>"
+
+    @classmethod
+    def from_dict(cls, dictionary: Dict[str, Any]) -> SpotifyPlaylist:
+        return cls(
+            dictionary["name"],
+            [SpotifyTrack.from_dict(track) for track in dictionary["tracks"]],
+            dictionary["url"],
+        )
 
 
 class YoutubeAuthor:
