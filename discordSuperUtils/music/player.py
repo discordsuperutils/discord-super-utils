@@ -27,15 +27,17 @@ class Player:
         "requester",
         "source",
         "autoplayed",
+        "used_query",
     )
 
-    def __init__(self, requester: Optional[discord.Member], data):
+    def __init__(self, requester: Optional[discord.Member], used_query: str, data):
         self.source = None
         self.data = data
         self.requester = requester
         self.title = data["videoDetails"]["title"]
         self.stream_url = data.get("url")
         self.url = "https://youtube.com/watch/?v=" + data["videoDetails"]["videoId"]
+        self.used_query = used_query
 
         self.autoplayed = False
         self.start_timestamp = 0
@@ -73,6 +75,7 @@ class Player:
     async def make_multiple_players(
         cls,
         youtube: YoutubeClient,
+        used_query: str,
         songs: Iterable[str],
         requester: Optional[discord.Member],
     ) -> List[Player]:
@@ -81,6 +84,7 @@ class Player:
 
         Returns a list of players from a iterable of queries.
 
+        :param str used_query: The used query.
         :param YoutubeClient youtube: The youtube client.
         :param requester: The requester.
         :type requester: Optional[discord.Member]
@@ -94,7 +98,7 @@ class Player:
 
         songs = await asyncio.gather(*tasks)
 
-        return [cls(requester, data=x[0]) for x in songs if x]
+        return [cls(requester, used_query, data=x[0]) for x in songs if x]
 
     @classmethod
     async def get_similar_videos(
@@ -200,6 +204,6 @@ class Player:
         """
 
         return [
-            cls(requester, data=player)
+            cls(requester, query, data=player)
             for player in await cls.fetch_song(youtube, query, playlist)
         ]

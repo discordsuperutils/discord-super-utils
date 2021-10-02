@@ -295,6 +295,14 @@ class MusicManager(EventManager):
             await self.cleanup(None, ctx.guild)
             await self.call_event("on_queue_end", ctx)
 
+    async def get_playlist(self, player: Player) -> Dict:
+        if SPOTIFY_RE.match(player.used_query) and self.spotify_support:
+            return {}
+
+        return await self.youtube.get_playlist_information(
+            await self.youtube.get_query_id(player.used_query)
+        )
+
     async def get_player_played_duration(
         self, ctx: commands.Context, player: Player
     ) -> Optional[float]:
@@ -345,6 +353,7 @@ class MusicManager(EventManager):
         if SPOTIFY_RE.match(query) and self.spotify_support:
             return await Player.make_multiple_players(
                 self.youtube,
+                query,
                 [song for song in await self.spotify.get_songs(query)],
                 requester,
             )

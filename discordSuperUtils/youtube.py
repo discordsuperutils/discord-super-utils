@@ -153,6 +153,47 @@ class YoutubeClient:
             if "gridVideoRenderer" in x
         ]
 
+    async def get_playlist_information(self, playlist_id: str) -> Dict:
+        """
+        |coro|
+
+        Returns the playlist information.
+
+        :param str playlist_id: The playlist id.
+        :return: The playlist information.
+        :rtype: Dict
+        """
+
+        query = {
+            "key": self.ACCESS_KEY,
+            "contentCheckOk": True,
+            "racyCheckOk": True,
+            "playlistId": playlist_id,
+        }
+
+        r = await self.request(f"{self.BASE_URL}/next", query=query)
+        if not r:
+            return {}
+
+        r_json = await r.json()
+        playlist_info = r_json["contents"]["singleColumnWatchNextResults"]["playlist"][
+            "playlist"
+        ]
+
+        playlist_information = {
+            x: y for x, y in playlist_info.items() if not isinstance(y, (dict, list))
+        }
+
+        author_information = playlist_info["longBylineText"]["runs"][0]
+        playlist_information["channel"] = {
+            "name": author_information["text"],
+            "id": author_information["navigationEndpoint"]["browseEndpoint"][
+                "browseId"
+            ],
+        }
+
+        return playlist_information
+
     async def get_playlist_videos(self, playlist_id: str) -> List[str]:
         """
         |coro|
