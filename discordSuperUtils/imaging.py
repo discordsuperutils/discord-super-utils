@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 import textwrap
+import time
+import requests
 from enum import Enum
 from io import BytesIO
 from typing import Optional, Tuple, Union, TYPE_CHECKING
@@ -360,6 +362,123 @@ class ImageManager:
         result_bytes.seek(0)
         return discord.File(result_bytes, filename="rankcard.png")
 
+    async def create_spotify_card(
+        self,
+        spotify_result: discord.Spotify,
+        font_path: str = None
+    ) -> discord.File:
+        """
+        |coro|
+
+        Creates a welcome image for the member and returns it as a discord.File.
+
+        :param discord.Spotify spotify_result: The Spotify activity.
+        :param str font_path: The font path, uses the default font if not passed.
+        :return: The discord file.
+        :rtype: discord.File
+        """
+
+        result_bytes = BytesIO()
+
+        track_background_image = Image.open(
+            ImageManager.load_asset(
+                "spotify_template.png"
+            )
+        )
+        
+        album_image = Image.open(
+                requests.get(
+                    spotify_result.album_cover_url, 
+                    stream=True
+                ).raw
+            ).convert('RGBA')
+        
+        font_path = font_path if font_path else self.load_asset("font.ttf")
+        
+        # Fonts
+        title_font = ImageFont.truetype(font_path, 16)
+        artist_font = ImageFont.truetype(font_path, 14)
+        album_font = ImageFont.truetype(font_path, 14)
+        start_duration_font = ImageFont.truetype(font_path, 12)
+        end_duration_font = ImageFont.truetype(font_path, 12)
+
+        # Positions
+        title_text_position = 150, 30
+        artist_text_position = 150, 60
+        album_text_position = 150, 80
+        start_duration_text_position = 150, 122
+        end_duration_text_position = 515, 122
+
+        duration = time.strftime(
+            "%H:%M:%S", 
+            time.gmtime(
+                spotify_result.duration.total_seconds()
+                )
+            )
+        
+        # Draws
+        draw_on_image = ImageDraw.Draw(
+            track_background_image
+        )
+
+        draw_on_image.text(
+            title_text_position, 
+            spotify_result.title, 
+            'white', 
+            font=title_font
+        )
+
+        draw_on_image.text(
+            artist_text_position, 
+            f'by {spotify_result.artist}', 
+            'white', 
+            font=artist_font
+        )
+
+        draw_on_image.text(
+            album_text_position, 
+            spotify_result.album, 
+            'white', 
+            font=album_font
+        )
+
+        draw_on_image.text(
+            start_duration_text_position, 
+            '0:00', 
+            'white', 
+            font=start_duration_font
+        )
+
+        draw_on_image.text(
+            end_duration_text_position,
+            duration,
+            'white', 
+            font=end_duration_font
+        )
+
+        # Background colour
+        album_color = album_image.getpixel((250, 100))
+        background_image_color = Image.new(
+            'RGBA', 
+            track_background_image.size, 
+            album_color
+        )
+        background_image_color.paste(
+            track_background_image, 
+            (0, 0), 
+            track_background_image
+        )
+
+        # Resize
+        album_image_resize = album_image.resize((140, 160))
+        background_image_color.paste(album_image_resize, (0, 0), album_image_resize)
+
+        # Save image
+        background_image_color.convert('RGB')
+
+        background_image_color.save(result_bytes, format="PNG")
+        result_bytes.seek(0)
+        return discord.File(result_bytes, filename="spotify.png")
 
 class Backgrounds(Enum):
     GALAXY = ImageManager.load_asset("1.png")
