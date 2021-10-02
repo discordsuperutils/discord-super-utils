@@ -185,6 +185,14 @@ class YoutubeClient:
         }
 
         author_information = playlist_info["longBylineText"]["runs"][0]
+
+        playlist_information["songs"] = [
+            x["playlistPanelVideoRenderer"]["navigationEndpoint"]["watchEndpoint"][
+                "videoId"
+            ]
+            for x in playlist_info["contents"]
+        ]
+
         playlist_information["channel"] = {
             "name": author_information["text"],
             "id": author_information["navigationEndpoint"]["browseEndpoint"][
@@ -193,40 +201,6 @@ class YoutubeClient:
         }
 
         return playlist_information
-
-    async def get_playlist_videos(self, playlist_id: str) -> List[str]:
-        """
-        |coro|
-
-        Returns the video IDs in the playlist.
-
-        :param str playlist_id: The playlist id.
-        :return: The video IDs.
-        :rtype: List[str]
-        """
-
-        query = {
-            "key": self.ACCESS_KEY,
-            "contentCheckOk": True,
-            "racyCheckOk": True,
-            "playlistId": playlist_id,
-        }
-
-        r = await self.request(f"{self.BASE_URL}/next", query=query)
-        if not r:
-            return []
-
-        r_json = await r.json()
-
-        # Youtube api lol
-        return [
-            x["playlistPanelVideoRenderer"]["navigationEndpoint"]["watchEndpoint"][
-                "videoId"
-            ]
-            for x in r_json["contents"]["singleColumnWatchNextResults"]["playlist"][
-                "playlist"
-            ]["contents"]
-        ]
 
     async def get_videos(
         self, video_id: str, playlist: bool = True
@@ -262,7 +236,7 @@ class YoutubeClient:
                     "contentCheckOk": True,
                     "racyCheckOk": True,
                 }
-                for playlist_video_id in await self.get_playlist_videos(video_id)
+                for playlist_video_id in (await self.get_playlist_information(video_id))["songs"]
             ]
 
         queries = queries[:1] if not playlist else queries

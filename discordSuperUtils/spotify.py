@@ -5,6 +5,7 @@ import spotipy
 from spotipy import SpotifyClientCredentials
 
 FIELD = "items.track.name,items.track.artists(name),total"
+INITIAL_FIELD = "items.track.name,items.track.artists(name),total,"
 
 
 class SpotifyClient:
@@ -40,7 +41,7 @@ class SpotifyClient:
         artists = " ".join([artist["name"] for artist in song.get("artists")])
         return f"{song['name']} by {artists}"
 
-    async def fetch_playlist_data(
+    async def fetch_playlist_tracks(
         self, url: str, offset: int
     ) -> Dict[str, Union[int, list]]:
         """
@@ -67,13 +68,18 @@ class SpotifyClient:
         :return:
         """
 
-        initial_request = await self.fetch_playlist_data(url, 0)
+        initial_request = await self.loop.run_in_executor(
+            None,
+            lambda: self.sp.playlist_items(
+                playlist_id=url, fields=INITIAL_FIELD
+            ),
+        )
         total_tracks = initial_request.get("total")
 
         requests = list(
             await asyncio.gather(
                 *(
-                    self.fetch_playlist_data(url, offset)
+                    self.fetch_playlist_tracks(url, offset)
                     for offset in range(100, total_tracks, 100)
                 )
             )

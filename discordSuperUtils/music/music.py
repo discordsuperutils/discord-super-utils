@@ -4,7 +4,7 @@ import asyncio
 import random
 import re
 import time
-from typing import Optional, TYPE_CHECKING, List, Tuple, Dict
+from typing import Optional, TYPE_CHECKING, List, Tuple, Dict, Union
 
 import aiohttp
 import discord
@@ -24,6 +24,7 @@ from .exceptions import (
     InvalidPreviousIndex,
 )
 from .player import Player
+from .playlist import YoutubePlaylist
 from .queue import QueueManager
 from ..base import EventManager, create_task
 from ..spotify import SpotifyClient
@@ -295,13 +296,13 @@ class MusicManager(EventManager):
             await self.cleanup(None, ctx.guild)
             await self.call_event("on_queue_end", ctx)
 
-    async def get_playlist(self, player: Player) -> Dict:
+    async def get_playlist(self, player: Player) -> Union[YoutubePlaylist, dict]:
         if SPOTIFY_RE.match(player.used_query) and self.spotify_support:
             return {}
 
-        return await self.youtube.get_playlist_information(
+        return YoutubePlaylist.from_dict(await self.youtube.get_playlist_information(
             await self.youtube.get_query_id(player.used_query)
-        )
+        ))
 
     async def get_player_played_duration(
         self, ctx: commands.Context, player: Player
