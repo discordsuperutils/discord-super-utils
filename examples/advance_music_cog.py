@@ -70,7 +70,8 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     
     # Play function
     async def play_cmd(self, ctx, query):
-        player = await self.MusicManager.create_player(query, ctx.author)
+        async with ctx.typing():
+            player = await self.MusicManager.create_player(query, ctx.author)
         
         if player:
             if not ctx.voice_client or not ctx.voice_client.is_connected():
