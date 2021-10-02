@@ -67,6 +67,23 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
         # If using spotify support use this instead ^^^
 
         super().__init__()
+    
+    # Play function
+    async def play_cmd(self, ctx, query):
+        player = await self.MusicManager.create_player(query, ctx.author)
+        
+        if player:
+            if not ctx.voice_client or not ctx.voice_client.is_connected():
+                await self.MusicManager.join(ctx)
+
+            await self.MusicManager.queue_add(players=player, ctx=ctx)
+
+            if not await self.MusicManager.play(ctx):
+                await ctx.send(f"Added {player[0].title} to song queue.")
+            else:
+                await ctx.send("✅")
+        else:
+            await ctx.send("Query not found.")
 
     # cog error handler
     async def cog_command_error(
@@ -247,25 +264,8 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     # Play song command
     @commands.command()
     async def play(self, ctx, *, query: str):
-        # Checking if the bot has joined a voice channel
-        if not ctx.voice_client or not ctx.voice_client.is_connected():
-            await self.MusicManager.join(ctx)
-
-        # Searching while showing typing status
-        async with ctx.typing():
-            players = await self.MusicManager.create_player(query, ctx.author)
-        # Change to async ctx.defer() if using slash commands ^^^
-
-        # If song found
-        if players:
-            if await self.MusicManager.queue_add(
-                players=players, ctx=ctx
-            ) and not await self.MusicManager.play(ctx):
-                # Sending a message
-                await ctx.send(f"Added {players[0].title} to song queue.")
-
-        else:
-            await ctx.send("Query not found.")
+        # Calling the play function
+        await Music.play_cmd(self, ctx, query)
 
     # Pause command
     @commands.command()
@@ -481,23 +481,13 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
         
         query = f"{spotify_result.title} {spotify_result.artist}"
 
-        player = await self.MusicManager.create_player(query, ctx.author)
-        
-        if player:
-            if not ctx.voice_client or not ctx.voice_client.is_connected():
-                await self.MusicManager.join(ctx)
-
-            await self.MusicManager.queue_add(players=player, ctx=ctx)
-            if not await self.MusicManager.play(ctx):
-                await ctx.send(f"Added {player[0].title} to song queue.")
-            else:
-                await ctx.send("✅")
-        else:
-            await ctx.send("Query not found.")
+        # Calling the play function
+        await Music.play_cmd(self, ctx, query)
 
     # Before invoke checks. Add more commands if you wish to
     @join.before_invoke
     @play.before_invoke
+    @play_user_spotify.before_invoke
     async def ensure_voice_state(self, ctx: commands.Context):
         if not ctx.author.voice or not ctx.author.voice.channel:
             await ctx.send("You are not connected to any voice channel.")
