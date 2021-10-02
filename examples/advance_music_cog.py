@@ -471,17 +471,17 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
 
     # Spotify song from user
     @commands.command()
-    async def play_user_spotify(self, ctx, user: discord.Member = None):
-        user = user if user else ctx.guild.get_member(ctx.author.id)
-        spotify_result = next((activity for activity in user.activities if isinstance(activity, discord.Spotify)), None)
+    async def play_user_spotify(self, ctx, member: discord.Member = None):
+        member = member if member else ctx.author
+        spotify_result = next((activity for activity in member.activities if isinstance(activity, discord.Spotify)), None)
 
         if spotify_result:
-            await ctx.send(f'{user.name} is not listening to Spotify.')
+            await ctx.send(f'{member.mention} is not listening to Spotify.')
             return
         
         query = f"{spotify_result.title} {spotify_result.artist}"
 
-        player = await self.MusicManager.create_player(query, user)
+        player = await self.MusicManager.create_player(query, ctx.author)
         
         if player:
             if not ctx.voice_client or not ctx.voice_client.is_connected():
