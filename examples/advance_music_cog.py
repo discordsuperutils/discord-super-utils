@@ -68,7 +68,6 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
 
         self.ImageManager = discordSuperUtils.ImageManager()
         super().__init__()
-        self.client.ImageManager = self.ImageManager
     
     # Play function
     async def play_cmd(self, ctx, query):
