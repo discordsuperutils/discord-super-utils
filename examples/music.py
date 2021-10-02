@@ -169,7 +169,7 @@ async def queueloop(ctx):
 async def history(ctx):
     if ctx_queue := await MusicManager.get_queue(ctx):
         formatted_history = [
-            f"Title: '{x.title}'\nRequester: {x.requester.mention}"
+            f"Title: '{x.title}'\nRequester: {x.requester and x.requester.mention}"
             for x in ctx_queue.history
         ]
 
@@ -194,8 +194,8 @@ async def skip(ctx, index: int = None):
 async def queue(ctx):
     if ctx_queue := await MusicManager.get_queue(ctx):
         formatted_queue = [
-            f"Title: '{x.title}\nRequester: {x.requester.mention}"
-            for x in ctx_queue.queue
+            f"Title: '{x.title}\nRequester: {x.requester and x.requester.mention}"
+            for x in ctx_queue.queue[ctx_queue.pos + 1 :]
         ]
 
         embeds = discordSuperUtils.generate_embeds(
@@ -212,7 +212,7 @@ async def queue(ctx):
 
 @bot.command()
 async def rewind(ctx, index: int = None):
-    await MusicManager.previous(ctx, index)
+    await MusicManager.previous(ctx, index, no_autoplay=True)
 
 
 @bot.command()
