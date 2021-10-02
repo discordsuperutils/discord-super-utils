@@ -483,7 +483,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
             return
 
         image = await self.ImageManager.create_spotify_card(
-            spotify_result= spotify_result,
+            spotify_activity=spotify_result,
             font_path=None
         )
 
