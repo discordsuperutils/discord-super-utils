@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import random
 import re
 import time
 import uuid
@@ -27,7 +26,7 @@ from .exceptions import (
 from .player import Player
 from .playlist import Playlist, UserPlaylist
 from .queue import QueueManager
-from ..base import create_task, DatabaseChecker, EventManager
+from ..base import create_task, DatabaseChecker
 from ..spotify import SpotifyClient
 from ..youtube import YoutubeClient
 
@@ -59,13 +58,13 @@ class MusicManager(DatabaseChecker):
     )
 
     def __init__(
-            self,
-            bot: commands.Bot,
-            spotify_support: bool = True,
-            inactivity_timeout: int = 60,
-            minimum_users: int = 1,
-            opus_players: bool = False,
-            **kwargs,
+        self,
+        bot: commands.Bot,
+        spotify_support: bool = True,
+        inactivity_timeout: int = 60,
+        minimum_users: int = 1,
+        opus_players: bool = False,
+        **kwargs,
     ):
         super().__init__(
             [
@@ -92,11 +91,7 @@ class MusicManager(DatabaseChecker):
         self.youtube = YoutubeClient(loop=self.bot.loop)
         self.opus_players = opus_players
 
-        if not discord.opus.is_loaded():
-            try:
-                discord.opus._load_default()
-            except OSError:
-                raise RuntimeError("Could not load an opus lib.")
+        self._load_opus()
 
         if spotify_support:
             self.spotify = SpotifyClient(
@@ -105,26 +100,13 @@ class MusicManager(DatabaseChecker):
                 loop=self.bot.loop,
             )
 
-    async def cleanup(
-            self, voice_client: Optional[discord.VoiceClient], guild: discord.Guild
-    ) -> None:
-        """
-        |coro|
-
-        Cleans up after a guild.
-
-        :param Optional[discord.VoiceClient] voice_client: The voice client.
-        :param discord.Guild guild: The guild.
-        :return: None
-        :rtype: None
-        """
-
-        if voice_client:
-            await voice_client.disconnect()
-
-        if guild.id in self.queue:
-            self.queue[guild.id].cleanup()
-            del self.queue[guild.id]
+    @staticmethod
+    def _load_opus():
+        if not discord.opus.is_loaded():
+            try:
+                discord.opus._load_default()
+            except OSError:
+                raise RuntimeError("Could not load an opus lib.")
 
     async def _get_playlist(self, url: str) -> Playlist:
         """
@@ -146,8 +128,30 @@ class MusicManager(DatabaseChecker):
         )
         return Playlist.from_youtube_dict(playlist_info) if playlist_info else None
 
+    async def cleanup(
+        self, voice_client: Optional[discord.VoiceClient], guild: discord.Guild
+    ):
+        """
+        |coro|
+
+        Cleans up after a guild.
+
+        :param Optional[discord.VoiceClient] voice_client: The voice client.
+        :return: None
+        :rtype: None
+        """
+
+        if voice_client:
+            await voice_client.disconnect()
+
+        if guild.id in self.queue:
+            queue = self.queue.pop(guild.id)
+            queue.cleanup()
+            del queue
+
+    @DatabaseChecker.uses_database
     async def add_playlist(
-            self, user: discord.User, url: str
+        self, user: discord.User, url: str
     ) -> Optional[UserPlaylist]:
         """
         |coro|
@@ -161,8 +165,6 @@ class MusicManager(DatabaseChecker):
         :rtype: None
         """
 
-        self._check_database()
-
         playlist = await self._get_playlist(url)
         if not playlist:
             return
@@ -174,35 +176,65 @@ class MusicManager(DatabaseChecker):
             {"user": user.id, "playlist_url": url},
         )
 
-        return UserPlaylist(user, generated_id, playlist)
+        return UserPlaylist(self, user, generated_id, playlist)
 
-    async def get_user_playlists(self, user: discord.User) -> List[UserPlaylist]:
+    @DatabaseChecker.uses_database
+    async def get_playlist(
+        self, user: discord.User, playlist_id: str, partial: bool = False
+    ) -> Optional[UserPlaylist]:
+        """
+        |coro|
+
+        Gets a user playlist by id.
+
+        :param str playlist_id: The playlist id.
+        :param bool partial: Indicating if the function should not fetch the playlist data.
+        :param discord.User user: The user.
+        :return: The user playlist.
+        :rtype: Optional[UserPlaylist]
+        """
+
+        playlist = await self.database.select(
+            self.tables["playlists"], [], {"user": user.id, "id": playlist_id}
+        )
+
+        if not playlist:
+            return
+
+        return UserPlaylist(
+            self,
+            user,
+            playlist_id,
+            await self._get_playlist(playlist["playlist_url"]) if not partial else None,
+        )
+
+    @DatabaseChecker.uses_database
+    async def get_user_playlists(
+        self, user: discord.User, partial: bool = False
+    ) -> List[UserPlaylist]:
         """
         |coro|
 
         Returns the user's playlists.
 
         :param discord.User user: The user.
+        :param bool partial: Indicating if the function should not fetch the playlist data.
         :return: The list of user playlists.
         :rtype: List[UserPlaylist]
         """
 
-        self._check_database()
-
-        user_playlists = await self.database.select(
-            self.tables["playlists"], [], {"user": user.id}, True
-        )
-        playlists = await asyncio.gather(
-            *[
-                self._get_playlist(playlist["playlist_url"])
-                for playlist in user_playlists
-            ]
+        user_playlist_ids = await self.database.select(
+            self.tables["playlists"], ["id"], {"user": user.id}, True
         )
 
-        return [
-            UserPlaylist(user, playlist_data["id"], playlist)
-            for playlist_data, playlist in zip(user_playlists, playlists)
-        ]
+        return list(
+            await asyncio.gather(
+                *[
+                    self.get_playlist(user, user_playlist_id["id"], partial)
+                    for user_playlist_id in user_playlist_ids
+                ]
+            )
+        )
 
     async def __on_voice_state_update(self, member, before, after):
         voice_client = member.guild.voice_client
@@ -248,10 +280,10 @@ class MusicManager(DatabaseChecker):
             await self.call_event("on_inactivity_disconnect", ctx)
 
     async def __check_connection(
-            self,
-            ctx: commands.Context,
-            check_playing: bool = False,
-            check_queue: bool = False,
+        self,
+        ctx: commands.Context,
+        check_playing: bool = False,
+        check_queue: bool = False,
     ) -> Optional[bool]:
         """
         |coro|
@@ -290,49 +322,6 @@ class MusicManager(DatabaseChecker):
 
         return True
 
-    async def _get_next_player(self, queue: QueueManager) -> Player:
-        """
-        |coro|
-
-        Returns the next player that should be played from the queue.
-
-        :param QueueManager queue: The queue.
-        :return: The player.
-        :rtype: Player
-        """
-
-        if queue.loop != Loops.LOOP:
-            queue.pos += 1
-
-        if queue.loop == Loops.LOOP:
-            player = queue.now_playing
-
-        elif queue.loop == Loops.QUEUE_LOOP:
-            if queue.is_finished():
-                queue.pos = queue.queue_loop_start
-
-            player = queue.queue[
-                random.randint(queue.pos, len(queue.queue) - queue.pos)
-                if queue.shuffle
-                else queue.pos
-            ]
-
-        else:
-            if not queue.queue and queue.autoplay:
-                last_video_id = queue.played_history[-1].data["videoDetails"]["videoId"]
-                player = (await Player.get_similar_videos(last_video_id, self.youtube))[
-                    0
-                ]
-
-            else:
-                player = queue.queue[
-                    random.randint(queue.pos, len(queue.queue) - queue.pos)
-                    if queue.shuffle
-                    else queue.pos
-                ]
-
-        return player
-
     async def __check_queue(self, ctx: commands.Context) -> None:
         """
         |coro|
@@ -350,7 +339,7 @@ class MusicManager(DatabaseChecker):
                 return
 
             queue = self.queue[ctx.guild.id]
-            player = await self._get_next_player(queue)
+            player = await queue.get_next_player(self.youtube)
 
             if player is None:
                 await self.cleanup(None, ctx.guild)
@@ -373,6 +362,7 @@ class MusicManager(DatabaseChecker):
                 player.source,
                 after=lambda x: create_task(self.bot.loop, self.__check_queue(ctx)),
             )
+
             player.start_timestamp = time.time()
 
             queue.played_history.append(player)
@@ -388,7 +378,7 @@ class MusicManager(DatabaseChecker):
         return await self._get_playlist(player.used_query)
 
     async def get_player_played_duration(
-            self, ctx: commands.Context, player: Player
+        self, ctx: commands.Context, player: Player
     ) -> Optional[float]:
         """
         |coro|
@@ -409,7 +399,7 @@ class MusicManager(DatabaseChecker):
         start_timestamp = player.start_timestamp
         if ctx.voice_client.is_paused():
             start_timestamp = (
-                    player.start_timestamp + time.time() - player.last_pause_timestamp
+                player.start_timestamp + time.time() - player.last_pause_timestamp
             )
 
         time_played = time.time() - start_timestamp
@@ -417,8 +407,31 @@ class MusicManager(DatabaseChecker):
             time_played, time_played if player.duration == "LIVE" else player.duration
         )
 
+    async def create_playlist_players(
+        self, playlist: Playlist, requester: discord.Member
+    ) -> List[Player]:
+        """
+        |coro|
+
+        Returns a list of players from the playlist.
+
+        :param Playlist playlist: The playlist.
+        :param discord.Member requester: The requester.
+        :return: The list of created players.
+        :rtype: List[Player]
+        """
+
+        return await Player.make_multiple_players(
+            self.youtube,
+            playlist.url,
+            [
+                str(song) for song in playlist.songs
+            ],  # Converts the song to str to convert any spotify tracks.
+            requester,
+        )
+
     async def create_player(
-            self, query: str, requester: discord.Member
+        self, query: str, requester: discord.Member
     ) -> List[Player]:
         """
         |coro|
@@ -445,7 +458,7 @@ class MusicManager(DatabaseChecker):
         return await Player.make_players(self.youtube, query, requester)
 
     async def queue_add(
-            self, players: List[Player], ctx: commands.Context
+        self, players: List[Player], ctx: commands.Context
     ) -> Optional[bool]:
         """
         |coro|
@@ -501,7 +514,7 @@ class MusicManager(DatabaseChecker):
             )
 
     async def lyrics(
-            self, ctx: commands.Context, query: str = None
+        self, ctx: commands.Context, query: str = None
     ) -> Optional[Tuple[str, str, str]]:
         """
         |coro|
@@ -533,8 +546,8 @@ class MusicManager(DatabaseChecker):
             return (title, authors, lyrics) if lyrics else None
 
     async def play(
-            self,
-            ctx: commands.Context,
+        self,
+        ctx: commands.Context,
     ) -> Optional[bool]:
         """
         |coro|
@@ -611,7 +624,7 @@ class MusicManager(DatabaseChecker):
         return True
 
     async def previous(
-            self, ctx: commands.Context, index: int = None, no_autoplay: bool = False
+        self, ctx: commands.Context, index: int = None, no_autoplay: bool = False
     ) -> Optional[List[Player]]:
         """
         |coro|
@@ -642,7 +655,7 @@ class MusicManager(DatabaseChecker):
 
         original_queue_position = queue.pos
         queue.pos -= previous_index
-        previous_players = queue.queue[queue.pos + 1: original_queue_position]
+        previous_players = queue.queue[queue.pos + 1 : original_queue_position]
 
         if no_autoplay:
             for player in previous_players[:]:
@@ -664,7 +677,7 @@ class MusicManager(DatabaseChecker):
         :type index: int
         :param ctx: The context.
         :type ctx: commands.Context
-        :return: The skiped player if applicable.
+        :return: The skipped player if applicable.
         :rtype: Optional[Player]
         """
 
@@ -684,9 +697,9 @@ class MusicManager(DatabaseChecker):
                 return
 
         if (
-                not queue.autoplay
-                and queue.loop != Loops.QUEUE_LOOP
-                and (len(queue.queue) - 1) <= queue.pos + skip_index
+            not queue.autoplay
+            and queue.loop != Loops.QUEUE_LOOP
+            and (len(queue.queue) - 1) <= queue.pos + skip_index
         ):
             await self.call_event(
                 "on_music_error", ctx, SkipError("No song to skip to.")
@@ -707,7 +720,7 @@ class MusicManager(DatabaseChecker):
         return player
 
     async def volume(
-            self, ctx: commands.Context, volume: int = None
+        self, ctx: commands.Context, volume: int = None
     ) -> Optional[float]:
         """
         |coro|
@@ -912,5 +925,3 @@ class MusicManager(DatabaseChecker):
             return
 
         return self.queue[ctx.guild.id]
-
-

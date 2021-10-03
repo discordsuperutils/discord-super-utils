@@ -350,8 +350,11 @@ def create_task(loop: asyncio.AbstractEventLoop, coroutine: Coroutine) -> None:
     :rtype: None
     """
 
-    task = loop.create_task(coroutine)
-    task.add_done_callback(handle_task_exceptions)
+    try:
+        task = loop.create_task(coroutine)
+        task.add_done_callback(handle_task_exceptions)
+    except RuntimeError:
+        pass
 
 
 class CogManager:
@@ -423,6 +426,14 @@ class DatabaseChecker(EventManager):
         self.table_identifiers = table_identifiers
         self.tables = {}
         self.tables_column_data = tables_column_data
+
+    @staticmethod
+    def uses_database(func):
+        def inner(self, *args, **kwargs):
+            self._check_database()
+            return func(self, *args, **kwargs)
+
+        return inner
 
     def _check_database(self, raise_error: bool = True) -> bool:
         """

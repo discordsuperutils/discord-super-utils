@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import random
 from typing import List, TYPE_CHECKING, Union, Any
 
 from .enums import Loops
 
 if TYPE_CHECKING:
+    from ..youtube import YoutubeClient
     from .player import Player
 
 
@@ -38,6 +40,47 @@ class QueueManager:
         self.loop = Loops.NO_LOOP
         self.vote_skips = []
         self.played_history: List[Player] = []
+
+    async def get_next_player(self, youtube: YoutubeClient) -> Player:
+        """
+        |coro|
+
+        Returns the next player that should be played from the queue.
+
+        :param YoutubeClient youtube: The youtube client.
+        :return: The player.
+        :rtype: Player
+        """
+
+        if self.loop != Loops.LOOP:
+            self.pos += 1
+
+        if self.loop == Loops.LOOP:
+            player = self.now_playing
+
+        elif self.loop == Loops.QUEUE_LOOP:
+            if self.is_finished():
+                self.pos = self.queue_loop_start
+
+            player = self.queue[
+                random.randint(self.pos, len(self.queue) - self.pos)
+                if self.shuffle
+                else self.pos
+            ]
+
+        else:
+            if not self.queue and self.autoplay:
+                last_video_id = self.played_history[-1].data["videoDetails"]["videoId"]
+                player = (await Player.get_similar_videos(last_video_id, youtube))[0]
+
+            else:
+                player = self.queue[
+                    random.randint(self.pos, len(self.queue) - self.pos)
+                    if self.shuffle
+                    else self.pos
+                ]
+
+        return player
 
     def is_finished(self) -> bool:
         """
