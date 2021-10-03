@@ -9,7 +9,6 @@ setup(
     package_data={
         "discordSuperUtils.assets": ["*"],
         "": ["*.png", "*.ttf"],
-        "discordSuperUtils.interactions": ["*"],
         "discordSuperUtils.music": ["*"],
     },
     include_package_data=True,
