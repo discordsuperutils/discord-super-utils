@@ -5,6 +5,7 @@ from .enums import PlaylistType
 
 if TYPE_CHECKING:
     import discord
+    from .music import MusicManager
 
 __slots__ = ("SpotifyTrack", "YoutubeAuthor", "Playlist", "UserPlaylist")
 
@@ -108,12 +109,26 @@ class UserPlaylist:
     Represents a playlist stored in the database.
     """
 
-    __slots__ = ("owner", "id", "playlist")
+    __slots__ = ("owner", "id", "playlist", "music_manager", "table")
 
-    def __init__(self, owner: discord.User, id_: str, playlist: Playlist) -> None:
+    def __init__(self, music_manager: MusicManager, owner: discord.User, id_: str, playlist: Playlist) -> None:
         self.owner = owner
         self.id = id_
         self.playlist = playlist
+        self.music_manager = music_manager
+        self.table = music_manager.tables["playlists"]
+
+    async def delete(self) -> None:
+        """
+        |coro|
+
+        Deletes the playlist from the database.
+
+        :return: None
+        :rtype: None
+        """
+
+        await self.music_manager.database.delete(self.table, {"user": self.owner.id, "id": self.id})
 
     def __str__(self):
         return f"<{self.__class__.__name__} owner={self.owner}>"

@@ -424,6 +424,14 @@ class DatabaseChecker(EventManager):
         self.tables = {}
         self.tables_column_data = tables_column_data
 
+    @staticmethod
+    def uses_database(func):
+        def inner(self, *args, **kwargs):
+            self._check_database()
+            return func(self, *args, **kwargs)
+
+        return inner
+
     def _check_database(self, raise_error: bool = True) -> bool:
         """
         A function which checks if the database is connected.
