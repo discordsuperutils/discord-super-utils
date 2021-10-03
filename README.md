@@ -25,7 +25,7 @@ Features
 - Very easy to use and user-friendly.
 - Object Oriented.
 - Modern Leveling Manager.
-- Modern Music/Audio playing manager.
+- Modern Music/Audio playing manager. [Lavalink and FFmpeg support]
 - Modern Async Database Manager (SQLite, MongoDB, PostgreSQL, MySQL, MariaDB).
 - Modern Paginator.
 - Modern Reaction Manager.
