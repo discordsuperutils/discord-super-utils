@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import random
 import re
-import time
 from typing import Optional, TYPE_CHECKING, List, Tuple, Dict
 
 import aiohttp
@@ -29,8 +28,21 @@ if TYPE_CHECKING:
 
 SPOTIFY_RE = re.compile("^https://open.spotify.com/")
 
+__all__ = ("LavaLinkMusicManager", )
+
 
 class LavaLinkMusicManager(EventManager):
+
+    __slots__ = (
+        "bot",
+        "client_id",
+        "client_secret",
+        "spotify_support",
+        "inactivity_timeout",
+        "queue",
+        "spotify",
+    )
+
     def __init__(
             self,
             bot: commands.Bot,
