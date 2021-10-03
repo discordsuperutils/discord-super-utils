@@ -378,9 +378,33 @@ class ImageManager:
 
         result_bytes = BytesIO()
 
-        track_background_image = Image.open(self.load_asset("spotify_template.png"))
-
         album_image = await self.convert_image(spotify_activity.album_cover_url)
+
+        # Background colour
+        paletted = album_image.convert(
+            "P", palette=Image.ADAPTIVE, colors=1
+        )  # Reduce to palette
+        # Finding dominant background color
+        palette = paletted.getpalette()
+        color_counts = paletted.getcolors()
+        palette_index = color_counts[0][1]
+        dominant_color = tuple(palette[palette_index * 3 : palette_index * 3 + 3])
+
+        # Checking brightness of bg color
+        brightness = (
+            (0.21 * dominant_color[0])
+            + (0.72 * dominant_color[1])
+            + (0.07 * dominant_color[2])
+        )
+
+        if brightness < 100:
+            text_color = "white"
+            bg_img = "spotify_white.png"
+        else:
+            text_color = "black"
+            bg_img = "spotify_black.png"
+
+        track_background_image = Image.open(self.load_asset(bg_img))
 
         font_path = font_path if font_path else self.load_asset("font.ttf")
 
@@ -395,51 +419,58 @@ class ImageManager:
         title_text_position = 150, 30
         artist_text_position = 150, 60
         album_text_position = 150, 80
-        start_duration_text_position = 150, 122
-        end_duration_text_position = 515, 122
+        start_duration_text_position = 150, 119
+        end_duration_text_position = 508, 119
 
-        played_duration = datetime.datetime.utcnow() - spotify_activity.start
+        played_duration = (
+            datetime.datetime.utcnow() - spotify_activity.start
+        ).total_seconds()
+        total_duration = (spotify_activity.duration).total_seconds()
 
-        start_duration = time.strftime(
-            "%H:%M:%S", time.gmtime(played_duration.total_seconds())
-        )
-        end_duration = time.strftime(
-            "%H:%M:%S", time.gmtime(spotify_activity.duration.total_seconds())
-        )
+        played = played_duration / total_duration
+
+        start_duration = time.strftime("%H:%M:%S", time.gmtime(played_duration))
+        end_duration = time.strftime("%H:%M:%S", time.gmtime(total_duration))
 
         # Draws
         draw_on_image = ImageDraw.Draw(track_background_image)
 
         draw_on_image.text(
-            title_text_position, spotify_activity.title, "white", font=title_font
+            title_text_position, spotify_activity.title, text_color, font=title_font
         )
 
         draw_on_image.text(
             artist_text_position,
             f"by {spotify_activity.artist}",
-            "white",
+            text_color,
             font=artist_font,
         )
 
         draw_on_image.text(
-            album_text_position, spotify_activity.album, "white", font=album_font
+            album_text_position, spotify_activity.album, text_color, font=album_font
         )
 
         draw_on_image.text(
             start_duration_text_position,
             start_duration,
-            "white",
+            text_color,
             font=start_duration_font,
         )
 
         draw_on_image.text(
-            end_duration_text_position, end_duration, "white", font=end_duration_font
+            end_duration_text_position, end_duration, text_color, font=end_duration_font
         )
 
-        # Background colour
-        album_color = album_image.getpixel((250, 100))
+        draw_on_image.rounded_rectangle(
+            (198, 125, 198 + 300 * played, 129),
+            fill=text_color,
+            outline=None,
+            radius=3,
+            width=0,
+        )
+
         background_image_color = Image.new(
-            "RGBA", track_background_image.size, album_color
+            "RGBA", track_background_image.size, dominant_color
         )
         background_image_color.paste(
             track_background_image, (0, 0), track_background_image
