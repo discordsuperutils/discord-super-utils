@@ -1,10 +1,15 @@
 from enum import Enum
 
 
-__all__ = ("Loops",)
+__all__ = ("Loops", "PlaylistType")
 
 
 class Loops(Enum):
     NO_LOOP = 0
     LOOP = 1
     QUEUE_LOOP = 2
+
+
+class PlaylistType(Enum):
+    SPOTIFY = 0
+    YOUTUBE = 1

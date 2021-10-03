@@ -4,7 +4,8 @@ import asyncio
 import random
 import re
 import time
-from typing import Optional, TYPE_CHECKING, List, Tuple, Dict, Union
+import uuid
+from typing import Optional, TYPE_CHECKING, List, Tuple, Dict
 
 import aiohttp
 import discord
@@ -24,9 +25,9 @@ from .exceptions import (
     InvalidPreviousIndex,
 )
 from .player import Player
-from .playlist import YoutubePlaylist, SpotifyPlaylist
+from .playlist import Playlist, UserPlaylist
 from .queue import QueueManager
-from ..base import EventManager, create_task
+from ..base import create_task, DatabaseChecker
 from ..spotify import SpotifyClient
 from ..youtube import YoutubeClient
 
@@ -42,7 +43,7 @@ FFMPEG_OPTIONS = {
 SPOTIFY_RE = re.compile("^https://open.spotify.com/")
 
 
-class MusicManager(EventManager):
+class MusicManager(DatabaseChecker):
     """
     Represents a MusicManager.
     """
@@ -66,7 +67,16 @@ class MusicManager(EventManager):
         opus_players: bool = False,
         **kwargs,
     ):
-        super().__init__()
+        super().__init__(
+            [
+                {
+                    "user": "snowflake",
+                    "playlist_url": "string",
+                    "id": "string",
+                }
+            ],
+            ["playlists"],
+        )
         self.bot = bot
         self.bot.add_listener(self.__on_voice_state_update, "on_voice_state_update")
 
@@ -115,6 +125,84 @@ class MusicManager(EventManager):
         if guild.id in self.queue:
             self.queue[guild.id].cleanup()
             del self.queue[guild.id]
+
+    async def _get_playlist(self, url: str) -> Playlist:
+        """
+        |coro|
+
+        Returns the playlist found from the URL.
+
+        :param str url: The URL.
+        :return: The playlist.
+        :rtype: Playlist
+        """
+
+        if SPOTIFY_RE.match(url) and self.spotify_support:
+            spotify_info = await self.spotify.fetch_full_playlist(url)
+            return Playlist.from_spotify_dict(spotify_info) if spotify_info else None
+
+        playlist_info = await self.youtube.get_playlist_information(
+            await self.youtube.get_query_id(url)
+        )
+        return Playlist.from_youtube_dict(playlist_info) if playlist_info else None
+
+    async def add_playlist(
+        self, user: discord.User, url: str
+    ) -> Optional[UserPlaylist]:
+        """
+        |coro|
+
+        Adds a playlist to the user's account.
+        Saves the playlist in the database.
+
+        :param discord.User user: The owner of the playlist.
+        :param str url: The playlist URL.
+        :return: None
+        :rtype: None
+        """
+
+        self._check_database()
+
+        playlist = await self._get_playlist(url)
+        if not playlist:
+            return
+
+        generated_id = str(uuid.uuid4())
+        await self.database.insertifnotexists(
+            self.tables["playlists"],
+            {"user": user.id, "playlist_url": url, "id": generated_id},
+            {"user": user.id, "playlist_url": url},
+        )
+
+        return UserPlaylist(user, generated_id, playlist)
+
+    async def get_user_playlists(self, user: discord.User) -> List[UserPlaylist]:
+        """
+        |coro|
+
+        Returns the user's playlists.
+
+        :param discord.User user: The user.
+        :return: The list of user playlists.
+        :rtype: List[UserPlaylist]
+        """
+
+        self._check_database()
+
+        user_playlists = await self.database.select(
+            self.tables["playlists"], [], {"user": user.id}, True
+        )
+        playlists = await asyncio.gather(
+            *[
+                self._get_playlist(playlist["playlist_url"])
+                for playlist in user_playlists
+            ]
+        )
+
+        return [
+            UserPlaylist(user, playlist_data["id"], playlist)
+            for playlist_data, playlist in zip(user_playlists, playlists)
+        ]
 
     async def __on_voice_state_update(self, member, before, after):
         voice_client = member.guild.voice_client
@@ -296,17 +384,8 @@ class MusicManager(EventManager):
             await self.cleanup(None, ctx.guild)
             await self.call_event("on_queue_end", ctx)
 
-    async def get_playlist(
-        self, player: Player
-    ) -> Union[YoutubePlaylist, SpotifyPlaylist]:
-        if SPOTIFY_RE.match(player.used_query) and self.spotify_support:
-            spotify_info = await self.spotify.fetch_full_playlist(player.used_query)
-            return SpotifyPlaylist.from_dict(spotify_info) if spotify_info else None
-
-        playlist_info = await self.youtube.get_playlist_information(
-            await self.youtube.get_query_id(player.used_query)
-        )
-        return YoutubePlaylist.from_dict(playlist_info) if playlist_info else None
+    async def get_player_playlist(self, player: Player) -> Optional[Playlist]:
+        return await self._get_playlist(player.used_query)
 
     async def get_player_played_duration(
         self, ctx: commands.Context, player: Player
