@@ -40,6 +40,9 @@ async def on_play(ctx, player):
 
 @bot.event
 async def on_ready():
+    database = discordSuperUtils.DatabaseManager.connect(...)
+    await MusicManager.connect_to_database(database, ["playlists"])
+
     print("Music manager is ready.", bot.user)
 
 
@@ -65,6 +68,88 @@ async def np(ctx):
 async def join(ctx):
     if await MusicManager.join(ctx):
         await ctx.send("Joined Voice Channel")
+
+
+@bot.group(invoke_without_command=True)
+async def playlists(ctx, user: discord.User):
+    user_playlists = await MusicManager.get_user_playlists(user)
+
+    formatted_playlists = [
+        f"ID: '{user_playlist.id}'\nTitle: '{user_playlist.playlist.title}'\nTotal Songs: {len(user_playlist.playlist.songs)}"
+        for user_playlist in user_playlists
+    ]
+
+    embeds = discordSuperUtils.generate_embeds(
+        formatted_playlists,
+        f"Playlists of {user}",
+        f"Shows {user.mention}'s playlists.",
+        25,
+        string_format="{}",
+    )
+
+    page_manager = discordSuperUtils.PageManager(ctx, embeds, public=True)
+    await page_manager.run()
+
+
+@playlists.command()
+async def add(ctx, url: str):
+    added_playlist = await MusicManager.add_playlist(ctx.author, url)
+
+    if not added_playlist:
+        await ctx.send("Playlist URL not found!")
+        return
+
+    await ctx.send(f"Playlist added with ID {added_playlist.id}")
+
+
+@playlists.command()
+async def play(ctx, playlist_id: str):
+    # This command is just an example, and not something you should do.
+    # The saved playlist system is supposed to provide fast, easy and simple playing, and the user should not look for
+    # the right playlist id before playing, as that defeats the whole point.
+    # Instead of playing using a playlist id, I recommend playing using indexes.
+    # Please, if you are playing using indexes, find the playlist id you need by getting all the user's playlists
+    # and then finding the id from there.
+    # Find the user's playlists using MusicManager.get_user_playlists(ctx.author, partial=True).
+    # Make sure partial is True to speed up the fetching progress (incase you want to access the playlist data,
+    # you can set it to False, of course).
+    # Using these playlists, find the id the user wants, and play it (or whatever else you want to do with it).
+    # Be creative!
+
+    user_playlist = await MusicManager.get_playlist(ctx.author, playlist_id)
+
+    if not user_playlist:
+        await ctx.send("That playlist does not exist!")
+        return
+
+    if not ctx.voice_client or not ctx.voice_client.is_connected():
+        await MusicManager.join(ctx)
+
+    async with ctx.typing():
+        players = await MusicManager.create_playlist_players(
+            user_playlist.playlist, ctx.author
+        )
+
+    if players:
+        if await MusicManager.queue_add(
+            players=players, ctx=ctx
+        ) and not await MusicManager.play(ctx):
+            await ctx.send(f"Added playlist {user_playlist.playlist.title}")
+
+    else:
+        await ctx.send("Query not found.")
+
+
+@playlists.command()
+async def remove(ctx, playlist_id: str):
+    user_playlist = await MusicManager.get_playlist(ctx.author, playlist_id)
+
+    if not user_playlist:
+        await ctx.send(f"Playlist with id {playlist_id} is not found.")
+        return
+
+    await user_playlist.delete()
+    await ctx.send(f"Playlist {user_playlist.playlist.title} has been deleted")
 
 
 @bot.command()

@@ -128,7 +128,9 @@ class MusicManager(DatabaseChecker):
         )
         return Playlist.from_youtube_dict(playlist_info) if playlist_info else None
 
-    async def cleanup(self, voice_client: Optional[discord.VoiceClient], guild: discord.Guild):
+    async def cleanup(
+        self, voice_client: Optional[discord.VoiceClient], guild: discord.Guild
+    ):
         """
         |coro|
 
@@ -177,33 +179,46 @@ class MusicManager(DatabaseChecker):
         return UserPlaylist(self, user, generated_id, playlist)
 
     @DatabaseChecker.uses_database
-    async def get_playlist(self, user: discord.User, playlist_id: str) -> Optional[UserPlaylist]:
+    async def get_playlist(
+        self, user: discord.User, playlist_id: str, partial: bool = False
+    ) -> Optional[UserPlaylist]:
         """
         |coro|
 
         Gets a user playlist by id.
 
         :param str playlist_id: The playlist id.
+        :param bool partial: Indicating if the function should not fetch the playlist data.
         :param discord.User user: The user.
         :return: The user playlist.
         :rtype: Optional[UserPlaylist]
         """
 
-        playlist = await self.database.select(self.tables["playlists"], [], {"user": user.id, "id": playlist_id})
+        playlist = await self.database.select(
+            self.tables["playlists"], [], {"user": user.id, "id": playlist_id}
+        )
 
         if not playlist:
             return
 
-        return UserPlaylist(self, user, playlist_id, await self._get_playlist(playlist["playlist_url"]))
+        return UserPlaylist(
+            self,
+            user,
+            playlist_id,
+            await self._get_playlist(playlist["playlist_url"]) if not partial else None,
+        )
 
     @DatabaseChecker.uses_database
-    async def get_user_playlists(self, user: discord.User) -> List[UserPlaylist]:
+    async def get_user_playlists(
+        self, user: discord.User, partial: bool = False
+    ) -> List[UserPlaylist]:
         """
         |coro|
 
         Returns the user's playlists.
 
         :param discord.User user: The user.
+        :param bool partial: Indicating if the function should not fetch the playlist data.
         :return: The list of user playlists.
         :rtype: List[UserPlaylist]
         """
@@ -212,11 +227,14 @@ class MusicManager(DatabaseChecker):
             self.tables["playlists"], ["id"], {"user": user.id}, True
         )
 
-        return list(await asyncio.gather(
-            *[
-                self.get_playlist(user, user_playlist_id["id"]) for user_playlist_id in user_playlist_ids
-            ]
-        ))
+        return list(
+            await asyncio.gather(
+                *[
+                    self.get_playlist(user, user_playlist_id["id"], partial)
+                    for user_playlist_id in user_playlist_ids
+                ]
+            )
+        )
 
     async def __on_voice_state_update(self, member, before, after):
         voice_client = member.guild.voice_client
@@ -344,6 +362,7 @@ class MusicManager(DatabaseChecker):
                 player.source,
                 after=lambda x: create_task(self.bot.loop, self.__check_queue(ctx)),
             )
+
             player.start_timestamp = time.time()
 
             queue.played_history.append(player)
@@ -386,6 +405,29 @@ class MusicManager(DatabaseChecker):
         time_played = time.time() - start_timestamp
         return min(
             time_played, time_played if player.duration == "LIVE" else player.duration
+        )
+
+    async def create_playlist_players(
+        self, playlist: Playlist, requester: discord.Member
+    ) -> List[Player]:
+        """
+        |coro|
+
+        Returns a list of players from the playlist.
+
+        :param Playlist playlist: The playlist.
+        :param discord.Member requester: The requester.
+        :return: The list of created players.
+        :rtype: List[Player]
+        """
+
+        return await Player.make_multiple_players(
+            self.youtube,
+            playlist.url,
+            [
+                str(song) for song in playlist.songs
+            ],  # Converts the song to str to convert any spotify tracks.
+            requester,
         )
 
     async def create_player(

@@ -96,7 +96,7 @@ class ImageManager:
                 "{:f}".format(num).rstrip("0").rstrip("."), matches[magnitude]
             )
         except IndexError:
-            return original_num
+            return str(original_num)
 
     @staticmethod
     def multiline_text(
@@ -370,7 +370,7 @@ class ImageManager:
 
         Creates a Spotify activity image for the Spotify song and returns it as a discord.File.
 
-        :param discord.Spotify spotify_result: The Spotify activity.
+        :param discord.Spotify spotify_activity: The Spotify activity.
         :param str font_path: The font path, uses the default font if not passed.
         :return: The discord file.
         :rtype: discord.File
@@ -425,7 +425,7 @@ class ImageManager:
         played_duration = (
             datetime.datetime.utcnow() - spotify_activity.start
         ).total_seconds()
-        total_duration = (spotify_activity.duration).total_seconds()
+        total_duration = spotify_activity.duration.total_seconds()
 
         played = played_duration / total_duration
 

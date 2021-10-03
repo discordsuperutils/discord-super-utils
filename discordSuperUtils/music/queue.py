@@ -71,9 +71,7 @@ class QueueManager:
         else:
             if not self.queue and self.autoplay:
                 last_video_id = self.played_history[-1].data["videoDetails"]["videoId"]
-                player = (await Player.get_similar_videos(last_video_id, youtube))[
-                    0
-                ]
+                player = (await Player.get_similar_videos(last_video_id, youtube))[0]
 
             else:
                 player = self.queue[

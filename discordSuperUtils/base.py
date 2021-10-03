@@ -350,8 +350,11 @@ def create_task(loop: asyncio.AbstractEventLoop, coroutine: Coroutine) -> None:
     :rtype: None
     """
 
-    task = loop.create_task(coroutine)
-    task.add_done_callback(handle_task_exceptions)
+    try:
+        task = loop.create_task(coroutine)
+        task.add_done_callback(handle_task_exceptions)
+    except RuntimeError:
+        pass
 
 
 class CogManager:

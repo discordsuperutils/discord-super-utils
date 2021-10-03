@@ -22,7 +22,7 @@ class SpotifyTrack:
         self.authors = authors
 
     def __str__(self):
-        return f"<{self.__class__.__name__} name={self.name}>"
+        return f"{self.name} by {self.authors[0]}"
 
     def __repr__(self):
         return f"<{self.__class__.__name__} name={self.name}, authors={self.authors}>"
@@ -143,7 +143,13 @@ class UserPlaylist:
 
     __slots__ = ("owner", "id", "playlist", "music_manager", "table")
 
-    def __init__(self, music_manager: MusicManager, owner: discord.User, id_: str, playlist: Playlist) -> None:
+    def __init__(
+        self,
+        music_manager: MusicManager,
+        owner: discord.User,
+        id_: str,
+        playlist: Playlist,
+    ) -> None:
         self.owner = owner
         self.id = id_
         self.playlist = playlist
@@ -160,7 +166,9 @@ class UserPlaylist:
         :rtype: None
         """
 
-        await self.music_manager.database.delete(self.table, {"user": self.owner.id, "id": self.id})
+        await self.music_manager.database.delete(
+            self.table, {"user": self.owner.id, "id": self.id}
+        )
 
     def __str__(self):
         return f"<{self.__class__.__name__} owner={self.owner}>"
