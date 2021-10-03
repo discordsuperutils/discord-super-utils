@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-import asyncio
 import random
 import re
 import time
-import uuid
 from typing import Optional, TYPE_CHECKING, List, Tuple, Dict
 
 import aiohttp
+import asyncio
 import discord
+import wavelink
 
 from .enums import Loops
 from .exceptions import (
@@ -16,94 +16,71 @@ from .exceptions import (
     NotPlaying,
     NotConnected,
     QueueError,
-    AlreadyPaused,
-    NotPaused,
-    InvalidSkipIndex,
-    SkipError,
-    AlreadyConnected,
-    UserNotConnected,
-    InvalidPreviousIndex,
+    AlreadyPaused, NotPaused, SkipError, InvalidSkipIndex, UserNotConnected, AlreadyConnected, InvalidPreviousIndex,
 )
 from .player import Player
-from .playlist import Playlist, UserPlaylist
 from .queue import QueueManager
-from ..base import create_task, DatabaseChecker, EventManager
+from ..base import EventManager, create_task
 from ..spotify import SpotifyClient
 from ..youtube import YoutubeClient
 
 if TYPE_CHECKING:
     from discord.ext import commands
 
-__all__ = ("MusicManager",)
-
-FFMPEG_OPTIONS = {
-    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
-    "options": "-vn",
-}
 SPOTIFY_RE = re.compile("^https://open.spotify.com/")
 
 
-class MusicManager(DatabaseChecker):
-    """
-    Represents a MusicManager.
-    """
-
-    __slots__ = (
-        "bot",
-        "client_id",
-        "client_secret",
-        "spotify_support",
-        "inactivity_timeout",
-        "queue",
-        "spotify",
-    )
-
+class LavaLinkMusicManager(EventManager):
     def __init__(
             self,
             bot: commands.Bot,
             spotify_support: bool = True,
             inactivity_timeout: int = 60,
             minimum_users: int = 1,
-            opus_players: bool = False,
             **kwargs,
     ):
-        super().__init__(
-            [
-                {
-                    "user": "snowflake",
-                    "playlist_url": "string",
-                    "id": "string",
-                }
-            ],
-            ["playlists"],
-        )
         self.bot = bot
-        self.bot.add_listener(self.__on_voice_state_update, "on_voice_state_update")
 
         self.client_id = kwargs.get("client_id")
         self.client_secret = kwargs.get("client_secret")
-        self.default_volume = kwargs.get("default_volume") or 0.1
-        self.executable = kwargs.get("executable") or "ffmpeg"
+        self.default_volume = kwargs.get("default_volume") or 50
         self.spotify_support = spotify_support
         self.inactivity_timeout = 0 if not inactivity_timeout else inactivity_timeout
         self.minimum_users = minimum_users
 
+        super().__init__()
+
         self.queue: Dict[int, QueueManager] = {}
+        self.contexts: Dict[int, commands.Context] = {}
         self.youtube = YoutubeClient(loop=self.bot.loop)
-        self.opus_players = opus_players
-
-        if not discord.opus.is_loaded():
-            try:
-                discord.opus._load_default()
-            except OSError:
-                raise RuntimeError("Could not load an opus lib.")
-
         if spotify_support:
             self.spotify = SpotifyClient(
                 client_id=self.client_id,
                 client_secret=self.client_secret,
                 loop=self.bot.loop,
             )
+        self.bot.add_listener(self.__on_song_end, 'on_wavelink_track_end')
+        self.add_event(self.__on_queue_end, 'on_queue_end')
+
+    async def __on_queue_end(self, ctx):
+        # lib has a bug that makes the is_playing() check return true even tho song is finished
+        # stopping the voice client after the queue ends fixes it.
+        voice_client: wavelink.Player = ctx.voice_client
+        await voice_client.stop()
+
+    async def __on_song_end(self, player: wavelink.Player, track, reason):
+        ctx: commands.Context = self.contexts[player.guild.id]
+        await self.__check_queue(ctx)
+
+    async def connect_nodes(self,
+                            host: str,
+                            password: str,
+                            port: int,
+                            identifier: str = "LavaLinkMusicManager") -> wavelink.Node:
+        return await wavelink.NodePool.create_node(host=host, password=password,
+                                                   port=port,
+                                                   identifier=identifier,
+                                                   bot=self.bot)
 
     async def cleanup(
             self, voice_client: Optional[discord.VoiceClient], guild: discord.Guild
@@ -125,84 +102,6 @@ class MusicManager(DatabaseChecker):
         if guild.id in self.queue:
             self.queue[guild.id].cleanup()
             del self.queue[guild.id]
-
-    async def _get_playlist(self, url: str) -> Playlist:
-        """
-        |coro|
-
-        Returns the playlist found from the URL.
-
-        :param str url: The URL.
-        :return: The playlist.
-        :rtype: Playlist
-        """
-
-        if SPOTIFY_RE.match(url) and self.spotify_support:
-            spotify_info = await self.spotify.fetch_full_playlist(url)
-            return Playlist.from_spotify_dict(spotify_info) if spotify_info else None
-
-        playlist_info = await self.youtube.get_playlist_information(
-            await self.youtube.get_query_id(url)
-        )
-        return Playlist.from_youtube_dict(playlist_info) if playlist_info else None
-
-    async def add_playlist(
-            self, user: discord.User, url: str
-    ) -> Optional[UserPlaylist]:
-        """
-        |coro|
-
-        Adds a playlist to the user's account.
-        Saves the playlist in the database.
-
-        :param discord.User user: The owner of the playlist.
-        :param str url: The playlist URL.
-        :return: None
-        :rtype: None
-        """
-
-        self._check_database()
-
-        playlist = await self._get_playlist(url)
-        if not playlist:
-            return
-
-        generated_id = str(uuid.uuid4())
-        await self.database.insertifnotexists(
-            self.tables["playlists"],
-            {"user": user.id, "playlist_url": url, "id": generated_id},
-            {"user": user.id, "playlist_url": url},
-        )
-
-        return UserPlaylist(user, generated_id, playlist)
-
-    async def get_user_playlists(self, user: discord.User) -> List[UserPlaylist]:
-        """
-        |coro|
-
-        Returns the user's playlists.
-
-        :param discord.User user: The user.
-        :return: The list of user playlists.
-        :rtype: List[UserPlaylist]
-        """
-
-        self._check_database()
-
-        user_playlists = await self.database.select(
-            self.tables["playlists"], [], {"user": user.id}, True
-        )
-        playlists = await asyncio.gather(
-            *[
-                self._get_playlist(playlist["playlist_url"])
-                for playlist in user_playlists
-            ]
-        )
-
-        return [
-            UserPlaylist(user, playlist_data["id"], playlist)
-            for playlist_data, playlist in zip(user_playlists, playlists)
-        ]
 
     async def __on_voice_state_update(self, member, before, after):
         voice_client = member.guild.voice_client
@@ -345,6 +244,8 @@ class MusicManager(DatabaseChecker):
         :rtype: None
         """
 
+        voice_client: wavelink.Player = ctx.voice_client
+
         try:
             if not ctx.voice_client or not ctx.voice_client.is_connected():
                 return
@@ -356,24 +257,9 @@ class MusicManager(DatabaseChecker):
                 await self.cleanup(None, ctx.guild)
                 await self.call_event("on_queue_end", ctx)
 
-            player.source = (
-                discord.PCMVolumeTransformer(
-                    discord.FFmpegPCMAudio(
-                        player.stream_url, **FFMPEG_OPTIONS, executable=self.executable
-                    ),
-                    queue.volume,
-                )
-                if not self.opus_players
-                else discord.FFmpegOpusAudio(
-                    player.stream_url, **FFMPEG_OPTIONS, executable=self.executable
-                )
-            )
-
-            ctx.voice_client.play(
-                player.source,
-                after=lambda x: create_task(self.bot.loop, self.__check_queue(ctx)),
-            )
-            player.start_timestamp = time.time()
+            await voice_client.set_volume(int(queue.volume))
+            await voice_client.play((await wavelink.YouTubeTrack.search(player.url))[0])
+            self.contexts[ctx.guild.id] = ctx
 
             queue.played_history.append(player)
             queue.vote_skips = []
@@ -384,21 +270,16 @@ class MusicManager(DatabaseChecker):
             await self.cleanup(None, ctx.guild)
             await self.call_event("on_queue_end", ctx)
 
-    async def get_player_playlist(self, player: Player) -> Optional[Playlist]:
-        return await self._get_playlist(player.used_query)
-
     async def get_player_played_duration(
-            self, ctx: commands.Context, player: Player
+            self, ctx: commands.Context
     ) -> Optional[float]:
         """
         |coro|
 
-        Returns the played duration of a player.
+        Returns the played duration of the current track
 
         :param ctx: The context.
         :type ctx: commands.Context
-        :param player: The player.
-        :type player: Player
         :return: The played duration of the player in seconds.
         :rtype: Optional[float]
         """
@@ -406,16 +287,9 @@ class MusicManager(DatabaseChecker):
         if not await self.__check_connection(ctx):
             return
 
-        start_timestamp = player.start_timestamp
-        if ctx.voice_client.is_paused():
-            start_timestamp = (
-                    player.start_timestamp + time.time() - player.last_pause_timestamp
-            )
+        voice_client: wavelink.Player = ctx.voice_client
 
-        time_played = time.time() - start_timestamp
-        return min(
-            time_played, time_played if player.duration == "LIVE" else player.duration
-        )
+        return voice_client.position
 
     async def create_player(
             self, query: str, requester: discord.Member
@@ -547,10 +421,12 @@ class MusicManager(DatabaseChecker):
         :rtype: Optional[bool]
         """
 
+        voice_client: wavelink.Player = ctx.voice_client
+
         if not await self.__check_connection(ctx):
             return
 
-        if not ctx.voice_client.is_playing():
+        if not voice_client.is_playing():
             await self.__check_queue(ctx)
             return True
 
@@ -576,8 +452,9 @@ class MusicManager(DatabaseChecker):
             )
             return
 
-        (await self.now_playing(ctx)).last_pause_timestamp = time.time()
-        ctx.voice_client.pause()
+        voice_client: wavelink.Player = ctx.voice_client
+
+        await voice_client.set_pause(pause=True)
         create_task(self.bot.loop, self.ensure_activity(ctx))
         return True
 
@@ -603,10 +480,9 @@ class MusicManager(DatabaseChecker):
             )
             return
 
-        ctx.voice_client.resume()
+        voice_client: wavelink.Player = ctx.voice_client
 
-        now_playing = await self.now_playing(ctx)
-        now_playing.start_timestamp += time.time() - now_playing.last_pause_timestamp
+        await voice_client.set_pause(pause=False)
 
         return True
 
@@ -650,7 +526,8 @@ class MusicManager(DatabaseChecker):
                     previous_players.remove(player)
                     queue.queue.remove(player)
 
-        ctx.voice_client.stop()
+        voice_client: wavelink.Player = ctx.voice_client
+        await voice_client.stop()
         return previous_players
 
     async def skip(self, ctx: commands.Context, index: int = None) -> Optional[Player]:
@@ -664,7 +541,7 @@ class MusicManager(DatabaseChecker):
         :type index: int
         :param ctx: The context.
         :type ctx: commands.Context
-        :return: The skiped player if applicable.
+        :return: The skipped player if applicable.
         :rtype: Optional[Player]
         """
 
@@ -703,7 +580,7 @@ class MusicManager(DatabaseChecker):
         else:
             player = queue.queue[original_position] if not queue.shuffle else None
 
-        ctx.voice_client.stop()
+        await ctx.voice_client.stop()
         return player
 
     async def volume(
@@ -726,12 +603,14 @@ class MusicManager(DatabaseChecker):
         if not await self.__check_connection(ctx, True, check_queue=True):
             return
 
-        if volume is None:
-            return ctx.voice_client.source.volume * 100
+        voice_client: wavelink.Player = ctx.voice_client
 
-        ctx.voice_client.source.volume = volume / 100
-        self.queue[ctx.guild.id].volume = volume / 100
-        return ctx.voice_client.source.volume * 100
+        if volume is None:
+            return voice_client.volume
+
+        await voice_client.set_volume(volume)
+        self.queue[ctx.guild.id].volume = volume
+        return voice_client.volume
 
     async def join(self, ctx: commands.Context) -> Optional[discord.VoiceChannel]:
         """
@@ -763,7 +642,7 @@ class MusicManager(DatabaseChecker):
             return
 
         channel = ctx.author.voice.channel
-        await channel.connect()
+        await channel.connect(cls=wavelink.Player)
         return channel
 
     async def leave(self, ctx: commands.Context) -> Optional[discord.VoiceChannel]:
@@ -785,9 +664,9 @@ class MusicManager(DatabaseChecker):
             self.queue[ctx.guild.id].cleanup()
             del self.queue[ctx.guild.id]
 
-        channel = ctx.voice_client.channel
-        await ctx.voice_client.disconnect()
-        return channel
+        voice_client: wavelink.Player = ctx.voice_client
+        await voice_client.disconnect(force=True)
+        return voice_client.channel
 
     async def now_playing(self, ctx: commands.Context) -> Optional[Player]:
         """
@@ -913,4 +792,19 @@ class MusicManager(DatabaseChecker):
 
         return self.queue[ctx.guild.id]
 
+    async def seek(self, ctx: commands.Context, position: int = 0) -> None:
+        """
+        |coro|
 
+        :param ctx: The context
+        :param position: time to seek to (seconds)
+        :return:
+        :rtype: None
+        """
+
+        if not await self.__check_connection(ctx, check_playing=True):
+            return
+
+        voice_client: wavelink.Player = ctx.voice_client
+
+        await voice_client.seek(position=position)
