@@ -479,10 +479,10 @@ class ImageManager:
         )
         
         draw_on_image.rounded_rectangle(
-            (198, 126, 198 + 300 * played, 128), 
+            (198, 125, 198 + 300 * played, 129), 
             fill=text_color,
             outline=None,
-            radius=2,
+            radius=3,
             width=0,
         )
         
