@@ -13,7 +13,7 @@ setup(
         "discordSuperUtils.music.lavalink": ["*"]
     },
     include_package_data=True,
-    version="0.2.6",
+    version="0.2.7",
     license="MIT",
     description="Discord Bot Development made easy!",
     long_description=README,
