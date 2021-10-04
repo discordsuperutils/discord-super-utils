@@ -10,6 +10,7 @@ setup(
         "discordSuperUtils.assets": ["*"],
         "": ["*.png", "*.ttf"],
         "discordSuperUtils.music": ["*"],
+        "discordSuperUtils.music.lavalink": ["*"]
     },
     include_package_data=True,
     version="0.2.4",
