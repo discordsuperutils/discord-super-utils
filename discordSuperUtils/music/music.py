@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import asyncio
-import re
 import time
 import uuid
 from typing import Optional, TYPE_CHECKING, List, Tuple, Dict
 
 import aiohttp
 import discord
-import wavelink
 
+from .constants import *
 from .enums import Loops, ManagerType
 from .exceptions import (
     QueueEmpty,
@@ -24,24 +23,19 @@ from .exceptions import (
     UserNotConnected,
     InvalidPreviousIndex,
 )
+from .lavalink.player import LavalinkPlayer
 from .player import Player
 from .playlist import Playlist, UserPlaylist
 from .queue import QueueManager
+from .utils import get_playlist
 from ..base import create_task, DatabaseChecker, maybe_coroutine
 from ..spotify import SpotifyClient
 from ..youtube import YoutubeClient
-from .utils import get_playlist
 
 if TYPE_CHECKING:
     from discord.ext import commands
 
-__all__ = ("MusicManager", "SPOTIFY_RE")
-
-FFMPEG_OPTIONS = {
-    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
-    "options": "-vn",
-}
-SPOTIFY_RE = re.compile("^https://open.spotify.com/")
+__all__ = ("MusicManager",)
 
 
 class MusicManager(DatabaseChecker):
@@ -189,7 +183,9 @@ class MusicManager(DatabaseChecker):
             self,
             user,
             playlist_id,
-            await self._get_playlist(playlist["playlist_url"]) if not partial else None,
+            await get_playlist(self.spotify, self.youtube, playlist["playlist_url"])
+            if not partial
+            else None,
         )
 
     @DatabaseChecker.uses_database
@@ -769,7 +765,7 @@ class MusicManager(DatabaseChecker):
 
         channel = ctx.author.voice.channel
         await channel.connect(
-            cls=wavelink.Player
+            cls=LavalinkPlayer
             if self.type == ManagerType.LAVALINK
             else discord.VoiceClient
         )

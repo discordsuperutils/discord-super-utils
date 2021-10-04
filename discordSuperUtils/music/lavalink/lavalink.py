@@ -6,8 +6,9 @@ from typing import Optional, TYPE_CHECKING, Dict
 import discord
 import wavelink
 
-from .enums import Loops, ManagerType
-from .music import MusicManager
+from .equalizer import Equalizer
+from ..enums import ManagerType
+from ..music import MusicManager
 
 if TYPE_CHECKING:
     from discord.ext import commands
@@ -91,9 +92,7 @@ class LavaLinkMusicManager(MusicManager):
         if not await self._check_connection(ctx):
             return
 
-        voice_client: wavelink.Player = ctx.voice_client
-
-        return voice_client.position
+        return ctx.voice_client.position
 
     async def volume(
         self, ctx: commands.Context, volume: int = None
@@ -118,6 +117,9 @@ class LavaLinkMusicManager(MusicManager):
 
         await ctx.voice_client.disconnect(force=True)
         return ctx.voice_client.channel
+
+    async def bassboost(self, ctx) -> None:
+        await ctx.voice_client.set_eq(Equalizer.boost())
 
     async def seek(self, ctx: commands.Context, position: int = 0) -> None:
         """

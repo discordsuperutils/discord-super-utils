@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
 
-from .music import SPOTIFY_RE
 from .playlist import Playlist
+from .constants import *
 
 if TYPE_CHECKING:
     from ..spotify import SpotifyClient
