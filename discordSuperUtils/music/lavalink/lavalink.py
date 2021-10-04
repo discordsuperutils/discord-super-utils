@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Optional, TYPE_CHECKING, Dict
 
-import discord
 import wavelink
 
 from .equalizer import Equalizer
@@ -83,20 +82,16 @@ class LavalinkMusicManager(MusicManager):
             await self.cleanup(None, ctx.guild)
             await self.call_event("on_queue_end", ctx)
 
+    @MusicManager.ensure_connection()
     async def get_player_played_duration(
         self, ctx: commands.Context, _=None
     ) -> Optional[float]:
-        if not await self._check_connection(ctx):
-            return
-
         return ctx.voice_client.position
 
+    @MusicManager.ensure_connection(check_playing=True, check_queue=True)
     async def volume(
         self, ctx: commands.Context, volume: int = None
     ) -> Optional[float]:
-        if not await self._check_connection(ctx, True, check_queue=True):
-            return
-
         if volume is None:
             return ctx.voice_client.volume
 
@@ -104,18 +99,8 @@ class LavalinkMusicManager(MusicManager):
         self.queue[ctx.guild.id].volume = volume
         return ctx.voice_client.volume
 
-    async def leave(self, ctx: commands.Context) -> Optional[discord.VoiceChannel]:
-        if not await self._check_connection(ctx):
-            return
-
-        if ctx.guild.id in self.queue:
-            self.queue[ctx.guild.id].cleanup()
-            del self.queue[ctx.guild.id]
-
-        await ctx.voice_client.disconnect(force=True)
-        return ctx.voice_client.channel
-
-    def get_equalizer(self, ctx: commands.Context) -> Optional[Equalizer]:
+    @MusicManager.ensure_connection(check_playing=True)
+    async def get_equalizer(self, ctx: commands.Context) -> Optional[Equalizer]:
         """
         Returns the ctx's equalizer.
 
@@ -124,11 +109,9 @@ class LavalinkMusicManager(MusicManager):
         :rtype: Optional[Equalizer]
         """
 
-        if not await self._check_connection(ctx, check_playing=True):
-            return
-
         return ctx.voice_client.equalizer or Equalizer.flat()
 
+    @MusicManager.ensure_connection(check_playing=True)
     async def set_equalizer(
         self, ctx: commands.Context, equalizer: Equalizer
     ) -> Optional[bool]:
@@ -143,12 +126,10 @@ class LavalinkMusicManager(MusicManager):
         :rtype: Optional[bool]
         """
 
-        if not await self._check_connection(ctx, check_playing=True):
-            return
-
         await ctx.voice_client.set_eq(equalizer)
         return True
 
+    @MusicManager.ensure_connection(check_playing=True)
     async def seek(self, ctx: commands.Context, position: int = 0) -> None:
         """
         |coro|
@@ -160,8 +141,5 @@ class LavalinkMusicManager(MusicManager):
         :return: None
         :rtype: None
         """
-
-        if not await self._check_connection(ctx, check_playing=True):
-            return
 
         await ctx.voice_client.seek(position=position)

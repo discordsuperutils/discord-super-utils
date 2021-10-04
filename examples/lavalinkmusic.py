@@ -1,7 +1,7 @@
 from discord.ext import commands
 
 import discordSuperUtils
-from discordSuperUtils import LavaLinkMusicManager
+from discordSuperUtils import LavalinkMusicManager
 import discord
 import time
 
@@ -9,7 +9,7 @@ client_id = ""
 client_secret = ""
 
 bot = commands.Bot(command_prefix="-")
-MusicManager = LavaLinkMusicManager(bot, spotify_support=False)
+MusicManager = LavalinkMusicManager(bot, spotify_support=False)
 
 
 #  = LavaLinkMusicManager(bot, client_id=client_id,
@@ -44,7 +44,7 @@ async def on_play(ctx, player):
 async def on_ready():
     print("Music manager is ready.", bot.user)
     await MusicManager.connect_node(
-        host="127.0.0.1", port=2333, password="youshallnotpass", identifier="Main"
+        host="lava.link", port=80, password="youshallnotpass"
     )
 
 
@@ -52,6 +52,11 @@ async def on_ready():
 async def leave(ctx):
     if await MusicManager.leave(ctx):
         await ctx.send("Left Voice Channel")
+
+
+@bot.command()
+async def get_equalizer(ctx):
+    print(await MusicManager.get_equalizer(ctx))
 
 
 @bot.command()
@@ -145,6 +150,11 @@ async def loop(ctx):
 
     if is_loop is not None:
         await ctx.send(f"Looping toggled to {is_loop}")
+
+
+@bot.command()
+async def bassboost(ctx):
+    await MusicManager.set_equalizer(ctx, discordSuperUtils.Equalizer.boost())
 
 
 @bot.command()
