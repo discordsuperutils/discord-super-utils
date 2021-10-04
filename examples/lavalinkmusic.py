@@ -256,4 +256,9 @@ async def seek(ctx, time: int = 0):
     await ctx.send(f"Seeked to {time}")
 
 
+@bot.command()
+async def bassboost(ctx):
+    await MusicManager.set_equalizer(ctx, discordSuperUtils.Equalizer.boost())
+
+
 bot.run("token")
