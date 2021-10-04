@@ -3,8 +3,6 @@ from __future__ import annotations
 import asyncio
 from typing import Optional, TYPE_CHECKING, List, Iterable
 
-import wavelink
-
 if TYPE_CHECKING:
     from ..youtube import YoutubeClient
     import discord
@@ -209,6 +207,3 @@ class Player:
             cls(requester, query, data=player)
             for player in await cls.fetch_song(youtube, query, playlist)
         ]
-
-
-

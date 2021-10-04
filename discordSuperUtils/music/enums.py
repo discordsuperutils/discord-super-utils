@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-__all__ = ("Loops", "PlaylistType")
+__all__ = ("Loops", "PlaylistType", "ManagerType")
 
 
 class Loops(Enum):
@@ -13,3 +13,8 @@ class Loops(Enum):
 class PlaylistType(Enum):
     SPOTIFY = 0
     YOUTUBE = 1
+
+
+class ManagerType(Enum):
+    FFMPEG = 0
+    LAVALINK = 1

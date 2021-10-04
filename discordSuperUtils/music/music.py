@@ -8,8 +8,9 @@ from typing import Optional, TYPE_CHECKING, List, Tuple, Dict
 
 import aiohttp
 import discord
+import wavelink
 
-from .enums import Loops
+from .enums import Loops, ManagerType
 from .exceptions import (
     QueueEmpty,
     NotPlaying,
@@ -26,7 +27,7 @@ from .exceptions import (
 from .player import Player
 from .playlist import Playlist, UserPlaylist
 from .queue import QueueManager
-from ..base import create_task, DatabaseChecker
+from ..base import create_task, DatabaseChecker, maybe_coroutine
 from ..spotify import SpotifyClient
 from ..youtube import YoutubeClient
 
@@ -77,7 +78,7 @@ class MusicManager(DatabaseChecker):
             ["playlists"],
         )
         self.bot = bot
-        self.bot.add_listener(self.__on_voice_state_update, "on_voice_state_update")
+        self.bot.add_listener(self._on_voice_state_update, "on_voice_state_update")
 
         self.client_id = kwargs.get("client_id")
         self.client_secret = kwargs.get("client_secret")
@@ -99,6 +100,8 @@ class MusicManager(DatabaseChecker):
                 client_secret=self.client_secret,
                 loop=self.bot.loop,
             )
+
+        self.type = ManagerType.FFMPEG
 
     @staticmethod
     def _load_opus():
@@ -142,7 +145,7 @@ class MusicManager(DatabaseChecker):
         """
 
         if voice_client:
-            await voice_client.disconnect()
+            await voice_client.disconnect(force=True)
 
         if guild.id in self.queue:
             queue = self.queue.pop(guild.id)
@@ -236,7 +239,7 @@ class MusicManager(DatabaseChecker):
             )
         )
 
-    async def __on_voice_state_update(self, member, before, after):
+    async def _on_voice_state_update(self, member, before, after):
         voice_client = member.guild.voice_client
         channel_change = before.channel != after.channel
 
@@ -279,7 +282,7 @@ class MusicManager(DatabaseChecker):
 
             await self.call_event("on_inactivity_disconnect", ctx)
 
-    async def __check_connection(
+    async def _check_connection(
         self,
         ctx: commands.Context,
         check_playing: bool = False,
@@ -322,7 +325,7 @@ class MusicManager(DatabaseChecker):
 
         return True
 
-    async def __check_queue(self, ctx: commands.Context) -> None:
+    async def _check_queue(self, ctx: commands.Context) -> None:
         """
         |coro|
 
@@ -360,7 +363,7 @@ class MusicManager(DatabaseChecker):
 
             ctx.voice_client.play(
                 player.source,
-                after=lambda x: create_task(self.bot.loop, self.__check_queue(ctx)),
+                after=lambda x: create_task(self.bot.loop, self._check_queue(ctx)),
             )
 
             player.start_timestamp = time.time()
@@ -393,7 +396,7 @@ class MusicManager(DatabaseChecker):
         :rtype: Optional[float]
         """
 
-        if not await self.__check_connection(ctx):
+        if not await self._check_connection(ctx):
             return
 
         start_timestamp = player.start_timestamp
@@ -474,7 +477,7 @@ class MusicManager(DatabaseChecker):
         :rtype: Optional[bool]
         """
 
-        if not await self.__check_connection(ctx):
+        if not await self._check_connection(ctx):
             return
 
         if ctx.guild.id in self.queue:
@@ -499,7 +502,7 @@ class MusicManager(DatabaseChecker):
         :rtype: Optional[Player]
         """
 
-        if not await self.__check_connection(ctx, check_queue=True):
+        if not await self._check_connection(ctx, check_queue=True):
             return
 
         try:
@@ -560,11 +563,11 @@ class MusicManager(DatabaseChecker):
         :rtype: Optional[bool]
         """
 
-        if not await self.__check_connection(ctx):
+        if not await self._check_connection(ctx):
             return
 
         if not ctx.voice_client.is_playing():
-            await self.__check_queue(ctx)
+            await self._check_queue(ctx)
             return True
 
     async def pause(self, ctx: commands.Context) -> Optional[bool]:
@@ -580,7 +583,7 @@ class MusicManager(DatabaseChecker):
         :rtype: Optional[bool]
         """
 
-        if not await self.__check_connection(ctx):
+        if not await self._check_connection(ctx):
             return
 
         if ctx.voice_client.is_paused():
@@ -589,8 +592,12 @@ class MusicManager(DatabaseChecker):
             )
             return
 
-        (await self.now_playing(ctx)).last_pause_timestamp = time.time()
-        ctx.voice_client.pause()
+        if self.type == ManagerType.LAVALINK:
+            await ctx.voice_client.set_pause(pause=True)
+        else:
+            (await self.now_playing(ctx)).last_pause_timestamp = time.time()
+            ctx.voice_client.pause()
+
         create_task(self.bot.loop, self.ensure_activity(ctx))
         return True
 
@@ -607,7 +614,7 @@ class MusicManager(DatabaseChecker):
         :rtype: Optional[bool]
         """
 
-        if not await self.__check_connection(ctx):
+        if not await self._check_connection(ctx):
             return
 
         if not ctx.voice_client.is_paused():
@@ -616,10 +623,15 @@ class MusicManager(DatabaseChecker):
             )
             return
 
-        ctx.voice_client.resume()
+        if self.type == ManagerType.LAVALINK:
+            await ctx.voice_client.set_pause(pause=False)
+        else:
+            ctx.voice_client.resume()
 
-        now_playing = await self.now_playing(ctx)
-        now_playing.start_timestamp += time.time() - now_playing.last_pause_timestamp
+            now_playing = await self.now_playing(ctx)
+            now_playing.start_timestamp += (
+                time.time() - now_playing.last_pause_timestamp
+            )
 
         return True
 
@@ -638,7 +650,7 @@ class MusicManager(DatabaseChecker):
         :rtype: Optional[List[Player]]
         """
 
-        if not await self.__check_connection(ctx, True, check_queue=True):
+        if not await self._check_connection(ctx, True, check_queue=True):
             return
 
         queue = self.queue[ctx.guild.id]
@@ -663,7 +675,7 @@ class MusicManager(DatabaseChecker):
                     previous_players.remove(player)
                     queue.queue.remove(player)
 
-        ctx.voice_client.stop()
+        await maybe_coroutine(ctx.voice_client.stop)
         return previous_players
 
     async def skip(self, ctx: commands.Context, index: int = None) -> Optional[Player]:
@@ -681,7 +693,7 @@ class MusicManager(DatabaseChecker):
         :rtype: Optional[Player]
         """
 
-        if not await self.__check_connection(ctx, True, check_queue=True):
+        if not await self._check_connection(ctx, True, check_queue=True):
             return
 
         queue = self.queue[ctx.guild.id]
@@ -716,7 +728,7 @@ class MusicManager(DatabaseChecker):
         else:
             player = queue.queue[original_position] if not queue.shuffle else None
 
-        ctx.voice_client.stop()
+        await maybe_coroutine(ctx.voice_client.stop)
         return player
 
     async def volume(
@@ -736,7 +748,7 @@ class MusicManager(DatabaseChecker):
         :rtype: Optional[float]
         """
 
-        if not await self.__check_connection(ctx, True, check_queue=True):
+        if not await self._check_connection(ctx, True, check_queue=True):
             return
 
         if volume is None:
@@ -776,7 +788,11 @@ class MusicManager(DatabaseChecker):
             return
 
         channel = ctx.author.voice.channel
-        await channel.connect()
+        await channel.connect(
+            cls=wavelink.Player
+            if self.type == ManagerType.LAVALINK
+            else discord.VoiceClient
+        )
         return channel
 
     async def leave(self, ctx: commands.Context) -> Optional[discord.VoiceChannel]:
@@ -791,7 +807,7 @@ class MusicManager(DatabaseChecker):
         :rtype: Optional[discord.VoiceChannel]
         """
 
-        if not await self.__check_connection(ctx):
+        if not await self._check_connection(ctx):
             return
 
         if ctx.guild.id in self.queue:
@@ -814,7 +830,7 @@ class MusicManager(DatabaseChecker):
         :rtype: Optional[Player]
         """
 
-        if not await self.__check_connection(ctx, check_queue=True):
+        if not await self._check_connection(ctx, check_queue=True):
             return
 
         now_playing = self.queue[ctx.guild.id].now_playing
@@ -839,7 +855,7 @@ class MusicManager(DatabaseChecker):
         :rtype: Optional[bool]
         """
 
-        if not await self.__check_connection(ctx, check_playing=True, check_queue=True):
+        if not await self._check_connection(ctx, check_playing=True, check_queue=True):
             return
 
         queue = self.queue[ctx.guild.id]
@@ -866,7 +882,7 @@ class MusicManager(DatabaseChecker):
         :rtype: Optional[bool]
         """
 
-        if not await self.__check_connection(ctx, check_playing=True, check_queue=True):
+        if not await self._check_connection(ctx, check_playing=True, check_queue=True):
             return
 
         self.queue[ctx.guild.id].shuffle = not self.queue[ctx.guild.id].shuffle
@@ -883,7 +899,7 @@ class MusicManager(DatabaseChecker):
         :rtype: Optional[bool]
         """
 
-        if not await self.__check_connection(ctx, check_playing=True, check_queue=True):
+        if not await self._check_connection(ctx, check_playing=True, check_queue=True):
             return
 
         self.queue[ctx.guild.id].autoplay = not self.queue[ctx.guild.id].autoplay
@@ -901,7 +917,7 @@ class MusicManager(DatabaseChecker):
         :rtype: Optional[bool]
         """
 
-        if not await self.__check_connection(ctx, check_playing=True, check_queue=True):
+        if not await self._check_connection(ctx, check_playing=True, check_queue=True):
             return
 
         self.queue[ctx.guild.id].loop = (
@@ -921,7 +937,7 @@ class MusicManager(DatabaseChecker):
         :rtype: Optional[QueueManager]
         """
 
-        if not await self.__check_connection(ctx, check_queue=True):
+        if not await self._check_connection(ctx, check_queue=True):
             return
 
         return self.queue[ctx.guild.id]

@@ -43,11 +43,9 @@ async def on_play(ctx, player):
 @bot.event
 async def on_ready():
     print("Music manager is ready.", bot.user)
-    await MusicManager.connect_nodes(host="127.0.0.1",
-                                     port=2333,
-                                     password="youshallnotpass",
-                                     identifier="Main"
-                                     )
+    await MusicManager.connect_nodes(
+        host="127.0.0.1", port=2333, password="youshallnotpass", identifier="Main"
+    )
 
 
 @bot.command()
@@ -85,7 +83,7 @@ async def play(ctx, *, query: str):
 
     if players:
         if await MusicManager.queue_add(
-                players=players, ctx=ctx
+            players=players, ctx=ctx
         ) and not await MusicManager.play(ctx):
             await ctx.send("Added to queue")
 
@@ -203,7 +201,7 @@ async def queue(ctx):
     if ctx_queue := await MusicManager.get_queue(ctx):
         formatted_queue = [
             f"Title: '{x.title}\nRequester: {x.requester and x.requester.mention}"
-            for x in ctx_queue.queue[ctx_queue.pos + 1:]
+            for x in ctx_queue.queue[ctx_queue.pos + 1 :]
         ]
 
         embeds = discordSuperUtils.generate_embeds(

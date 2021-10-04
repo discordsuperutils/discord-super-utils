@@ -49,6 +49,7 @@ setup(
         "aiomysql",
         "discord_components",
         "pytz",
+        "wavelink",
     ],
     classifiers=[  # Optional
         # How mature is this project? Common values are
