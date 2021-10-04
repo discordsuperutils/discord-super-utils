@@ -30,11 +30,12 @@ from .queue import QueueManager
 from ..base import create_task, DatabaseChecker, maybe_coroutine
 from ..spotify import SpotifyClient
 from ..youtube import YoutubeClient
+from .utils import get_playlist
 
 if TYPE_CHECKING:
     from discord.ext import commands
 
-__all__ = ("MusicManager",)
+__all__ = ("MusicManager", "SPOTIFY_RE")
 
 FFMPEG_OPTIONS = {
     "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
@@ -111,26 +112,6 @@ class MusicManager(DatabaseChecker):
             except OSError:
                 raise RuntimeError("Could not load an opus lib.")
 
-    async def _get_playlist(self, url: str) -> Playlist:
-        """
-        |coro|
-
-        Returns the playlist found from the URL.
-
-        :param str url: The URL.
-        :return: The playlist.
-        :rtype: Playlist
-        """
-
-        if SPOTIFY_RE.match(url) and self.spotify_support:
-            spotify_info = await self.spotify.fetch_full_playlist(url)
-            return Playlist.from_spotify_dict(spotify_info) if spotify_info else None
-
-        playlist_info = await self.youtube.get_playlist_information(
-            await self.youtube.get_query_id(url)
-        )
-        return Playlist.from_youtube_dict(playlist_info) if playlist_info else None
-
     async def cleanup(
         self, voice_client: Optional[discord.VoiceClient], guild: discord.Guild
     ):
@@ -168,7 +149,7 @@ class MusicManager(DatabaseChecker):
         :rtype: None
         """
 
-        playlist = await self._get_playlist(url)
+        playlist = await get_playlist(self.spotify, self.youtube, url)
         if not playlist:
             return
 
@@ -377,7 +358,7 @@ class MusicManager(DatabaseChecker):
             await self.call_event("on_queue_end", ctx)
 
     async def get_player_playlist(self, player: Player) -> Optional[Playlist]:
-        return await self._get_playlist(player.used_query)
+        return await get_playlist(self.spotify, self.youtube, player.used_query)
 
     async def get_player_played_duration(
         self, ctx: commands.Context, player: Player
