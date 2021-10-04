@@ -70,17 +70,6 @@ class LavaLinkMusicManager(MusicManager):
         )
 
     async def _check_queue(self, ctx: commands.Context) -> None:
-        """
-        |coro|
-
-        Plays the next song in the queue, handles looping, queue looping, autoplay, etc.
-
-        :param ctx: The context of the voice client.
-        :type ctx: commands.Context
-        :return: None
-        :rtype: None
-        """
-
         try:
             if not ctx.voice_client or not ctx.voice_client.is_connected():
                 return
@@ -100,8 +89,7 @@ class LavaLinkMusicManager(MusicManager):
 
             queue.played_history.append(player)
             queue.vote_skips = []
-            if queue.loop == Loops.QUEUE_LOOP or queue.loop == Loops.NO_LOOP:
-                await self.call_event("on_play", ctx, player)
+            await self.call_event("on_play", ctx, player)
 
         except (IndexError, KeyError):
             await self.cleanup(None, ctx.guild)

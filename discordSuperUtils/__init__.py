@@ -15,7 +15,7 @@ from .leveling import LevelingManager
 from .messagefilter import MessageFilter, MessageResponseGenerator
 from .modmail import ModMailManager
 from .music.exceptions import *
-from .music.lavalinkmusic import LavaLinkMusicManager
+from .music.lavalink import LavaLinkMusicManager
 from .music.music import *
 from .music.player import Player
 from .music.enums import *
