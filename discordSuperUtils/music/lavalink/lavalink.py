@@ -35,7 +35,7 @@ class LavaLinkMusicManager(MusicManager):
             bot, spotify_support, inactivity_timeout, minimum_users, **kwargs
         )
 
-        self._cast_type = wavelink.Player
+        self.default_volume *= 100
         self.type = ManagerType.LAVALINK
         self.contexts: Dict[int, commands.Context] = {}
         self.bot.add_listener(self.__on_song_end, "on_wavelink_track_end")
@@ -120,6 +120,7 @@ class LavaLinkMusicManager(MusicManager):
 
     async def bassboost(self, ctx) -> None:
         await ctx.voice_client.set_eq(Equalizer.boost())
+        print('set')
 
     async def seek(self, ctx: commands.Context, position: int = 0) -> None:
         """

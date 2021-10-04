@@ -120,7 +120,11 @@ class MusicManager(DatabaseChecker):
         """
 
         if voice_client:
-            await voice_client.disconnect(force=True)
+            try:
+                await voice_client.disconnect(force=True)
+            except ValueError:
+                # Raised from wavelink
+                pass
 
         if guild.id in self.queue:
             queue = self.queue.pop(guild.id)
