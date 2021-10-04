@@ -15,10 +15,11 @@ from .leveling import LevelingManager
 from .messagefilter import MessageFilter, MessageResponseGenerator
 from .modmail import ModMailManager
 from .music.exceptions import *
-from .music.lavalink.lavalink import LavaLinkMusicManager
+from .music.lavalink.lavalink import LavalinkMusicManager
 from .music.music import *
 from .music.player import Player
 from .music.enums import *
+from .music.lavalink.equalizer import Equalizer
 from .music.queue import QueueManager
 from .mute import MuteManager, AlreadyMuted
 from .paginator import PageManager, generate_embeds, ButtonsPageManager

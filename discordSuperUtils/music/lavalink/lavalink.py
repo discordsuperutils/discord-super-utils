@@ -12,10 +12,10 @@ from ..music import MusicManager
 if TYPE_CHECKING:
     from discord.ext import commands
 
-__all__ = ("LavaLinkMusicManager",)
+__all__ = ("LavalinkMusicManager",)
 
 
-class LavaLinkMusicManager(MusicManager):
+class LavalinkMusicManager(MusicManager):
     """
     Represents a lavalink music manager.
     """
@@ -115,11 +115,39 @@ class LavaLinkMusicManager(MusicManager):
         await ctx.voice_client.disconnect(force=True)
         return ctx.voice_client.channel
 
-    async def bassboost(self, ctx) -> None:
-        await ctx.voice_client.set_eq(Equalizer.boost())
+    def get_equalizer(self, ctx: commands.Context) -> Optional[Equalizer]:
+        """
+        Returns the ctx's equalizer.
 
-    async def flat(self, ctx):
-        await ctx.voice_client.set_eq(Equalizer.flat())
+        :param commands.Context ctx: The context.
+        :return: The equalizer.
+        :rtype: Optional[Equalizer]
+        """
+
+        if not await self._check_connection(ctx, check_playing=True):
+            return
+
+        return ctx.voice_client.equalizer or Equalizer.flat()
+
+    async def set_equalizer(
+        self, ctx: commands.Context, equalizer: Equalizer
+    ) -> Optional[bool]:
+        """
+        |coro|
+
+        Sets the ctx's equalizer.
+
+        :param commands.Context ctx: The context.
+        :param Equalizer equalizer: The equalizer.
+        :return: A bool indicating if the set was successful,
+        :rtype: Optional[bool]
+        """
+
+        if not await self._check_connection(ctx, check_playing=True):
+            return
+
+        await ctx.voice_client.set_eq(equalizer)
+        return True
 
     async def seek(self, ctx: commands.Context, position: int = 0) -> None:
         """
