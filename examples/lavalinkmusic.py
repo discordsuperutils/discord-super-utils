@@ -43,7 +43,7 @@ async def on_play(ctx, player):
 @bot.event
 async def on_ready():
     print("Music manager is ready.", bot.user)
-    await MusicManager.connect_nodes(
+    await MusicManager.connect_node(
         host="127.0.0.1", port=2333, password="youshallnotpass", identifier="Main"
     )
 
@@ -243,7 +243,7 @@ async def ls(ctx):
 @bot.command()
 async def seek(ctx, time: int = 0):
     await MusicManager.seek(ctx, time * 1000)
-    await ctx.send(f"seeked to {time}")
+    await ctx.send(f"Seeked to {time}")
 
 
 bot.run("token")
