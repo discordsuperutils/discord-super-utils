@@ -9,8 +9,6 @@ from .economy import EconomyManager, EconomyAccount
 from .fivem import FiveMServer
 from .imaging import ImageManager, Backgrounds
 from .infractions import InfractionManager
-from .interactions.client import SlashManager
-from .interactions.interaction import Interaction, OptionType
 from .invitetracker import InviteTracker
 from .kick import KickManager
 from .leveling import LevelingManager
