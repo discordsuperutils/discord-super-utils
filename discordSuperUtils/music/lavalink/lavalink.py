@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from typing import Optional, TYPE_CHECKING, Dict
 
 import discord
@@ -12,8 +11,6 @@ from ..music import MusicManager
 
 if TYPE_CHECKING:
     from discord.ext import commands
-
-SPOTIFY_RE = re.compile("^https://open.spotify.com/")
 
 __all__ = ("LavaLinkMusicManager",)
 
@@ -120,7 +117,9 @@ class LavaLinkMusicManager(MusicManager):
 
     async def bassboost(self, ctx) -> None:
         await ctx.voice_client.set_eq(Equalizer.boost())
-        print('set')
+
+    async def flat(self, ctx):
+        await ctx.voice_client.set_eq(Equalizer.flat())
 
     async def seek(self, ctx: commands.Context, position: int = 0) -> None:
         """
