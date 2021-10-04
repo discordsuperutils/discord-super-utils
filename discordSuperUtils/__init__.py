@@ -14,6 +14,7 @@ from .kick import KickManager
 from .leveling import LevelingManager
 from .messagefilter import MessageFilter, MessageResponseGenerator
 from .modmail import ModMailManager
+from .music import LavalinkMusicManager
 from .music.exceptions import *
 from .music.lavalink.lavalink import LavalinkMusicManager
 from .music.music import *
