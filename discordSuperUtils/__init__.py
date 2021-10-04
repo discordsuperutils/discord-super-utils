@@ -32,6 +32,6 @@ from .template import TemplateManager
 from .youtube import YoutubeClient
 
 __title__ = "discordSuperUtils"
-__version__ = "0.2.5"
+__version__ = "0.2.6"
 __author__ = "Koyashie07 & Adam7100"
 __license__ = "MIT"
