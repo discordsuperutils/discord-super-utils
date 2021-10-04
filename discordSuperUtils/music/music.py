@@ -220,7 +220,7 @@ class MusicManager(DatabaseChecker):
         voice_client = member.guild.voice_client
         channel_change = before.channel != after.channel
 
-        if member == self.bot.user and channel_change:
+        if not after and member == self.bot.user and channel_change:
             await self.cleanup(voice_client, member.guild)
 
         elif voice_client and channel_change:
