@@ -22,16 +22,6 @@ class LavaLinkMusicManager(MusicManager):
     Represents a lavalink music manager.
     """
 
-    __slots__ = (
-        "bot",
-        "client_id",
-        "client_secret",
-        "spotify_support",
-        "inactivity_timeout",
-        "queue",
-        "spotify",
-    )
-
     def __init__(
         self,
         bot: commands.Bot,
