@@ -673,7 +673,7 @@ class MusicManager(DatabaseChecker):
 
         original_queue_position = queue.pos
         queue.pos -= previous_index
-        previous_players = queue.queue[queue.pos + 1 : original_queue_position]
+        previous_players = queue.queue[queue.pos + 1: original_queue_position]
 
         if no_autoplay:
             for player in previous_players[:]:
@@ -705,7 +705,7 @@ class MusicManager(DatabaseChecker):
         # Created duplicate to make sure InvalidSkipIndex isn't raised when the user does pass an index and the queue
         # is empty.
         skip_index = 0 if index is None else index - 1
-        if not queue.pos < skip_index < len(queue.queue):
+        if not skip_index < len(queue.queue) and not queue.pos < skip_index:
             if index:
                 await self.call_event(
                     "on_music_error", ctx, InvalidSkipIndex("Skip index invalid.")
