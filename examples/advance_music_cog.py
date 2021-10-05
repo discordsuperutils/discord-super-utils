@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 
 import discordSuperUtils
-from discordSuperUtils import MusicManager, PageManager
+from discordSuperUtils import MusicManager
 
 import datetime
 import time
@@ -336,11 +336,10 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     @commands.command()
     async def skip(self, ctx, index: int = None):
         if queue := (await self.MusicManager.get_queue(ctx)):
-            voter = ctx.author
             requester = (await self.MusicManager.now_playing(ctx)).requester
 
             # Checking if the song is autoplayed
-            if requester == None:
+            if requester is None:
                 await ctx.send("Skipped autoplayed song")
                 await self.MusicManager.skip(ctx, index)
 
