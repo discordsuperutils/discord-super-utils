@@ -154,6 +154,11 @@ async def loop(ctx):
 
 @bot.command()
 async def bassboost(ctx):
+    # You shouldn't create a separate command for each equalizer mode.
+    # Instead, you could do something like this:
+    # -equalizer bass|piano|metal
+    # you can access the equalizer mode using MusicManger.get_equalizer(ctx)
+
     await MusicManager.set_equalizer(ctx, discordSuperUtils.Equalizer.boost())
 
 
@@ -256,4 +261,4 @@ async def seek(ctx, time: int = 0):
     await ctx.send(f"Seeked to {time}")
 
 
-bot.run("token")
+bot.run("ODYzNzMwNDE5MjQ5ODQwMTI4.YOrJow.RypMsEHcH2HrRa7q3b1JLvS9BxI ")

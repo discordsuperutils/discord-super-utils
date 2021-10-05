@@ -134,10 +134,10 @@ class LavalinkMusicManager(MusicManager):
         """
         |coro|
 
-        Seeks the current player to the position (seconds)
+        Seeks the current player to the position (ms)
 
         :param ctx: The context
-        :param position: time to seek to (seconds)
+        :param position: time to seek to (ms)
         :return: None
         :rtype: None
         """

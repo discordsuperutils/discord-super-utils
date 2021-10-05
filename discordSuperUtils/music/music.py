@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import time
 import uuid
-from typing import Optional, TYPE_CHECKING, List, Tuple, Dict
+from typing import Optional, TYPE_CHECKING, List, Tuple, Dict, Callable
 
 import aiohttp
 import discord
@@ -99,12 +99,20 @@ class MusicManager(DatabaseChecker):
         self.type = ManagerType.FFMPEG
 
     @staticmethod
-    def _load_opus():
+    def _load_opus() -> None:
+        """
+        Ensures the opus library is loaded.
+
+        :return: None
+        :rtype: None
+        :raises: RuntimeError: Could not find opus on the machine.
+        """
+
         if not discord.opus.is_loaded():
             try:
                 discord.opus._load_default()
             except OSError:
-                raise RuntimeError("Could not load an opus lib.")
+                raise RuntimeError("Could not find opus on the machine.")
 
     async def cleanup(
         self, voice_client: Optional[discord.VoiceClient], guild: discord.Guild
@@ -307,7 +315,16 @@ class MusicManager(DatabaseChecker):
 
         return True
 
-    def ensure_connection(*d_args, **d_kwargs):
+    def ensure_connection(*d_args, **d_kwargs) -> Callable:
+        """
+        A decorator which ensures there is a proper connection before invoking the decorated function.
+
+        :param d_args: The connection arguments.
+        :param d_kwargs: The connection key arguments.
+        :return: The decorator.
+        :rtype: Callable
+        """
+
         def decorator(function):
             async def wrapper(self, ctx, *args, **kwargs):
                 if await self._check_connection(ctx, *d_args, **d_kwargs):
@@ -369,6 +386,16 @@ class MusicManager(DatabaseChecker):
             await self.call_event("on_queue_end", ctx)
 
     async def get_player_playlist(self, player: Player) -> Optional[Playlist]:
+        """
+        |coro|
+
+        Returns the player's playlist, if applicable.
+
+        :param Player player: The player.
+        :return: The player's playlist.
+        :rtype: Optional[Playlist]
+        """
+
         return await get_playlist(self.spotify, self.youtube, player.used_query)
 
     @ensure_connection()
@@ -784,6 +811,8 @@ class MusicManager(DatabaseChecker):
         if ctx.guild.id in self.queue:
             self.queue[ctx.guild.id].cleanup()
             del self.queue[ctx.guild.id]
+
+        await maybe_coroutine(ctx.voice_client.stop)
 
         channel = ctx.voice_client.channel
         await ctx.voice_client.disconnect(force=True)
