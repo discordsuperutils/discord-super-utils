@@ -14,6 +14,7 @@ from .kick import KickManager
 from .leveling import LevelingManager
 from .messagefilter import MessageFilter, MessageResponseGenerator
 from .modmail import ModMailManager
+from .music import LavalinkMusicManager
 from .music.exceptions import *
 from .music.lavalink.lavalink import LavalinkMusicManager
 from .music.music import *
@@ -31,6 +32,6 @@ from .template import TemplateManager
 from .youtube import YoutubeClient
 
 __title__ = "discordSuperUtils"
-__version__ = "0.2.2"
+__version__ = "0.2.7"
 __author__ = "Koyashie07 & Adam7100"
 __license__ = "MIT"
