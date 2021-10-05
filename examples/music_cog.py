@@ -1,6 +1,6 @@
 import discordSuperUtils
 from discord.ext import commands
-from discordSuperUtils import MusicManager, PageManager
+from discordSuperUtils import MusicManager
 
 
 bot = commands.Bot(command_prefix="-")
