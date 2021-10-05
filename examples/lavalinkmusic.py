@@ -261,4 +261,4 @@ async def seek(ctx, time: int = 0):
     await ctx.send(f"Seeked to {time}")
 
 
-bot.run("ODYzNzMwNDE5MjQ5ODQwMTI4.YOrJow.RypMsEHcH2HrRa7q3b1JLvS9BxI ")
+bot.run("token")
