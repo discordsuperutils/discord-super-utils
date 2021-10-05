@@ -478,7 +478,9 @@ class MusicManager(DatabaseChecker):
 
     @ensure_connection()
     async def queue_add(
-        self, ctx: commands.Context, players: List[Player],
+        self,
+        ctx: commands.Context,
+        players: List[Player],
     ) -> Optional[bool]:
         """
         |coro|
