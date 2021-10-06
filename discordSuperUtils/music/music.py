@@ -931,3 +931,24 @@ class MusicManager(DatabaseChecker):
         """
 
         return self.queue[ctx.guild.id]
+    
+    def parse_duration(self, duration: Union[str, float], hour_format: bool = True) -> str:
+        """
+        |coro|
+
+        Returns parsed duration.
+
+        :param duration: The duration.
+        :type duration: Union[str, float]
+        :param duration: Format Hours.
+        :type duration: bool
+        :return: The parsed duration.
+        :rtype: str
+        """
+        
+        if duration == "LIVE":
+            return duration
+        
+        time_format = "%H:%M:%S" if hour_format else "%M:%S"
+        
+        return (time.strftime(time_format, time.gmtime(round(duration))))
