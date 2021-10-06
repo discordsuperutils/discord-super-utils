@@ -95,7 +95,7 @@ class ModMailManager(DatabaseChecker):
 
         guildids = [guild.id for guild in guilds]
 
-        if int(msg) in guildids:
+        if int(msg.content) in guildids:
             return self.bot.get_guild(int(msg.content))
         return None
 
