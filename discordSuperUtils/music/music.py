@@ -939,11 +939,11 @@ class MusicManager(DatabaseChecker):
         Returns parsed duration.
 
         :param duration: The duration.
-        :type duration: float
+        :type duration: Union[str, float]
         :param duration: Format Hours.
-        :type duration: boolean
+        :type duration: bool
         :return: The parsed duration.
-        :rtype: Union[str, float]
+        :rtype: str
         """
         
         if duration == "LIVE":
