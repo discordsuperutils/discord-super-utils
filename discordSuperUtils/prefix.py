@@ -79,6 +79,10 @@ class PrefixManager(DatabaseChecker):
         :rtype: None
         """
 
+        if prefix in self.default_prefixes:
+            await self.delete_prefix(guild)
+            return
+
         self.prefix_cache[guild.id] = prefix
         await self.database.updateorinsert(
             self.tables["prefixes"],
