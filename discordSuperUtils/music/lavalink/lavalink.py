@@ -114,7 +114,7 @@ class LavalinkMusicManager(MusicManager):
     @MusicManager.ensure_connection(check_playing=True)
     async def set_equalizer(
         self, ctx: commands.Context, equalizer: Equalizer
-    ) -> Optional[bool]:
+    ) -> bool:
         """
         |coro|
 
@@ -130,7 +130,7 @@ class LavalinkMusicManager(MusicManager):
         return True
 
     @MusicManager.ensure_connection(check_playing=True)
-    async def seek(self, ctx: commands.Context, position: int = 0) -> None:
+    async def seek(self, ctx: commands.Context, position: int = 0) -> Optional[bool]:
         """
         |coro|
 
@@ -138,8 +138,9 @@ class LavalinkMusicManager(MusicManager):
 
         :param ctx: The context
         :param position: time to seek to (ms)
-        :return: None
-        :rtype: None
+        :return: A bool indicating if the seek was successful
+        :rtype: Optional[bool]
         """
 
         await ctx.voice_client.seek(position=position)
+        return True
