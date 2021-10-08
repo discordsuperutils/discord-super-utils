@@ -1,3 +1,5 @@
+from typing import Optional
+
 import discord
 from discord.ext import commands
 
@@ -5,13 +7,31 @@ import discordSuperUtils
 from discordSuperUtils import MusicManager
 
 import datetime
-import time
-from typing import Optional
 
 bot = commands.Bot(
     command_prefix=commands.when_mentioned_or("-"),
     intents=discord.Intents.all(),
 )
+
+
+def get_user_spotify(member: discord.Member) -> Optional[discord.Spotify]:
+    """
+    Returns the member's spotify activity, if applicable
+
+    :param discord.Member member: The member.
+    :return: The member's spotify activity.
+    :rtype: Optional[discord.Spotify]
+    """
+
+    return next(
+        (
+            activity
+            for activity in member.activities
+            if isinstance(activity, discord.Spotify)
+        ),
+        None,
+    )
+
 
 # Format view count
 def parse_count(count):
@@ -462,14 +482,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     @commands.command()
     async def spotify_user_song(self, ctx, member: discord.Member = None):
         member = member if member else ctx.author
-        spotify_result = next(
-            (
-                activity
-                for activity in member.activities
-                if isinstance(activity, discord.Spotify)
-            ),
-            None,
-        )
+        spotify_result = get_user_spotify(member)
 
         if not spotify_result:
             await ctx.send(f"{member.mention} is not listening to Spotify.")
@@ -485,14 +498,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     @commands.command()
     async def play_user_spotify(self, ctx, member: discord.Member = None):
         member = member if member else ctx.author
-        spotify_result = next(
-            (
-                activity
-                for activity in member.activities
-                if isinstance(activity, discord.Spotify)
-            ),
-            None,
-        )
+        spotify_result = get_user_spotify(member)
 
         if not spotify_result:
             await ctx.send(f"{member.mention} is not listening to Spotify.")
