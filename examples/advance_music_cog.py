@@ -471,7 +471,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
             None,
         )
 
-        if spotify_result is None:
+        if not spotify_result:
             await ctx.send(f"{member.mention} is not listening to Spotify.")
             return
 
@@ -494,7 +494,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
             None,
         )
 
-        if spotify_result:
+        if not spotify_result:
             await ctx.send(f"{member.mention} is not listening to Spotify.")
             return
 
