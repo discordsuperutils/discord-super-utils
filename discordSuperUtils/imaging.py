@@ -249,7 +249,7 @@ class ImageManager:
         small_font = ImageFont.truetype(font_path, 30)
 
         draw = ImageDraw.Draw(card, "RGBA")
-        if transparency:
+        if transparency and isinstance(background, Backgrounds):
             draw.rectangle((30, 30, 994, 470), fill=(0, 0, 0, transparency))
 
         draw.text((512, 360), title, title_color, font=big_font, anchor="ms")
