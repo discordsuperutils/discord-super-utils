@@ -321,13 +321,13 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     async def volume(self, ctx, volume:int = None):
         if volume:
             if volume < 0:
-                if current_volume := await self.MusicManager.volume(ctx, volume) is not None:
-                    await ctx.send(f"Volume set to {current_volume}%")
-                    return
+                await ctx.send("Invalid volume")
+                return
             
-            await ctx.send("Invalid volume")
-            return
-            
+            if current_volume := await self.MusicManager.volume(ctx, volume) is not None:
+                await ctx.send(f"Volume set to {current_volume}%")
+                return
+
         await ctx.send(f"Current volume: {await self.MusicManager.volume(ctx)}")
 
     # Song loop command
