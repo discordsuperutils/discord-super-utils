@@ -324,8 +324,8 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
                 await ctx.send("Invalid volume")
                 return
             
-            if current_volume := await self.MusicManager.volume(ctx, volume) is not None:
-                await ctx.send(f"Volume set to {current_volume}%")
+            if await self.MusicManager.volume(ctx, volume) is not None:
+                await ctx.send(f"Volume set to {volume}%")
                 return
 
         await ctx.send(f"Current volume: {await self.MusicManager.volume(ctx)}")
@@ -349,11 +349,11 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     # History command
     @commands.command()
     async def history(self, ctx, songs_per_page:int = 15):
-        if history := (await self.MusicManager.get_queue(ctx)).history:
+        if queue := (await self.MusicManager.get_queue(ctx)):
             formatted_history = [
                 f"""**Title:** [{x.title}]({x.url})
                 Requester: {x.requester.mention if x.requester else 'Autoplay'}"""
-                for x in history
+                for x in queue.history
             ]
 
             embeds = discordSuperUtils.generate_embeds(
@@ -380,8 +380,6 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     @commands.command()
     async def skip(self, ctx, index: int = None):
         if queue := (await self.MusicManager.get_queue(ctx)):
-            if index:
-                index = indexer(index)
             
             requester = (await self.MusicManager.now_playing(ctx)).requester
 
@@ -520,8 +518,6 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     # Previous/Rewind command
     @commands.command()
     async def previous(self, ctx, index: int = None):
-        if index:
-            index = indexer(index)
         
         if previous_player := await self.MusicManager.previous(ctx, index, no_autoplay = True):
             await ctx.send(f"Rewinding from {previous_player[0].title}")
