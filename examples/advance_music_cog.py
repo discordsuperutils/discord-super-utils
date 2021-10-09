@@ -223,7 +223,9 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     async def now_playing(self, ctx):
         if player := await self.MusicManager.now_playing(ctx):
             # Played duration
-            duration_played = await self.MusicManager.get_player_played_duration(ctx, player)
+            duration_played = await self.MusicManager.get_player_played_duration(
+                ctx, player
+            )
 
             # Loop status
             loop = (await self.MusicManager.get_queue(ctx)).loop
@@ -251,8 +253,18 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
                 timestamp=datetime.datetime.utcnow(),
                 color=discord.Color.from_rgb(0, 255, 255),
             )
-            embed.add_field(name="Played", value=self.MusicManager.parse_duration(duration=duration_played, hour_format=False))
-            embed.add_field(name="Duration", value=self.MusicManager.parse_duration(duration=player.duration, hour_format=False))
+            embed.add_field(
+                name="Played",
+                value=self.MusicManager.parse_duration(
+                    duration=duration_played, hour_format=False
+                ),
+            )
+            embed.add_field(
+                name="Duration",
+                value=self.MusicManager.parse_duration(
+                    duration=player.duration, hour_format=False
+                ),
+            )
             embed.add_field(name="Loop", value=loop_status)
             embed.add_field(name="Requested by", value=requester)
             embed.add_field(name="Uploader", value=uploader)

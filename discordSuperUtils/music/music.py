@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import time
 import uuid
-from typing import Optional, TYPE_CHECKING, List, Tuple, Dict, Callable
+from typing import Optional, TYPE_CHECKING, List, Tuple, Dict, Callable, Union
 
 import aiohttp
 import discord
@@ -673,7 +673,7 @@ class MusicManager(DatabaseChecker):
 
         original_queue_position = queue.pos
         queue.pos -= previous_index
-        previous_players = queue.queue[queue.pos + 1: original_queue_position]
+        previous_players = queue.queue[queue.pos + 1 : original_queue_position]
 
         if no_autoplay:
             for player in previous_players[:]:
@@ -931,13 +931,15 @@ class MusicManager(DatabaseChecker):
         """
 
         return self.queue[ctx.guild.id]
-    
-    def parse_duration(self, duration: Union[str, float], hour_format: bool = True) -> str:
+
+    @staticmethod
+    def parse_duration(duration: Union[str, float], hour_format: bool = True) -> str:
         """
         |coro|
 
         Returns parsed duration.
 
+        :param bool hour_format: A bool indicating if the parse should contain hours.
         :param duration: The duration.
         :type duration: Union[str, float]
         :param duration: Format Hours.
@@ -945,10 +947,10 @@ class MusicManager(DatabaseChecker):
         :return: The parsed duration.
         :rtype: str
         """
-        
+
         if duration == "LIVE":
             return duration
-        
+
         time_format = "%H:%M:%S" if hour_format else "%M:%S"
-        
-        return (time.strftime(time_format, time.gmtime(round(duration))))
+
+        return time.strftime(time_format, time.gmtime(round(duration)))

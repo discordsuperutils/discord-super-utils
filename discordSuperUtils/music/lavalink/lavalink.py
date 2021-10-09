@@ -112,9 +112,7 @@ class LavalinkMusicManager(MusicManager):
         return ctx.voice_client.equalizer or Equalizer.flat()
 
     @MusicManager.ensure_connection(check_playing=True)
-    async def set_equalizer(
-        self, ctx: commands.Context, equalizer: Equalizer
-    ) -> bool:
+    async def set_equalizer(self, ctx: commands.Context, equalizer: Equalizer) -> bool:
         """
         |coro|
 
