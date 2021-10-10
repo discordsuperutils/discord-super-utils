@@ -13,11 +13,38 @@ bot = commands.Bot(
     intents=discord.Intents.all(),
 )
 
+# Custom Check Error
+class NoVoiceConncted(commands.CheckFailure):
+    pass
 
+
+class BotAlreadyConncted(commands.CheckFailure):
+    pass
+
+
+class InvalidIndex(commands.CheckFailure):
+    pass
+
+
+# Custom Checks
+def ensure_voice_state():
+    async def predicate(ctx):
+        if not ctx.author.voice or not ctx.author.voice.channel:
+            raise commands.NoVoiceConncted()
+
+        if ctx.voice_client:
+            if ctx.voice_client.channel != ctx.author.voice.channel:
+                raise commands.BotAlreadyConncted()
+
+        return True
+
+    return commands.check(predicate)
+
+
+# Fetch spotify activity
 def get_user_spotify(member: discord.Member) -> Optional[discord.Spotify]:
     """
     Returns the member's spotify activity, if applicable
-
     :param discord.Member member: The member.
     :return: The member's spotify activity.
     :rtype: Optional[discord.Spotify]
@@ -54,6 +81,14 @@ def parse_count(count):
         )
     except IndexError:
         return original_count
+
+
+# Index converter/validator
+def indexer(index: int):
+    if index <= 0:
+        raise InvalidIndex
+
+    return index - 1
 
 
 # Music commands
@@ -97,13 +132,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
         else:
             await ctx.send("Query not found.")
 
-    # cog error handler
-    async def cog_command_error(
-        self, ctx: commands.Context, error: commands.CommandError
-    ):
-        print("An error occurred: {}".format(str(error)))
-
-    # Error handler
+    # DSU Error handler
     @discordSuperUtils.CogManager.event(discordSuperUtils.MusicManager)
     async def on_music_error(self, ctx, error):
         errors = {
@@ -132,8 +161,6 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
 
         # Extracting useful data from player object
         thumbnail = player.data["videoDetails"]["thumbnail"]["thumbnails"][-1]["url"]
-        title = player.data["videoDetails"]["title"]
-        url = player.url
         uploader = player.data["videoDetails"]["author"]
         requester = player.requester.mention if player.requester else "Autoplay"
 
@@ -141,7 +168,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
             title="Now Playing",
             color=discord.Color.from_rgb(255, 255, 0),
             timestamp=datetime.datetime.now(datetime.timezone.utc),
-            description=f"[**{title}**]({url}) by **{uploader}**",
+            description=f"[**{player.title}**]({player.url}) by **{uploader}**",
         )
         embed.add_field(name="Requested by", value=requester)
         embed.set_thumbnail(url=thumbnail)
@@ -167,6 +194,9 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     # On ready event
     @commands.Cog.listener()
     async def on_ready(self):
+        database = discordSuperUtils.DatabaseManager.connect(...)  # Database connection
+        await self.MusicManager.connect_to_database(database, ["playlists"])
+
         print("Music manager is ready.", self.bot.user)
 
     # You can add this to your existing on_ready function
@@ -240,7 +270,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
             thumbnail = player.data["videoDetails"]["thumbnail"]["thumbnails"][-1][
                 "url"
             ]
-            title = player.data["videoDetails"]["title"]
+            title = player.title
             url = player.url
             uploader = player.data["videoDetails"]["author"]
             views = player.data["videoDetails"]["viewCount"]
@@ -279,12 +309,14 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
 
     # Join voice channel command
     @commands.command()
+    @ensure_voice_state()
     async def join(self, ctx):
         if await self.MusicManager.join(ctx):
             await ctx.send("Joined Voice Channel")
 
     # Play song command
     @commands.command()
+    @ensure_voice_state()
     async def play(self, ctx, *, query: str):
         # Calling the play function
         await Music.play_cmd(self, ctx, query)
@@ -303,9 +335,18 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
 
     # Volume command
     @commands.command()
-    async def volume(self, ctx, volume: int):
-        if current_volume := await self.MusicManager.volume(ctx, volume) is not None:
-            await ctx.send(f"Volume set to {current_volume}%")
+    async def volume(self, ctx, volume: int = None):
+        if volume:
+            if volume < 0:
+                await ctx.send("Invalid volume")
+                return
+
+            if await self.MusicManager.volume(ctx, volume):
+                await ctx.send(f"Volume set to {volume}%")
+                return
+
+        if current_volume := await self.MusicManager.volume(ctx):
+            await ctx.send(f"Current volume: {current_volume}")
 
     # Song loop command
     @commands.command()
@@ -325,11 +366,11 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
 
     # History command
     @commands.command()
-    async def history(self, ctx):
-        if queue := await self.MusicManager.get_queue(ctx):
-            auto = "Autoplay"
+    async def history(self, ctx, songs_per_page: int = 15):
+        if queue := (await self.MusicManager.get_queue(ctx)):
             formatted_history = [
-                f"Title: '{x.title}\nRequester: {x.requester.mention if x.requester else auto}"
+                f"""**Title:** [{x.title}]({x.url})
+                Requester: {x.requester.mention if x.requester else 'Autoplay'}"""
                 for x in queue.history
             ]
 
@@ -337,7 +378,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
                 formatted_history,
                 "Song History",
                 "Shows all played songs",
-                25,
+                songs_per_page,
                 string_format="{}",
             )
 
@@ -349,13 +390,15 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     # Stop command
     @commands.command()
     async def stop(self, ctx):
-        await self.MusicManager.cleanup(ctx.voice_client, ctx.guild)
+        await self.MusicManager.cleanup(voice_client=None, guild=ctx.guild)
+        ctx.voice_client.stop()
         await ctx.send("⏹️")
 
     # Skip command with voting
     @commands.command()
     async def skip(self, ctx, index: int = None):
         if queue := (await self.MusicManager.get_queue(ctx)):
+
             requester = (await self.MusicManager.now_playing(ctx)).requester
 
             # Checking if the song is autoplayed
@@ -421,23 +464,31 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
 
     # Queue command
     @commands.command()
-    async def queue(self, ctx):
+    async def queue(self, ctx, songs_per_page: int = 10):
         if queue := await self.MusicManager.get_queue(ctx):
-            auto = "Autoplay"
             formatted_queue = [
-                f"Title: '{x.title}\nRequester: {x.requester.mention if x.requester else auto}"
+                f"""**Title:** [{x.title}]({x.url})
+                Requester: {x.requester.mention if x.requester else 'Autoplay'}"""
                 for x in queue.queue
+            ]
+
+            player = await self.MusicManager.now_playing(ctx)
+            uploader = player.data["videoDetails"]["author"]
+            thumbnail = player.data["videoDetails"]["thumbnail"]["thumbnails"][-1][
+                "url"
             ]
 
             embeds = discordSuperUtils.generate_embeds(
                 formatted_queue,
                 "Queue",  # Title of embed
-                f"Now Playing: {await self.MusicManager.now_playing(ctx)}",
-                25,  # Number of rows in one pane
-                string_format="{}",
+                f"""**Now Playing:
+                [{player.title}]({player.url})** by **{uploader}**""",
+                songs_per_page,  # Number of rows in one pane
                 color=11658814,  # Color of embed in decimal color
+                string_format="{}",
             )
 
+            embeds[0].set_thumbnail(url=thumbnail)
             for embed in embeds:
                 embed.timestamp = datetime.datetime.utcnow()
 
@@ -487,7 +538,10 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
     # Previous/Rewind command
     @commands.command()
     async def previous(self, ctx, index: int = None):
-        if previous_player := await self.MusicManager.previous(ctx, index):
+
+        if previous_player := await self.MusicManager.previous(
+            ctx, index, no_autoplay=True
+        ):
             await ctx.send(f"Rewinding from {previous_player[0].title}")
 
     # Spotify song details of a user
@@ -508,6 +562,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
 
     # Spotify song from user
     @commands.command()
+    @ensure_voice_state()
     async def play_user_spotify(self, ctx, member: discord.Member = None):
         member = member if member else ctx.author
         spotify_result = get_user_spotify(member)
@@ -521,20 +576,115 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
         # Calling the play function
         await Music.play_cmd(self, ctx, query)
 
-    # Before invoke checks. Add more commands if you wish to
-    @join.before_invoke
-    @play.before_invoke
-    @play_user_spotify.before_invoke
-    async def ensure_voice_state(self, ctx: commands.Context):
-        if not ctx.author.voice or not ctx.author.voice.channel:
-            await ctx.send("You are not connected to any voice channel.")
-            raise commands.CommandError()
+    # Playlist command
+    @commands.group(invoke_without_command=True)
+    async def playlists(self, ctx, user: discord.user = None):
+        user = user or ctx.author
+        user_playlists = await MusicManager.get_user_playlists(user)
 
-        if ctx.voice_client:
-            if ctx.voice_client.channel != ctx.author.voice.channel:
-                await ctx.send("Bot is already in a voice channel.")
-                raise commands.CommandError()
-        # Or raise a custom error
+        if not user_playlists:
+            await ctx.send(f"No playlists of {user.mention} were found.")
+            return
+
+        formatted_playlists = [
+            f"""**Title:** '{user_playlist.playlist.title}'
+            Total Songs: {len(user_playlist.playlist.songs)}
+            ID: `{user_playlist.id}`"""
+            for user_playlist in user_playlists
+        ]
+
+        embeds = discordSuperUtils.generate_embeds(
+            formatted_playlists,
+            f"Playlists of {user}",
+            f"Showing {user.mention}'s playlists.",
+            15,
+            string_format="{}",
+        )
+
+        for embed in embeds:
+            embed.timestamp = datetime.datetime.utcnow()
+
+        page_manager = discordSuperUtils.PageManager(ctx, embeds, public=True)
+        await page_manager.run()
+
+    # Playlist add command
+    @playlists.command()
+    async def add(self, ctx, url: str):
+        added_playlist = await MusicManager.add_playlist(ctx.author, url)
+
+        if not added_playlist:
+            await ctx.send("Playlist URL not found!")
+            return
+
+        await ctx.send(f"Playlist added with ID `{added_playlist.id}`")
+
+    @playlists.command()
+    @ensure_voice_state()
+    async def play(self, ctx, index: int, user: discord.member = None):
+        # Checking valid index
+        index = indexer(index)
+
+        index -= 1
+        user = user or ctx.author
+
+        # Fetching user's playlists
+        playlists = await self.MusicManager.get_user_playlists(user, partial=True)
+
+        if not playlists:
+            await ctx.send(f"No playlists of {user.mention} were found.")
+            return
+
+        # Fetching the playlist at index
+        playlist = playlists[index]
+
+        if not playlist:
+            await ctx.send("No playlist at this index.")
+            return
+
+        # Fetching full playlist
+        user_playlist = await self.MusicManager.get_playlist(ctx.author, playlist.id)
+
+        # Playing the playlist
+        async with ctx.typing():
+            players = await MusicManager.create_playlist_players(
+                user_playlist.playlist, ctx.author
+            )
+
+            if players:
+                if not ctx.voice_client or not ctx.voice_client.is_connected():
+                    await self.MusicManager.join(ctx)
+
+                if await self.MusicManager.queue_add(
+                    players=players, ctx=ctx
+                ) and not await self.MusicManager.play(ctx):
+                    await ctx.send(f"Added playlist {playlist.playlist.title}")
+                else:
+                    await ctx.send("✅")
+
+            else:
+                await ctx.send("Query not found.")
+
+
+# Bot error handler
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        await ctx.send("Invalid command.")
+
+    elif isinstance(error, commands.NoVoiceConncted):
+        await ctx.send("You are not connected to any voice channel.")
+
+    elif isinstance(error, commands.BotAlreadyConncted):
+        await ctx.send(
+            f"Bot is already in a voice channel <#{ctx.voice_client.channel.id}>"
+        )
+
+    elif isinstance(error, InvalidIndex):
+        await ctx.send(f"Invalid Index")
+
+    else:
+        print("unexpected err")
+        raise error
 
 
 bot.add_cog(Music(bot))
