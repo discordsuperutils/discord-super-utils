@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import random
 import time
 import uuid
 from typing import Optional, TYPE_CHECKING, List, Tuple, Dict, Callable, Union
@@ -730,7 +731,7 @@ class MusicManager(DatabaseChecker):
             player = (await Player.get_similar_videos(last_video_id, self.youtube))[0]
             queue.add(player)
         else:
-            player = queue.queue[original_position] if not queue.shuffle else None
+            player = queue.queue[original_position]
 
         await maybe_coroutine(ctx.voice_client.stop)
         return player
@@ -881,8 +882,17 @@ class MusicManager(DatabaseChecker):
         :rtype: Optional[bool]
         """
 
-        self.queue[ctx.guild.id].shuffle = not self.queue[ctx.guild.id].shuffle
-        return self.queue[ctx.guild.id].shuffle
+        queue = self.queue[ctx.guild.id]
+
+        queue.shuffle = not queue.shuffle
+        if queue.shuffle:
+            queue.original_queue = queue.queue
+
+            play_queue = queue.queue[queue.pos + 1:]
+            shuffled_queue = random.sample(play_queue, len(play_queue))
+            queue.queue = queue.queue[:queue.pos] + [queue.now_playing] + shuffled_queue
+
+        return queue.shuffle
 
     @ensure_connection(check_playing=True, check_queue=True)
     async def autoplay(self, ctx: commands.Context) -> Optional[bool]:

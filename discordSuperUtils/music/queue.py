@@ -28,6 +28,7 @@ class QueueManager:
         "vote_skips",
         "played_history",
         "queue_loop_start",
+        "original_queue"
     )
 
     def __init__(self, volume: float, queue: List[Player]):
@@ -40,6 +41,7 @@ class QueueManager:
         self.loop = Loops.NO_LOOP
         self.vote_skips = []
         self.played_history: List[Player] = []
+        self.original_queue: List[Player] = []
 
     async def get_next_player(self, youtube: YoutubeClient) -> Player:
         """
@@ -62,11 +64,7 @@ class QueueManager:
             if self.is_finished():
                 self.pos = self.queue_loop_start
 
-            player = self.queue[
-                random.randint(self.pos, len(self.queue) - self.pos)
-                if self.shuffle
-                else self.pos
-            ]
+            player = self.queue[self.pos]
 
         else:
             if not self.queue and self.autoplay:
@@ -74,11 +72,7 @@ class QueueManager:
                 player = (await Player.get_similar_videos(last_video_id, youtube))[0]
 
             else:
-                player = self.queue[
-                    random.randint(self.pos, len(self.queue) - self.pos)
-                    if self.shuffle
-                    else self.pos
-                ]
+                player = self.queue[self.pos]
 
         return player
 
