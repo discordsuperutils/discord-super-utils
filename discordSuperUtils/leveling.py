@@ -192,10 +192,8 @@ class LevelingManager(DatabaseChecker):
         )
 
         if (time.time() - member_cooldown) >= self.xp_cooldown:
-
+            await self.create_account(message.author)
             member_account = await self.get_account(message.author)
-            if member_account is None:
-                member_account = self.create_account(message.author)
 
             await member_account.set_xp(await member_account.xp() + self.xp_on_message)
             self.cooldown_members[message.guild.id][message.author.id] = time.time()
@@ -247,7 +245,6 @@ class LevelingManager(DatabaseChecker):
             ),
             self.generate_checks(member),
         )
-        return await self.get_account(member)
 
     async def get_account(self, member):
         self._check_database()
