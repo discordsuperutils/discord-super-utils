@@ -35,7 +35,7 @@ class YoutubeClient:
     ):
         self.timeout = timeout
         self.loop = loop or asyncio.get_event_loop()
-        self.cache: Dict[str, dict]
+        self.cache: Dict[str, dict] = {}
         self.session = session or aiohttp.ClientSession(
             timeout=aiohttp.ClientTimeout(total=self.timeout, connect=3), loop=self.loop
         )
