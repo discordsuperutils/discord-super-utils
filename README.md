@@ -480,6 +480,7 @@ Known Issues
 --------------
 
 - Removing an animated emoji wont be recognized as a reaction role, as it shows up as not animated for some reason, breaking the reaction matcher. (Discord API Related)
+- Leveling might call the on_level_up event multiple times, resulting in duplicate messages, caused by duplicate records in the leveling table.
 
 Support
 --------------
