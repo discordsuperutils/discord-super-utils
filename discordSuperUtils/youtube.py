@@ -13,7 +13,7 @@ class YoutubeClient:
     Represents a Youtube client that fetches music.
     """
 
-    __slots__ = ("session", "timeout", "loop", "cache")
+    __slots__ = ("session", "timeout", "loop")
 
     # This access key is not private, and is used in ALL youtube API requests from the website (from any user).
     ACCESS_KEY = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"
@@ -35,7 +35,6 @@ class YoutubeClient:
     ):
         self.timeout = timeout
         self.loop = loop or asyncio.get_event_loop()
-        self.cache: Dict[str, dict] = {}
         self.session = session or aiohttp.ClientSession(
             timeout=aiohttp.ClientTimeout(total=self.timeout, connect=3), loop=self.loop
         )
@@ -223,9 +222,6 @@ class YoutubeClient:
         if not video_id:
             return []
 
-        if cached_info := self.cache.get(video_id):
-            return cached_info
-
         if len(video_id) == 11:  # Video
             queries = [
                 {
@@ -259,7 +255,5 @@ class YoutubeClient:
             tracks = [await r.json() if r else {} for r in requests]
         except asyncio.exceptions.TimeoutError:
             tracks = []
-
-        self.cache[video_id] = tracks
 
         return tracks

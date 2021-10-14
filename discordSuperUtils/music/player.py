@@ -49,6 +49,9 @@ class Player:
     def __str__(self):
         return self.title
 
+    def __repr__(self):
+        return f"<{self.__class__.__name__} requester={self.requester}, title={self.title}, duration={self.duration}>"
+
     @staticmethod
     def _get_stream_url(player: dict) -> str:
         """
