@@ -103,7 +103,7 @@ class SpotifyClient:
         result_tracks = []
 
         for request in requests:
-            result_tracks += request.get("items")
+            result_tracks += [x for x in request.get("items") if x]
 
         initial_request.pop("items")
         initial_request["tracks"] = result_tracks
@@ -127,6 +127,7 @@ class SpotifyClient:
             return [
                 self.make_title(song["track"])
                 for song in (await self.fetch_full_playlist(url))["tracks"]
+                if song["track"]
             ]
 
         if playlist_type == "track":
