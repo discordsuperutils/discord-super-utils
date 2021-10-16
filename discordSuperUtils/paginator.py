@@ -7,7 +7,13 @@ __all__ = ("generate_embeds", "EmojiError", "PageManager", "ButtonsPageManager")
 
 
 def generate_embeds(
-    list_to_generate, title, description, fields=25, color=0xFF0000, string_format="{}"
+    list_to_generate,
+    title,
+    description,
+    fields=25,
+    color=0xFF0000,
+    string_format="{}",
+    footer: str = None,
 ):
     num_of_embeds = ceil((len(list_to_generate) + 1) / fields)
 
@@ -32,6 +38,9 @@ def generate_embeds(
 
         if (index + 1) % fields == 0:
             embed_index += 1
+
+    for embed in embeds:
+        embed.set_footer(text=footer)
 
     return embeds
 
