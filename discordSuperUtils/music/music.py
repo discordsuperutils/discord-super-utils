@@ -888,9 +888,11 @@ class MusicManager(DatabaseChecker):
         if queue.shuffle:
             queue.original_queue = queue.queue
 
-            play_queue = queue.queue[queue.pos + 1:]
+            play_queue = queue.queue[queue.pos + 1 :]
             shuffled_queue = random.sample(play_queue, len(play_queue))
-            queue.queue = queue.queue[:queue.pos] + [queue.now_playing] + shuffled_queue
+            queue.queue = (
+                queue.queue[: queue.pos] + [queue.now_playing] + shuffled_queue
+            )
 
         return queue.shuffle
 
