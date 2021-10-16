@@ -888,9 +888,11 @@ class MusicManager(DatabaseChecker):
         if queue.shuffle:
             queue.original_queue = queue.queue
 
-            play_queue = queue.queue[queue.pos + 1:]
+            play_queue = queue.queue[queue.pos + 1 :]
             shuffled_queue = random.sample(play_queue, len(play_queue))
-            queue.queue = queue.queue[:queue.pos] + [queue.now_playing] + shuffled_queue
+            queue.queue = (
+                queue.queue[: queue.pos] + [queue.now_playing] + shuffled_queue
+            )
 
         return queue.shuffle
 
@@ -964,3 +966,29 @@ class MusicManager(DatabaseChecker):
         time_format = "%H:%M:%S" if hour_format else "%M:%S"
 
         return time.strftime(time_format, time.gmtime(round(duration)))
+
+    @ensure_connection(check_queue=True)
+    async def move(
+        self, ctx: commands.Context, player_index: int, new_index: int
+    ) -> Optional[Player]:
+        """
+
+        :param player_index: The index of the player that you want to move.
+        :param new_index: The index you want to move the player to.
+        :param ctx: Context to fetch the queue from
+        :return: The player object that was moved
+        :rtype: Optional[Player]
+        """
+
+        queue = await self.get_queue(ctx)
+        player_index += queue.pos
+        new_index += queue.pos
+
+        if new_index > len(queue.queue) or player_index > len(queue.queue):
+            return await self.call_event(
+                "on_music_error", ctx, InvalidSkipIndex("Skip index is invalid")
+            )
+
+        player = queue.remove(player_index)
+        queue.queue.insert(new_index, player)
+        return player

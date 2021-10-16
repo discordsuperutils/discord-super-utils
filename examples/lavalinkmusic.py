@@ -9,11 +9,12 @@ client_id = ""
 client_secret = ""
 
 bot = commands.Bot(command_prefix="-")
-MusicManager = LavalinkMusicManager(bot, spotify_support=False)
+# MusicManager = LavalinkMusicManager(bot, spotify_support=False)
 
 
-#  = LavaLinkMusicManager(bot, client_id=client_id,
-#                                    client_secret=client_secret, spotify_support=True)
+MusicManager = LavalinkMusicManager(
+    bot, client_id=client_id, client_secret=client_secret, spotify_support=True
+)
 
 
 # if using spotify support use this instead ^^^
