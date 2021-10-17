@@ -28,7 +28,7 @@ class QueueManager:
         "vote_skips",
         "played_history",
         "queue_loop_start",
-        "original_queue"
+        "original_queue",
     )
 
     def __init__(self, volume: float, queue: List[Player]):

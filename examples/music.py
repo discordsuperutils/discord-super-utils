@@ -8,11 +8,13 @@ client_id = ""
 client_secret = ""
 
 bot = commands.Bot(command_prefix="-")
-MusicManager = MusicManager(bot, spotify_support=False)
+# MusicManager = MusicManager(bot, spotify_support=False)
 
 
-# MusicManager = MusicManager(bot, client_id=client_id,
-#                                   client_secret=client_secret, spotify_support=True)
+MusicManager = MusicManager(
+    bot, client_id=client_id, client_secret=client_secret, spotify_support=True
+)
+
 
 # if using spotify support use this instead ^^^
 
@@ -40,8 +42,8 @@ async def on_play(ctx, player):
 
 @bot.event
 async def on_ready():
-    database = discordSuperUtils.DatabaseManager.connect(...)
-    await MusicManager.connect_to_database(database, ["playlists"])
+    # database = discordSuperUtils.DatabaseManager.connect(...)
+    # await MusicManager.connect_to_database(database, ["playlists"])
 
     print("Music manager is ready.", bot.user)
 
@@ -317,6 +319,11 @@ async def ls(ctx):
 
         if loop_status:
             await ctx.send(loop_status)
+
+
+@bot.command()
+async def move(ctx, player_index: int, index: int):
+    await MusicManager.move(ctx, player_index, index)
 
 
 bot.run("token")

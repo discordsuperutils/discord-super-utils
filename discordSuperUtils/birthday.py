@@ -269,7 +269,7 @@ class BirthdayManager(DatabaseChecker):
         self._check_database()
 
         member_data = await self.database.select(
-            self.tables["birthdays"], [],{"guild": guild.id}, fetchall=True
+            self.tables["birthdays"], [], {"guild": guild.id}, fetchall=True
         )
 
         birthdays = {}
