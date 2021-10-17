@@ -95,7 +95,7 @@ class QueueManager:
         :rtype: List[Player]
         """
 
-        return self.queue[self.pos + 1:]
+        return self.queue[self.pos + 1 :]
 
     @property
     def now_playing(self) -> Player:
@@ -139,7 +139,7 @@ class QueueManager:
         :rtype: None
         """
 
-        self.queue = self.queue[:self.pos + 1]
+        self.queue = self.queue[: self.pos + 1]
 
     def remove(self, index: int) -> Union[Player, Any]:
         """
