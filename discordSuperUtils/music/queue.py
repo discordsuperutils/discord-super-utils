@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import random
 from typing import List, TYPE_CHECKING, Union, Any
 
 from .enums import Loops
 
 if TYPE_CHECKING:
     from ..youtube import YoutubeClient
+    import discord
     from .player import Player
 
 
@@ -87,6 +87,17 @@ class QueueManager:
         return self.pos >= len(self.queue)
 
     @property
+    def player_queue(self) -> List[Player]:
+        """
+        Returns the player queue.
+
+        :return: The list of players
+        :rtype: List[Player]
+        """
+
+        return self.queue[self.pos + 1:]
+
+    @property
     def now_playing(self) -> Player:
         """
         Returns the currently playing song.
@@ -128,7 +139,7 @@ class QueueManager:
         :rtype: None
         """
 
-        self.queue.clear()
+        self.queue = self.queue[:self.pos + 1]
 
     def remove(self, index: int) -> Union[Player, Any]:
         """
@@ -141,6 +152,23 @@ class QueueManager:
         """
 
         return self.queue.pop(index)
+
+    def remove_member(self, member: discord.Member) -> List[Player]:
+        """
+        Removes the member from the queue.
+
+        :param discord.Member member: The member to remove from the queue.
+        :return: The players removed.
+        :rtype: None
+        """
+
+        removed_players = []
+        for player in self.player_queue:
+            if player.requester == member:
+                removed_players.append(player)
+                self.queue.remove(player)
+
+        return removed_players
 
     def cleanup(self):
         """

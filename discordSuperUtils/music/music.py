@@ -123,6 +123,7 @@ class MusicManager(DatabaseChecker):
 
         Cleans up after a guild.
 
+        :param discord.Guild guild: The guild to cleanup.
         :param Optional[discord.VoiceClient] voice_client: The voice client.
         :return: None
         :rtype: None
