@@ -104,11 +104,10 @@ class InfractionManager(DatabaseChecker, Punisher):
     def add_punishments(self, punishments: List[Punishment]) -> None:
         self.punishments = punishments
 
+    @DatabaseChecker.uses_database
     async def warn(
         self, ctx: commands.Context, member: discord.Member, reason: str
     ) -> Infraction:
-        self._check_database()
-
         generated_id = str(uuid.uuid4())
         await self.database.insert(
             self.tables["infractions"],
@@ -136,14 +135,13 @@ class InfractionManager(DatabaseChecker, Punisher):
         await self.warn(ctx, member, punishment.punishment_reason)
         await self.call_event("on_punishment", ctx, member, punishment)
 
+    @DatabaseChecker.uses_database
     async def get_infractions(
         self,
         member: discord.Member,
         infraction_id: str = None,
         from_timestamp: Union[int, float] = 0,
     ) -> List[Infraction]:
-        self._check_database()
-
         checks = {"guild": member.guild.id, "member": member.id}
         if infraction_id:
             checks["id"] = infraction_id

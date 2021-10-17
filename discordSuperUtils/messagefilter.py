@@ -40,8 +40,6 @@ class MessageResponseGenerator(ABC):
         :rtype: Union[bool, Any]
         """
 
-        pass
-
 
 class DefaultMessageResponseGenerator(MessageResponseGenerator):
     URL_RE = re.compile(

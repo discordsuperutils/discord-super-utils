@@ -30,6 +30,7 @@ class PrefixManager(DatabaseChecker):
         self.prefix_cache = {}
         bot.command_prefix = self.__get_prefix
 
+    @DatabaseChecker.uses_database
     async def get_prefix(self, guild: Union[discord.Guild, Any]) -> Iterable[str]:
         """
         |coro|
@@ -53,6 +54,7 @@ class PrefixManager(DatabaseChecker):
 
         return prefix
 
+    @DatabaseChecker.uses_database
     async def delete_prefix(self, guild: discord.Guild) -> None:
         """
         |coro|
@@ -67,6 +69,7 @@ class PrefixManager(DatabaseChecker):
         self.prefix_cache.pop(guild.id)
         await self.database.delete(self.tables["prefixes"], {"guild": guild.id})
 
+    @DatabaseChecker.uses_database
     async def set_prefix(self, guild: discord.Guild, prefix: str) -> None:
         """
         |coro|
@@ -92,8 +95,6 @@ class PrefixManager(DatabaseChecker):
         )
 
     async def __get_prefix(self, bot, message: discord.Message) -> Tuple[str]:
-        self._check_database()
-
         if not message.guild:
             return (
                 commands.when_mentioned_or(*self.default_prefixes)(bot, message)

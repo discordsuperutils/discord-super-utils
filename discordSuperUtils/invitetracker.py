@@ -64,11 +64,10 @@ class InviteTracker(DatabaseChecker):
                     await self.__update_guild_cache(member.guild)
                     return inv
 
+    @DatabaseChecker.uses_database
     async def get_members_invited(
         self, user: Union[discord.User, discord.Member], guild: discord.Guild
     ):
-        self._check_database()
-
         invited_members = await self.database.select(
             self.tables["invites"],
             ["members_invited"],
@@ -92,14 +91,13 @@ class InviteTracker(DatabaseChecker):
         inviter = invite.guild.get_member(invite.inviter.id)
         return inviter if inviter else await self.bot.get_user(invite.inviter.id)
 
+    @DatabaseChecker.uses_database
     async def register_invite(
         self,
         invite: discord.Invite,
         member: discord.Member,
         inviter: Union[discord.Member, discord.User],
     ) -> None:
-        self._check_database()
-
         invited_members = await self.get_members_invited(inviter, invite.guild)
         if member.id in invited_members:
             return
@@ -139,7 +137,6 @@ class InviteTracker(DatabaseChecker):
     async def __cleanup_guild_cache(self, guild: discord.Guild) -> None:
         self.cache.pop(guild.id)
 
+    @DatabaseChecker.uses_database
     def get_user_info(self, member: discord.Member) -> InviteAccount:
-        self._check_database()
-
         return InviteAccount(self, member)

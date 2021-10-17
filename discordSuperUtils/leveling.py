@@ -109,6 +109,7 @@ class LevelingManager(DatabaseChecker):
         self.cooldown_members = {}
         self.add_event(self.on_database_connect)
 
+    @DatabaseChecker.uses_database
     async def set_interval(self, guild: discord.Guild, interval: int = None) -> None:
         """
         Set the role interval of a guild.
@@ -132,6 +133,7 @@ class LevelingManager(DatabaseChecker):
             self.tables["roles"], sql_insert_data, {"guild": guild.id}, sql_insert_data
         )
 
+    @DatabaseChecker.uses_database
     async def get_roles(self, guild: discord.Guild) -> List[int]:
         """
         Returns the role IDs of the guild.
@@ -142,8 +144,6 @@ class LevelingManager(DatabaseChecker):
         :rtype: List[int]
         """
 
-        self._check_database()
-
         return [
             role["role"]
             for role in await self.database.select(
@@ -151,6 +151,7 @@ class LevelingManager(DatabaseChecker):
             )
         ]
 
+    @DatabaseChecker.uses_database
     async def set_roles(
         self, guild: discord.Guild, roles: Iterable[discord.Role]
     ) -> None:
@@ -164,8 +165,6 @@ class LevelingManager(DatabaseChecker):
         :return:
         :rtype: None
         """
-
-        self._check_database()
 
         await self.database.delete(self.tables["role_list"], {"guild": guild.id})
 
@@ -181,9 +180,8 @@ class LevelingManager(DatabaseChecker):
     def generate_checks(member: discord.Member):
         return {"guild": member.guild.id, "member": member.id}
 
+    @DatabaseChecker.uses_database
     async def __handle_experience(self, message):
-        self._check_database()
-
         if not message.guild or message.author.bot:
             return
 
@@ -235,9 +233,8 @@ class LevelingManager(DatabaseChecker):
                 if roles:
                     await message.author.add_roles(*roles)
 
+    @DatabaseChecker.uses_database
     async def create_account(self, member):
-        self._check_database()
-
         await self.database.insertifnotexists(
             self.tables["xp"],
             dict(
@@ -246,9 +243,8 @@ class LevelingManager(DatabaseChecker):
             self.generate_checks(member),
         )
 
+    @DatabaseChecker.uses_database
     async def get_account(self, member):
-        self._check_database()
-
         member_data = await self.database.select(
             self.tables["xp"], [], self.generate_checks(member), True
         )
@@ -258,9 +254,8 @@ class LevelingManager(DatabaseChecker):
 
         return None
 
+    @DatabaseChecker.uses_database
     async def get_leaderboard(self, guild: discord.Guild):
-        self._check_database()
-
         guild_info = sorted(
             await self.database.select(
                 self.tables["xp"], [], {"guild": guild.id}, True

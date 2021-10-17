@@ -35,9 +35,8 @@ class ReactionManager(DatabaseChecker):
 
         return emoji_string
 
+    @DatabaseChecker.uses_database
     async def __handle_reactions(self, payload):
-        self._check_database()
-
         if payload.user_id == self.bot.user.id:
             return
 
@@ -48,7 +47,7 @@ class ReactionManager(DatabaseChecker):
         }
 
         reaction_role_data = await self.database.select(
-            self.tables["reaction_roles"], self.tables_column_data[0], database_checks
+            self.tables["reaction_roles"], [], database_checks
         )
 
         if not reaction_role_data:
@@ -76,11 +75,10 @@ class ReactionManager(DatabaseChecker):
                 elif reaction_role_data["remove_on_reaction"] == 1:
                     await member.remove_roles(role)
 
+    @DatabaseChecker.uses_database
     async def create_reaction(
         self, guild, message, role, emoji, remove_on_reaction: int
     ):
-        self._check_database()
-
         await self.database.insertifnotexists(
             self.tables["reaction_roles"],
             dict(

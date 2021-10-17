@@ -202,6 +202,7 @@ class BirthdayManager(DatabaseChecker):
     async def _on_database_connect(self):
         self.bot.loop.create_task(self.__detect_birthdays())
 
+    @DatabaseChecker.uses_database
     async def create_birthday(
         self, member: discord.Member, member_birthday: float, timezone: str = "UTC"
     ) -> None:
@@ -217,8 +218,6 @@ class BirthdayManager(DatabaseChecker):
         :rtype: None
         """
 
-        self._check_database()
-
         await self.database.insertifnotexists(
             self.tables["birthdays"],
             dict(
@@ -230,6 +229,7 @@ class BirthdayManager(DatabaseChecker):
             {"guild": member.guild.id, "member": member.id},
         )
 
+    @DatabaseChecker.uses_database
     async def get_birthday(self, member: discord.Member) -> Optional[BirthdayMember]:
         """
         |coro|
@@ -240,8 +240,6 @@ class BirthdayManager(DatabaseChecker):
         :return: The BirthdayMember object if applicable.
         :rtype: Optional[BirthdayMember]
         """
-
-        self._check_database()
 
         member_data = await self.database.select(
             self.tables["birthdays"],
@@ -255,6 +253,7 @@ class BirthdayManager(DatabaseChecker):
 
         return None
 
+    @DatabaseChecker.uses_database
     async def get_upcoming(self, guild: discord.Guild) -> List[BirthdayMember]:
         """
         |coro|
@@ -265,8 +264,6 @@ class BirthdayManager(DatabaseChecker):
         :return: The birthdays, sorted by their nearest birthday date.
         :rtype: List[BirthdayMember]
         """
-
-        self._check_database()
 
         member_data = await self.database.select(
             self.tables["birthdays"], [], {"guild": guild.id}, fetchall=True
@@ -314,6 +311,7 @@ class BirthdayManager(DatabaseChecker):
             if current_utc_time.astimezone(tz).utcoffset() in checks
         ]
 
+    @DatabaseChecker.uses_database
     async def get_members_with_birthday(
         self, timezones: List[str]
     ) -> List[Dict[str, Any]]:

@@ -55,6 +55,8 @@ class Punisher(ABC):
         self, ctx: commands.Context, member: discord.Member, punishment: Punishment
     ) -> None:
         """
+        |coro|
+
         The manager's punish function.
 
         :param ctx: The context of the punishments.

@@ -47,6 +47,7 @@ class BanManager(DatabaseChecker, Punisher):
     async def _on_database_connect(self):
         self.bot.loop.create_task(self.__check_bans())
 
+    @DatabaseChecker.uses_database
     async def get_banned_members(self) -> List[Dict[str, Any]]:
         """
         |coro|
@@ -127,6 +128,7 @@ class BanManager(DatabaseChecker, Punisher):
             if x.user.id == member.id:
                 return x.user
 
+    @DatabaseChecker.uses_database
     async def unban(
         self, member: Union[discord.Member, discord.User], guild: discord.Guild = None
     ) -> bool:
@@ -141,8 +143,6 @@ class BanManager(DatabaseChecker, Punisher):
         :rtype: bool
         :raises: UnbanFailure: Cannot unban a discord.User without a guild.
         """
-
-        self._check_database()
 
         if isinstance(member, discord.User) and not guild:
             raise UnbanFailure("Cannot unban a discord.User without a guild.")
@@ -176,6 +176,7 @@ class BanManager(DatabaseChecker, Punisher):
         if await self.unban(member):
             await self.call_event("on_unban", member, reason)
 
+    @DatabaseChecker.uses_database
     async def ban(
         self,
         member: discord.Member,
@@ -196,8 +197,6 @@ class BanManager(DatabaseChecker, Punisher):
         :return: None
         :rtype: None
         """
-
-        self._check_database()
 
         await member.ban(reason=reason)
 

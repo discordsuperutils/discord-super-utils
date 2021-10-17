@@ -50,6 +50,7 @@ class MuteManager(DatabaseChecker, Punisher):
         self.bot.loop.create_task(self.__check_mutes())
         self.bot.add_listener(self.on_member_join)
 
+    @DatabaseChecker.uses_database
     async def get_muted_members(self) -> List[Dict[str, Any]]:
         """
         |coro|
@@ -66,6 +67,7 @@ class MuteManager(DatabaseChecker, Punisher):
             if x["timestamp_of_unmute"] <= datetime.utcnow().timestamp()
         ]
 
+    @DatabaseChecker.uses_database
     async def on_member_join(self, member: discord.Member) -> None:
         """
         |coro|
@@ -189,6 +191,7 @@ class MuteManager(DatabaseChecker, Punisher):
         if await self.unmute(member):
             await self.call_event("on_unmute", member, reason)
 
+    @DatabaseChecker.uses_database
     async def mute(
         self,
         member: discord.Member,
@@ -210,8 +213,6 @@ class MuteManager(DatabaseChecker, Punisher):
         :return: None,
         :rtype: None
         """
-
-        self._check_database()
 
         muted_role = discord.utils.get(member.guild.roles, name="Muted")
         if not muted_role:
@@ -243,6 +244,7 @@ class MuteManager(DatabaseChecker, Punisher):
 
         self.bot.loop.create_task(self.__handle_unmute(time_of_mute, member, reason))
 
+    @DatabaseChecker.uses_database
     async def unmute(self, member: discord.Member) -> Optional[bool]:
         """
         |coro|
