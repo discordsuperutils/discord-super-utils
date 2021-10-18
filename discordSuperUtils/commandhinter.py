@@ -91,12 +91,12 @@ class CommandHinter:
 
         for command in self.bot.commands:
             if isinstance(command, commands.Group):
-                names += [command.name] + command.aliases
+                names += [command.name] + list(command.aliases)
                 for inner_command in command.commands:
-                    names += [inner_command.name] + inner_command.aliases
+                    names += [inner_command.name] + list(inner_command.aliases)
 
             else:
-                names += [command.name] + command.aliases
+                names += [command.name] + list(command.aliases)
 
         return names
 
