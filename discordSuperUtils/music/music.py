@@ -158,6 +158,7 @@ class MusicManager(DatabaseChecker):
         """
 
         playlist = await get_playlist(self.spotify, self.youtube, url)
+
         if not playlist:
             return
 
@@ -190,17 +191,15 @@ class MusicManager(DatabaseChecker):
             self.tables["playlists"], [], {"user": user.id, "id": playlist_id}
         )
 
-        if not playlist:
-            return
-
-        return UserPlaylist(
-            self,
-            user,
-            playlist_id,
-            await get_playlist(self.spotify, self.youtube, playlist["playlist_url"])
-            if not partial
-            else None,
-        )
+        if playlist:
+            return UserPlaylist(
+                self,
+                user,
+                playlist_id,
+                await get_playlist(self.spotify, self.youtube, playlist["playlist_url"])
+                if not partial
+                else None,
+            )
 
     @DatabaseChecker.uses_database
     async def get_user_playlists(
@@ -234,9 +233,8 @@ class MusicManager(DatabaseChecker):
         voice_client = member.guild.voice_client
         channel_change = before.channel != after.channel
 
-        if member == self.bot.user and channel_change:
-            if before.channel:
-                await self.cleanup(voice_client, member.guild)
+        if member == self.bot.user and channel_change and before.channel:
+            await self.cleanup(voice_client, member.guild)
 
         elif voice_client and channel_change:
             voice_members = list(
@@ -266,10 +264,7 @@ class MusicManager(DatabaseChecker):
 
         await asyncio.sleep(self.inactivity_timeout)
 
-        if not ctx.voice_client:
-            return
-
-        if ctx.voice_client.is_connected() and not ctx.voice_client.is_playing():
+        if ctx.voice_client and ctx.voice_client.is_connected() and not ctx.voice_client.is_playing():
             await self.cleanup(ctx.voice_client, ctx.guild)
 
             await self.call_event("on_inactivity_disconnect", ctx)

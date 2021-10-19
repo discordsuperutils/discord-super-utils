@@ -7,7 +7,7 @@ import discord
 client_id = ""
 client_secret = ""
 
-bot = commands.Bot(command_prefix="-")
+bot = commands.Bot(command_prefix="-", intents=discord.Intents.all())
 # MusicManager = MusicManager(bot, spotify_support=False)
 
 
