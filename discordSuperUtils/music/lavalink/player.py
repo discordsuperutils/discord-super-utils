@@ -1,13 +1,17 @@
+from dataclasses import dataclass
+
 import wavelink
 
 from .equalizer import Equalizer
 
 
+@dataclass(init=False)
 class LavalinkPlayer(wavelink.Player):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    """
+    Represents a LavalinkPlayer.
+    """
 
-        self.equalizer = None
+    equalizer: Equalizer = Equalizer.flat()
 
     async def set_eq(self, equalizer: Equalizer) -> None:
         await self.node._websocket.send(
