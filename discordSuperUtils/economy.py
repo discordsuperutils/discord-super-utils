@@ -1,18 +1,22 @@
+from dataclasses import dataclass
+
 import discord
 from typing import List, Optional
 
 from .base import DatabaseChecker
+from .database import Database
 
 
+@dataclass
 class EconomyAccount:
-    def __init__(self, guild: int, member: int, database, table):
-        self.guild = guild
-        self.member = member
-        self.database = database
-        self.table = table
+    """
+    Represents an EconomyAccount.
+    """
 
-    def __str__(self):
-        return f"<Account MEMBER={self.member}, GUILD={self.guild}>"
+    guild: int
+    member: int
+    database: Database
+    table: str
 
     @property
     def __checks(self):

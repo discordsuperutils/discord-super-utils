@@ -8,6 +8,7 @@ Please feel free to read the Discord Terms of Service https://discord.com/terms.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Union, Optional
 
 from .base import DatabaseChecker
@@ -17,13 +18,14 @@ if TYPE_CHECKING:
     from discord.ext import commands
 
 
+@dataclass
 class InviteAccount:
-    def __init__(self, invite_tracker: InviteTracker, member: discord.Member):
-        self.invite_tracker = invite_tracker
-        self.member = member
+    """
+    Represents an InviteAccount.
+    """
 
-    def __str__(self):
-        return f"<member={self.member.id}>"
+    invite_tracker: InviteTracker
+    member: discord.Member
 
     async def get_invited_users(self):
         return await self.invite_tracker.get_members_invited(

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import inspect
+from dataclasses import dataclass
 from typing import (
     List,
     Any,
@@ -70,16 +72,17 @@ class DatabaseNotConnected(Exception):
     """Raises an error when the user tries to use a method of a manager without a database connected to it."""
 
 
+@dataclass
 class CacheBased:
     """
     Represents a cache manager that manages member cache.
     """
 
-    def __init__(self, bot: commands.Bot, wipe_cache_delay: timedelta):
-        self.wipe_cache_delay = wipe_cache_delay
-        self.bot = bot
-        self._cache = {}
+    bot: commands.Bot
+    wipe_cache_delay: timedelta
+    _cache: dict = dataclasses.field(default_factory=dict, init=False, repr=False)
 
+    def __post_init__(self):
         asyncio.get_event_loop().create_task(self.__wipe_cache())
 
     async def __wipe_cache(self) -> None:
@@ -242,13 +245,13 @@ async def questionnaire(
     return answers, timed_out
 
 
+@dataclass
 class EventManager:
     """
     An event manager that manages events for managers.
     """
 
-    def __init__(self):
-        self.events = {}
+    events: dict = dataclasses.field(default_factory=dict, init=False)
 
     async def call_event(self, name: str, *args, **kwargs) -> None:
         """
@@ -412,20 +415,16 @@ class CogManager:
         return decorator
 
 
+@dataclass
 class DatabaseChecker(EventManager):
     """
     A database checker which makes sure the database is connected to a manager and handles the table creation.
     """
 
-    def __init__(
-        self, tables_column_data: List[Dict[str, str]], table_identifiers: List[str]
-    ):
-        super().__init__()
-
-        self.database: Optional[Database] = None
-        self.table_identifiers = table_identifiers
-        self.tables = {}
-        self.tables_column_data = tables_column_data
+    tables_column_data: List[Dict[str, str]]
+    table_identifiers: List[str]
+    database: Optional[Database] = dataclasses.field(default=None, init=False)
+    tables: Dict[str, str] = dataclasses.field(default_factory=dict, init=False)
 
     @staticmethod
     def uses_database(func):

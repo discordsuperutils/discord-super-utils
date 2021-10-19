@@ -1,34 +1,29 @@
 from __future__ import annotations
 
-from typing import List
+from dataclasses import dataclass
+from typing import List, Dict, Any
 
 __all__ = ("Equalizer",)
 
 
+@dataclass
 class Equalizer:
     """
     Represents a Equalizer that supports different voice effects.
     """
 
-    __slots__ = ("eq", "raw", "name")
+    raw: List[float]
+    name: str
 
-    def __init__(self, *, levels: List[float], name: str = "CustomEqualizer"):
-        self.eq = [{"band": index, "gain": gain} for index, gain in enumerate(levels)]
-        self.raw = levels
-
-        self.name = name
-
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        return f"<Equalizer name={self.name}, raw={self.eq}>"
+    @property
+    def eq(self) -> List[Dict[str, Any]]:
+        return [{"band": index, "gain": gain} for index, gain in enumerate(self.raw)]
 
     @classmethod
     def flat(cls) -> Equalizer:
         levels = [0.0 for i in range(15)]
 
-        return cls(levels=levels, name="Flat")
+        return cls(levels, "Flat")
 
     @classmethod
     def boost(cls):
@@ -50,7 +45,7 @@ class Equalizer:
             -0.14,
         ]
 
-        return cls(levels=levels, name="Boost")
+        return cls(levels, "Boost")
 
     @classmethod
     def metal(cls):
@@ -72,7 +67,7 @@ class Equalizer:
             0.0,
         ]
 
-        return cls(levels=levels, name="Metal")
+        return cls(levels, "Metal")
 
     @classmethod
     def piano(cls):
@@ -93,4 +88,4 @@ class Equalizer:
             -0.025,
         ]
 
-        return cls(levels=levels, name="Piano")
+        return cls(levels, "Piano")

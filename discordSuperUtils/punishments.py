@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from datetime import timedelta
 from typing import Optional, List, TYPE_CHECKING
 
@@ -9,26 +10,21 @@ if TYPE_CHECKING:
     from discord.ext import commands
 
 
+@dataclass
 class Punishment:
     """
     A punishment class that is used for punishing members.
     """
 
-    def __init__(
-        self,
-        punishment_manager,
-        punish_after: int = 3,
-        punishment_reason: str = "No reason specified.",
-        punishment_time: timedelta = timedelta(days=1),
-    ):
-        self.punishment_manager = punishment_manager
-        self.punish_after = punish_after
-        self.punishment_reason = punishment_reason
-        self.punishment_time = punishment_time
+    punishment_manager: Punisher
+    punish_after: int = 3
+    punishment_reason: str = "No reason specified."
+    punishment_time: timedelta = timedelta(days=1)
 
-        if not issubclass(type(punishment_manager), Punisher):
+    def __post_init__(self):
+        if not issubclass(type(self.punishment_manager), Punisher):
             raise TypeError(
-                f"Manager of type '{type(punishment_manager)} is not supported.'"
+                f"Manager of type '{type(self.punishment_manager)} is not supported.'"
             )
 
 

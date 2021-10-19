@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 from datetime import datetime
 from typing import List, TYPE_CHECKING, Optional, Dict, Union
 
@@ -16,71 +17,59 @@ if TYPE_CHECKING:
 __all__ = ("PartialInfraction", "Infraction", "InfractionManager")
 
 
+@dataclass
 class PartialInfraction:
     """
     A partial infraction.
     """
 
-    def __init__(
-        self,
-        member: discord.Member,
-        infraction_id: str,
-        reason: str,
-        date_of_infraction: datetime,
-    ):
-        self.member = member
-        self.infraction_id = infraction_id
-        self.reason = reason
-        self.date_of_infraction = date_of_infraction
+    member: discord.Member
+    id: str
+    reason: str
+    date_of_infraction: datetime
 
 
+@dataclass
 class Infraction:
     """
     An infraction object.
     """
 
-    def __init__(
-        self, database, table: str, member: discord.Member, infraction_id: str
-    ):
-        self.member = member
-        self.database = database
-        self.table = table
-        self.infraction_id = infraction_id
+    infraction_manager: InfractionManager
+    member: discord.Member
+    id: str
 
-    def __str__(self):
-        return f"<Infraction {self.infraction_id=}>"
-
-    def __repr__(self):
-        return f"<Infraction {self.member=}, {self.infraction_id=}>"
+    def __post_init__(self):
+        self.table = self.infraction_manager.tables["infractions"]
 
     @property
     def __checks(self) -> Dict[str, int]:
         return {
             "guild": self.member.guild.id,
             "member": self.member.id,
-            "id": self.infraction_id,
+            "id": self.id,
         }
 
     async def datetime(self) -> Optional[datetime]:
-        timestamp_data = await self.database.select(
+        timestamp_data = await self.infraction_manager.database.select(
             self.table, ["timestamp"], self.__checks
         )
         if timestamp_data:
             return datetime.utcfromtimestamp(timestamp_data["timestamp"])
 
     async def reason(self) -> Optional[str]:
-        reason_data = await self.database.select(self.table, ["reason"], self.__checks)
+        reason_data = await self.infraction_manager.database.select(self.table, ["reason"], self.__checks)
         if reason_data:
             return reason_data["reason"]
 
     async def set_reason(self, new_reason: str) -> None:
-        await self.database.update(self.table, {"reason": new_reason}, self.__checks)
+        await self.infraction_manager.database.update(self.table, {"reason": new_reason}, self.__checks)
 
     async def delete(self) -> PartialInfraction:
         partial = PartialInfraction(
-            self.member, self.infraction_id, await self.reason(), await self.datetime()
+            self.member, self.id, await self.reason(), await self.datetime()
         )
-        await self.database.delete(self.table, self.__checks)
+        await self.infraction_manager.database.delete(self.table, self.__checks)
         return partial
 
 
@@ -126,7 +115,7 @@ class InfractionManager(DatabaseChecker, Punisher):
             await punishment.punishment_manager.punish(ctx, member, punishment)
 
         return Infraction(
-            self.database, self.tables["infractions"], member, generated_id
+            self, member, generated_id
         )
 
     async def punish(
@@ -152,7 +141,7 @@ class InfractionManager(DatabaseChecker, Punisher):
 
         return [
             Infraction(
-                self.database, self.tables["infractions"], member, infraction["id"]
+                self, member, infraction["id"]
             )
             for infraction in warnings
             if infraction["timestamp"] > from_timestamp

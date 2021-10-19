@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import time
+from dataclasses import dataclass
 from typing import Iterable, TYPE_CHECKING, List
 
 from .base import DatabaseChecker
@@ -10,14 +11,17 @@ if TYPE_CHECKING:
     import discord
 
 
+@dataclass
 class LevelingAccount:
-    def __init__(self, leveling_manager: LevelingManager, member: discord.Member):
-        self.leveling_manager = leveling_manager
-        self.table = self.leveling_manager.tables["xp"]
-        self.member = member
+    """
+    Represents a LevelingAccount.
+    """
 
-    def __str__(self):
-        return f"<Account MEMBER={self.member}, GUILD={self.member.guild}>"
+    leveling_manager: LevelingManager
+    member: discord.Member
+
+    def __post_init__(self):
+        self.table = self.leveling_manager.tables["xp"]
 
     @property
     def __checks(self):

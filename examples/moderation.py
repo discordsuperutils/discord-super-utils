@@ -26,30 +26,30 @@ def make_removed_embeds(removed_infractions, member):
         discordSuperUtils.generate_embeds(
             [
                 f"**Reason: **{infraction.reason}\n"
-                f"**ID: **{infraction.infraction_id}\n"
+                f"**ID: **{infraction.id}\n"
                 f"**Date of Infraction: **{infraction.date_of_infraction}"
                 for infraction in removed_infractions
             ],
             title=f"Removed Infractions",
             fields=25,
             description=f"List of infractions that were removed from {member.mention}.",
-        ),
+        )
     )
 
 
-def make_infraction_embed(member_infractions, member):
+async def make_infraction_embed(member_infractions, member):
     return (
         discordSuperUtils.generate_embeds(
             [
                 f"**Reason: **{await infraction.reason()}\n"
-                f"**ID: **{infraction.infraction_id}\n"
+                f"**ID: **{infraction.id}\n"
                 f"**Date of Infraction: **{await infraction.datetime()}"
                 for infraction in member_infractions
             ],
             title=f"Infractions of {member}",
             fields=25,
             description=f"List of {member.mention}'s infractions.",
-        ),
+        )
     )
 
 
@@ -126,7 +126,7 @@ async def infractions(ctx, member: discord.Member):
 
     await discordSuperUtils.PageManager(
         ctx,
-        make_infraction_embed(member_infractions, member),
+        await make_infraction_embed(member_infractions, member),
     ).run()
 
 
@@ -137,7 +137,7 @@ async def add(ctx, member: discord.Member, reason: str = "No reason specified.")
     embed = discord.Embed(title=f"{member} has been warned.", color=0x00FF00)
 
     embed.add_field(name="Reason", value=await infraction.reason(), inline=False)
-    embed.add_field(name="Infraction ID", value=infraction.infraction_id, inline=False)
+    embed.add_field(name="Infraction ID", value=infraction.id, inline=False)
     embed.add_field(
         name="Date of Infraction", value=str(await infraction.datetime()), inline=False
     )
@@ -165,7 +165,7 @@ async def get(ctx, member: discord.Member, infraction_id: str):
     )
 
     embed.add_field(name="Reason", value=await infraction.reason(), inline=False)
-    embed.add_field(name="Infraction ID", value=infraction.infraction_id, inline=False)
+    embed.add_field(name="Infraction ID", value=infraction.id, inline=False)
     embed.add_field(
         name="Date of Infraction", value=str(await infraction.datetime()), inline=False
     )
@@ -186,7 +186,7 @@ async def get_before(
 
     await discordSuperUtils.PageManager(
         ctx,
-        make_infraction_embed(member_infractions, member),
+        await make_infraction_embed(member_infractions, member),
     ).run()
 
 
@@ -223,7 +223,7 @@ async def remove(ctx, member: discord.Member, infraction_id: str):
 
     embed.add_field(name="Reason", value=removed_infraction.reason, inline=False)
     embed.add_field(
-        name="Infraction ID", value=removed_infraction.infraction_id, inline=False
+        name="Infraction ID", value=removed_infraction.id, inline=False
     )
     embed.add_field(
         name="Date of Infraction",

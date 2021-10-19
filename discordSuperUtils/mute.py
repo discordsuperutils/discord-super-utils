@@ -67,7 +67,6 @@ class MuteManager(DatabaseChecker, Punisher):
             if x["timestamp_of_unmute"] <= datetime.utcnow().timestamp()
         ]
 
-    @DatabaseChecker.uses_database
     async def on_member_join(self, member: discord.Member) -> None:
         """
         |coro|
@@ -80,6 +79,8 @@ class MuteManager(DatabaseChecker, Punisher):
         :return: None
         :rtype: None
         """
+
+        self._check_database()  # Not using the decorator as it breaks the coroutine check
 
         muted_members = [
             x

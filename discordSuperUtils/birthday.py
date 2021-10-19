@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 
@@ -14,40 +15,27 @@ from .base import DatabaseChecker
 __all__ = ("PartialBirthdayMember", "BirthdayManager", "BirthdayMember")
 
 
+@dataclass
 class PartialBirthdayMember:
     """
     Represents a partial birthday member.
     """
 
-    __slots__ = ("member", "birthday_date", "timezone")
-
-    def __init__(self, member: discord.Member, birthday_date: datetime, timezone: str):
-        """
-        :param discord.Member member: The member.
-        :param datetime birthday_date: The birthday date in a datetime.
-        :param str timezone: The timezone.
-        """
-
-        self.member = member
-        self.birthday_date = birthday_date
-        self.timezone = timezone
+    member: discord.Member
+    birthday_date: datetime
+    timezone: str
 
 
+@dataclass
 class BirthdayMember:
     """
     Represents a birthday member.
     """
 
-    __slots__ = ("birthday_manager", "member", "table")
+    birthday_manager: BirthdayManager
+    member: discord.Member
 
-    def __init__(self, birthday_manager: BirthdayManager, member: discord.Member):
-        """
-        :param BirthdayManager birthday_manager: The birthday manager.
-        :param discord.Member member: The member.
-        """
-
-        self.birthday_manager = birthday_manager
-        self.member = member
+    def __post_init__(self):
         self.table = self.birthday_manager.tables["birthdays"]
 
     @property

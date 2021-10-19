@@ -39,18 +39,19 @@ def generate_embeds(
         if (index + 1) % fields == 0:
             embed_index += 1
 
-    for embed in embeds:
-        embed.set_footer(text=footer)
+    if footer:
+        for embed in embeds:
+            embed.set_footer(text=footer)
 
     return embeds
 
 
 class ButtonError(Exception):
-    __slots__ = ()
+    pass
 
 
 class EmojiError(Exception):
-    __slots__ = ()
+    pass
 
 
 class ButtonsPageManager:

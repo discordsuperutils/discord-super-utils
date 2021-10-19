@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 import aiohttp
@@ -13,31 +14,16 @@ class ServerNotFound(Exception):
     """Raises an error when a server is invalid or offline."""
 
 
+@dataclass
 class FiveMPlayer:
     """
     Represents a FiveM player.
     """
 
-    __slots__ = ("player_id", "id", "identifiers", "name", "ping")
-
-    def __init__(self, id_: int, identifiers: Dict[str, str], name: str, ping: int):
-        """
-        :param int id_: The player ID.
-        :param Dict[str, str] identifiers: The player identifiers.
-        :param str name: The player name.
-        :param int ping: The player ping.
-        """
-
-        self.id = id_
-        self.identifiers = identifiers
-        self.name = name
-        self.ping = ping
-
-    def __str__(self):
-        return f"<FiveM Player {self.id=}>"
-
-    def __repr__(self):
-        return f"<FiveM Player {self.name=}, {self.id=}, {self.identifiers=}, {self.ping=}>"
+    id: int
+    identifiers: Dict[str, str]
+    name: str
+    ping: int
 
     @classmethod
     def from_dict(cls, player_dict: dict) -> FiveMPlayer:
@@ -55,46 +41,17 @@ class FiveMPlayer:
         )
 
 
+@dataclass
 class FiveMServer:
     """
     Represents a FiveM server.
     """
 
-    __slots__ = ("ip", "resources", "players", "name", "variables")
-
-    def __init__(
-        self,
-        ip: str,
-        resources: List[str],
-        players: List[FiveMPlayer],
-        name: str,
-        variables: Dict[str, str],
-    ):
-        """
-        :param str ip: The server IP.
-        :param List[str] resources: The server resources.
-        :param List[FiveMPlayer] players: The server players.
-        :param str name: The server name.
-        :param Dict[str, str] variables: The server variables.
-        """
-
-        self.ip = ip
-        self.resources = resources
-        self.players = players
-        self.name = name
-        self.variables = variables
-
-    def __str__(self):
-        return f"<FiveM Server {self.name=}>"
-
-    def __repr__(self):
-        return (
-            f"<FiveM Server {self.ip=},"
-            f" {self.name=},"
-            f" {self.players=},"
-            f" {self.resources=},"
-            f" {self.variables=}>"
-        )
+    ip: str
+    resources: List[str]
+    players: List[FiveMPlayer]
+    name: str
+    variables: Dict[str, str]
 
     @classmethod
     async def fetch(cls, ip: str) -> Optional[FiveMServer]:

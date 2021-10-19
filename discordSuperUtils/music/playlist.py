@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Dict, List, Any, TYPE_CHECKING, Union, Optional
 from .enums import PlaylistType
 
@@ -10,22 +11,17 @@ if TYPE_CHECKING:
 __slots__ = ("SpotifyTrack", "YoutubeAuthor", "Playlist", "UserPlaylist")
 
 
+@dataclass
 class SpotifyTrack:
     """
     Represents a spotify track.
     """
 
-    __slots__ = ("name", "authors")
-
-    def __init__(self, name: str, authors: List[str]) -> None:
-        self.name = name
-        self.authors = authors
+    name: str
+    authors: List[str]
 
     def __str__(self):
         return f"{self.name} by {self.authors[0]}"
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__} name={self.name}, authors={self.authors}>"
 
     @classmethod
     def from_dict(cls, dictionary: Dict[str, Any]) -> SpotifyTrack:
@@ -43,20 +39,14 @@ class SpotifyTrack:
         )
 
 
+@dataclass
 class YoutubeAuthor:
     """
     Represents a YouTube author / channel.
     """
 
-    def __init__(self, name: str, id_: str) -> None:
-        self.id = id_
-        self.name = name
-
-    def __str__(self):
-        return f"<{self.__class__.__name__} name={self.name}>"
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__} name={self.name}, id={self.id}>"
+    name: str
+    id: str
 
     @classmethod
     def from_dict(cls, dictionary: Dict[str, str]) -> YoutubeAuthor:
@@ -71,33 +61,18 @@ class YoutubeAuthor:
         return cls(dictionary["name"], dictionary["id"])
 
 
+@dataclass
 class Playlist:
     """
     Represents a playlist.
     Supports Spotify and YouTube.
     """
 
-    __slots__ = ("title", "author", "songs", "url", "type")
-
-    def __init__(
-        self,
-        title: str,
-        author: Optional[YoutubeAuthor],
-        songs: List[Union[str, SpotifyTrack]],
-        url: str,
-        type_: PlaylistType,
-    ) -> None:
-        self.title = title
-        self.author = author
-        self.songs = songs
-        self.url = url
-        self.type = type_
-
-    def __str__(self):
-        return f"<{self.__class__.__name__} title={self.title}, author={self.author}>"
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__} title={self.title}, author={self.author}>, total_songs={len(self.songs)}>"
+    title: str
+    author: Optional[YoutubeAuthor]
+    songs: List[Union[str, SpotifyTrack]]
+    url: str
+    type: PlaylistType
 
     @classmethod
     def from_youtube_dict(cls, dictionary: Dict[str, Any]) -> Playlist:
@@ -136,25 +111,16 @@ class Playlist:
         )
 
 
+@dataclass
 class UserPlaylist:
     """
     Represents a playlist stored in the database.
     """
 
-    __slots__ = ("owner", "id", "playlist", "music_manager", "table")
-
-    def __init__(
-        self,
-        music_manager: MusicManager,
-        owner: discord.User,
-        id_: str,
-        playlist: Playlist,
-    ) -> None:
-        self.owner = owner
-        self.id = id_
-        self.playlist = playlist
-        self.music_manager = music_manager
-        self.table = music_manager.tables["playlists"]
+    music_manager: MusicManager
+    owner: discord.User
+    id: str
+    playlist: Playlist
 
     async def delete(self) -> None:
         """
@@ -167,11 +133,5 @@ class UserPlaylist:
         """
 
         await self.music_manager.database.delete(
-            self.table, {"user": self.owner.id, "id": self.id}
+            self.music_manager.tables["playlists"], {"user": self.owner.id, "id": self.id}
         )
-
-    def __str__(self):
-        return f"<{self.__class__.__name__} owner={self.owner}>"
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__} owner={self.owner}, id={self.id}, playlist={self.playlist}>"
