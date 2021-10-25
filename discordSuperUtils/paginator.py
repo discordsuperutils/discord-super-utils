@@ -14,26 +14,37 @@ def generate_embeds(
     color=0xFF0000,
     string_format="{}",
     footer: str = "",
-    display_page_in_footer = False,
+    display_page_in_footer=False,
 ):
     num_of_embeds = ceil((len(list_to_generate) + 1) / fields)
 
     embeds = [
         discord.Embed(
-            title=title if display_page_in_footer else f"{title} (Page 1/{num_of_embeds})",
+            title=title
+            if display_page_in_footer
+            else f"{title} (Page 1/{num_of_embeds})",
             description=description,
             color=color,
-            footer=footer + f"(Page 1/{num_of_embeds})" if display_page_in_footer else footer
+        ).set_footer(
+            text=f"{footer} (Page 1/{num_of_embeds})"
+            if display_page_in_footer
+            else footer
         )
     ]
 
     for i in range(2, num_of_embeds + 1):
         embeds.append(
             discord.Embed(
-                title=title if display_page_in_footer else f"{title} (Page {i}/{num_of_embeds})",
+                title=title
+                if display_page_in_footer
+                else f"{title} (Page {i}/{num_of_embeds})",
                 description=description,
                 color=color,
-                footer=footer + f"(Page {i}/{num_of_embeds})" if display_page_in_footer else footer)
+            ).set_footer(
+                text=f"{footer} (Page {i}/{num_of_embeds})"
+                if display_page_in_footer
+                else footer
+            )
         )
 
     embed_index = 0

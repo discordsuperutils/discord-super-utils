@@ -1,6 +1,5 @@
 import discord
 from discord.ext import commands
-import aiosqlite
 
 import discordSuperUtils
 
@@ -13,7 +12,7 @@ ImageManager = (
 
 @bot.event
 async def on_ready():
-    database = discordSuperUtils.DatabaseManager.connect(await aiosqlite.connect("main.sqlite"))
+    database = discordSuperUtils.DatabaseManager.connect(...)
     await LevelingManager.connect_to_database(database, ["xp", "roles", "role_list"])
 
     print("Leveling manager is ready.", bot.user)
@@ -83,7 +82,6 @@ async def leaderboard(ctx):
             title="Leveling Leaderboard",
             fields=25,
             description=f"Leaderboard of {ctx.guild}",
-            display_page_in_footer=True,
         ),
     ).run()
 
