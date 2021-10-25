@@ -184,8 +184,9 @@ class LevelingManager(DatabaseChecker):
     def generate_checks(member: discord.Member):
         return {"guild": member.guild.id, "member": member.id}
 
-    @DatabaseChecker.uses_database
     async def __handle_experience(self, message):
+        self._check_database()
+
         if not message.guild or message.author.bot:
             return
 
