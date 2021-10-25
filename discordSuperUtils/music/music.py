@@ -264,7 +264,11 @@ class MusicManager(DatabaseChecker):
 
         await asyncio.sleep(self.inactivity_timeout)
 
-        if ctx.voice_client and ctx.voice_client.is_connected() and not ctx.voice_client.is_playing():
+        if (
+            ctx.voice_client
+            and ctx.voice_client.is_connected()
+            and not ctx.voice_client.is_playing()
+        ):
             await self.cleanup(ctx.voice_client, ctx.guild)
 
             await self.call_event("on_inactivity_disconnect", ctx)

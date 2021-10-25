@@ -58,12 +58,16 @@ class Infraction:
             return datetime.utcfromtimestamp(timestamp_data["timestamp"])
 
     async def reason(self) -> Optional[str]:
-        reason_data = await self.infraction_manager.database.select(self.table, ["reason"], self.__checks)
+        reason_data = await self.infraction_manager.database.select(
+            self.table, ["reason"], self.__checks
+        )
         if reason_data:
             return reason_data["reason"]
 
     async def set_reason(self, new_reason: str) -> None:
-        await self.infraction_manager.database.update(self.table, {"reason": new_reason}, self.__checks)
+        await self.infraction_manager.database.update(
+            self.table, {"reason": new_reason}, self.__checks
+        )
 
     async def delete(self) -> PartialInfraction:
         partial = PartialInfraction(
@@ -114,9 +118,7 @@ class InfractionManager(DatabaseChecker, Punisher):
         ):
             await punishment.punishment_manager.punish(ctx, member, punishment)
 
-        return Infraction(
-            self, member, generated_id
-        )
+        return Infraction(self, member, generated_id)
 
     async def punish(
         self, ctx: commands.Context, member: discord.Member, punishment: Punishment
@@ -140,9 +142,7 @@ class InfractionManager(DatabaseChecker, Punisher):
         )
 
         return [
-            Infraction(
-                self, member, infraction["id"]
-            )
+            Infraction(self, member, infraction["id"])
             for infraction in warnings
             if infraction["timestamp"] > from_timestamp
         ]

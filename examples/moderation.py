@@ -22,34 +22,30 @@ InfractionManager.add_punishments(
 
 
 def make_removed_embeds(removed_infractions, member):
-    return (
-        discordSuperUtils.generate_embeds(
-            [
-                f"**Reason: **{infraction.reason}\n"
-                f"**ID: **{infraction.id}\n"
-                f"**Date of Infraction: **{infraction.date_of_infraction}"
-                for infraction in removed_infractions
-            ],
-            title=f"Removed Infractions",
-            fields=25,
-            description=f"List of infractions that were removed from {member.mention}.",
-        )
+    return discordSuperUtils.generate_embeds(
+        [
+            f"**Reason: **{infraction.reason}\n"
+            f"**ID: **{infraction.id}\n"
+            f"**Date of Infraction: **{infraction.date_of_infraction}"
+            for infraction in removed_infractions
+        ],
+        title=f"Removed Infractions",
+        fields=25,
+        description=f"List of infractions that were removed from {member.mention}.",
     )
 
 
 async def make_infraction_embed(member_infractions, member):
-    return (
-        discordSuperUtils.generate_embeds(
-            [
-                f"**Reason: **{await infraction.reason()}\n"
-                f"**ID: **{infraction.id}\n"
-                f"**Date of Infraction: **{await infraction.datetime()}"
-                for infraction in member_infractions
-            ],
-            title=f"Infractions of {member}",
-            fields=25,
-            description=f"List of {member.mention}'s infractions.",
-        )
+    return discordSuperUtils.generate_embeds(
+        [
+            f"**Reason: **{await infraction.reason()}\n"
+            f"**ID: **{infraction.id}\n"
+            f"**Date of Infraction: **{await infraction.datetime()}"
+            for infraction in member_infractions
+        ],
+        title=f"Infractions of {member}",
+        fields=25,
+        description=f"List of {member.mention}'s infractions.",
     )
 
 
@@ -222,9 +218,7 @@ async def remove(ctx, member: discord.Member, infraction_id: str):
     )
 
     embed.add_field(name="Reason", value=removed_infraction.reason, inline=False)
-    embed.add_field(
-        name="Infraction ID", value=removed_infraction.id, inline=False
-    )
+    embed.add_field(name="Infraction ID", value=removed_infraction.id, inline=False)
     embed.add_field(
         name="Date of Infraction",
         value=str(removed_infraction.date_of_infraction),

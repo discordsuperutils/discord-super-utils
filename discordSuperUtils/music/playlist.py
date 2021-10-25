@@ -133,5 +133,6 @@ class UserPlaylist:
         """
 
         await self.music_manager.database.delete(
-            self.music_manager.tables["playlists"], {"user": self.owner.id, "id": self.id}
+            self.music_manager.tables["playlists"],
+            {"user": self.owner.id, "id": self.id},
         )

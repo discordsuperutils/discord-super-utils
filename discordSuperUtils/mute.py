@@ -29,7 +29,7 @@ class MuteManager(DatabaseChecker, Punisher):
 
     __slots__ = ("bot",)
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot, muted_role_name: str = "Muted") -> None:
         super().__init__(
             [
                 {
@@ -43,6 +43,7 @@ class MuteManager(DatabaseChecker, Punisher):
             ["mutes"],
         )
         self.bot = bot
+        self.muted_role_name = muted_role_name
 
         self.add_event(self.on_database_connect)
 
@@ -94,7 +95,9 @@ class MuteManager(DatabaseChecker, Punisher):
         ]
 
         if any([muted_member["member"] == member.id for muted_member in muted_members]):
-            muted_role = discord.utils.get(member.guild.roles, name="Muted")
+            muted_role = discord.utils.get(
+                member.guild.roles, name=self.muted_role_name
+            )
 
             if muted_role:
                 await member.add_roles(muted_role)
@@ -215,7 +218,7 @@ class MuteManager(DatabaseChecker, Punisher):
         :rtype: None
         """
 
-        muted_role = discord.utils.get(member.guild.roles, name="Muted")
+        muted_role = discord.utils.get(member.guild.roles, name=self.muted_role_name)
         if not muted_role:
             muted_role = await member.guild.create_role(
                 name="Muted",
@@ -261,7 +264,7 @@ class MuteManager(DatabaseChecker, Punisher):
         await self.database.delete(
             self.tables["mutes"], {"guild": member.guild.id, "member": member.id}
         )
-        muted_role = discord.utils.get(member.guild.roles, name="Muted")
+        muted_role = discord.utils.get(member.guild.roles, name=self.muted_role_name)
         if not muted_role:
             return
 
