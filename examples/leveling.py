@@ -88,4 +88,4 @@ async def leaderboard(ctx):
     ).run()
 
 
-bot.run("ODYzNzMwNDE5MjQ5ODQwMTI4.YOrJow.Nukkjn0p-OmuAh_hDY0rGEBJAn0")
+bot.run("token")
