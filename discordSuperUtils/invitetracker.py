@@ -126,14 +126,14 @@ class InviteTracker(DatabaseChecker):
         for guild in self.bot.guilds:
             try:
                 self.cache[guild.id] = await guild.invites()
-            except discord.Foridden:
+            except discord.Forbidden:
                 pass
                 
 
     async def __update_guild_cache(self, guild: discord.Guild) -> None:
         try:
             self.cache[guild.id] = await guild.invites()
-        except discord.Foridden:
+        except discord.Forbidden:
             pass
 
     async def __track_invite(self, invite: discord.Invite) -> None:
