@@ -1,7 +1,13 @@
+from __future__ import annotations
+
 import asyncio
 from math import ceil
+from typing import TYPE_CHECKING
 
 import discord
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 __all__ = ("generate_embeds", "EmojiError", "PageManager", "ButtonsPageManager")
 
@@ -15,6 +21,7 @@ def generate_embeds(
     string_format="{}",
     footer: str = "",
     display_page_in_footer=False,
+    timestamp: datetime = discord.Embed.Empty,
 ):
     num_of_embeds = ceil((len(list_to_generate) + 1) / fields)
 
@@ -25,6 +32,7 @@ def generate_embeds(
             else f"{title} (Page 1/{num_of_embeds})",
             description=description,
             color=color,
+            timestamp=timestamp,
         ).set_footer(
             text=f"{footer} (Page 1/{num_of_embeds})"
             if display_page_in_footer
@@ -40,6 +48,7 @@ def generate_embeds(
                 else f"{title} (Page {i}/{num_of_embeds})",
                 description=description,
                 color=color,
+                timestamp=timestamp,
             ).set_footer(
                 text=f"{footer} (Page {i}/{num_of_embeds})"
                 if display_page_in_footer
