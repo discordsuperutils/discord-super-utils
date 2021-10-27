@@ -10,11 +10,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Union, Optional
+import discord
 
 from .base import DatabaseChecker
 
 if TYPE_CHECKING:
-    import discord
     from discord.ext import commands
 
 
@@ -128,7 +128,6 @@ class InviteTracker(DatabaseChecker):
                 self.cache[guild.id] = await guild.invites()
             except discord.Forbidden:
                 pass
-                
 
     async def __update_guild_cache(self, guild: discord.Guild) -> None:
         try:

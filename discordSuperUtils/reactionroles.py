@@ -35,8 +35,9 @@ class ReactionManager(DatabaseChecker):
 
         return emoji_string
 
-    @DatabaseChecker.uses_database
     async def __handle_reactions(self, payload):
+        self._check_database()
+
         if payload.user_id == self.bot.user.id:
             return
 
