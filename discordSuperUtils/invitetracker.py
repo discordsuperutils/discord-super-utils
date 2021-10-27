@@ -124,10 +124,17 @@ class InviteTracker(DatabaseChecker):
         await self.bot.wait_until_ready()
 
         for guild in self.bot.guilds:
-            self.cache[guild.id] = await guild.invites()
+            try:
+                self.cache[guild.id] = await guild.invites()
+            except discord.Foridden:
+                pass
+                
 
     async def __update_guild_cache(self, guild: discord.Guild) -> None:
-        self.cache[guild.id] = await guild.invites()
+        try:
+            self.cache[guild.id] = await guild.invites()
+        except discord.Foridden:
+            pass
 
     async def __track_invite(self, invite: discord.Invite) -> None:
         self.cache[invite.guild.id].append(invite)
