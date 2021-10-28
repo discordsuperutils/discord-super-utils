@@ -22,7 +22,7 @@ def generate_embeds(
     footer: str = "",
     display_page_in_footer=False,
     timestamp: datetime = discord.Embed.Empty,
-    page_format: str = "(Page {}/{})"
+    page_format: str = "(Page {}/{})",
 ):
     num_of_embeds = ceil((len(list_to_generate) + 1) / fields)
 
