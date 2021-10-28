@@ -15,7 +15,7 @@ from .exceptions import (
     QueueEmpty,
     NotPlaying,
     NotConnected,
-    QueueError,
+    RemoveIndexInvalid,
     AlreadyPaused,
     NotPaused,
     InvalidSkipIndex,
@@ -510,7 +510,7 @@ class MusicManager(DatabaseChecker):
         |coro|
 
         Removes a player from the queue in ctx at the specified index.
-        Calls on_music_error with QueueError if index is invalid.
+        Calls on_music_error with RemoveIndexInvalid if index is invalid.
 
         :param ctx: The context.
         :type ctx: commands.Context
@@ -528,7 +528,7 @@ class MusicManager(DatabaseChecker):
             await self.call_event(
                 "on_music_error",
                 ctx,
-                QueueError("Failure when removing player from queue"),
+                RemoveIndexInvalid("Failure when removing player from queue"),
             )
 
     async def lyrics(

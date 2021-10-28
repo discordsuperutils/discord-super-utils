@@ -5,7 +5,7 @@ __all__ = (
     "QueueEmpty",
     "AlreadyConnected",
     "AlreadyPaused",
-    "QueueError",
+    "RemoveIndexInvalid",
     "SkipError",
     "UserNotConnected",
     "InvalidSkipIndex",
@@ -41,8 +41,8 @@ class AlreadyPaused(Exception):
     """Raises error when player is already paused."""
 
 
-class QueueError(Exception):
-    """Raises error when something is wrong with the queue"""
+class RemoveIndexInvalid(Exception):
+    """Raises error when the queue player remove index is invalid"""
 
 
 class SkipError(Exception):
