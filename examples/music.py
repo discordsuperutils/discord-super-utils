@@ -1,3 +1,5 @@
+from math import floor
+
 from discord.ext import commands
 
 import discordSuperUtils
@@ -250,6 +252,43 @@ async def queueloop(ctx):
 
     if is_loop is not None:
         await ctx.send(f"Queue looping toggled to {is_loop}")
+
+
+@bot.command()
+async def complete_queue(ctx):
+    if ctx_queue := await MusicManager.get_queue(ctx):
+        formatted_queue = [
+            f"Title: '{x.title}'\nRequester: {x.requester and x.requester.mention}\n"
+            f"Position: {i - ctx_queue.pos}"
+            for i, x in enumerate(ctx_queue.queue)
+        ]
+
+        num_of_fields = 25
+
+        embeds = discordSuperUtils.generate_embeds(
+            formatted_queue,
+            "Complete Song Queue",
+            "Shows the complete song queue.",
+            num_of_fields,
+            string_format="{}",
+        )
+
+        page_manager = discordSuperUtils.PageManager(
+            ctx, embeds, public=True, index=floor(ctx_queue.pos / 25)
+        )
+        await page_manager.run()
+
+
+@bot.command()
+async def goto(ctx, position: int):
+    if ctx_queue := await MusicManager.get_queue(ctx):
+        new_pos = ctx_queue.pos + position
+        if not 0 <= new_pos < len(ctx_queue.queue):
+            await ctx.send("Position is out of bounds.")
+            return
+
+        await MusicManager.goto(ctx, new_pos)
+        await ctx.send(f"Moved to position {position}")
 
 
 @bot.command()

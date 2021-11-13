@@ -686,6 +686,13 @@ class MusicManager(DatabaseChecker):
         return previous_players
 
     @ensure_connection(check_playing=True, check_queue=True)
+    async def goto(self, ctx: commands.Context, index: int = 0) -> None:
+        queue = self.queue[ctx.guild.id]
+
+        queue.pos = index
+        await maybe_coroutine(ctx.voice_client.stop)
+
+    @ensure_connection(check_playing=True, check_queue=True)
     async def skip(self, ctx: commands.Context, index: int = None) -> Optional[Player]:
         """
         |coro|

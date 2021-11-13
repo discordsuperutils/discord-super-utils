@@ -31,7 +31,9 @@ class EconomyAccount:
         return currency_data["currency"]
 
     async def bank(self):
-        bank_data = await self.economy_manager.database.select(self.table, ["bank"], self.__checks)
+        bank_data = await self.economy_manager.database.select(
+            self.table, ["bank"], self.__checks
+        )
         return bank_data["bank"]
 
     async def net(self):
@@ -89,9 +91,7 @@ class EconomyManager(DatabaseChecker):
         )
 
         if member_data:
-            return EconomyAccount(
-                self, member
-            )
+            return EconomyAccount(self, member)
 
         return None
 
