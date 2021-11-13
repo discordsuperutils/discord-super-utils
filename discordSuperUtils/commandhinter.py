@@ -130,6 +130,3 @@ class CommandHinter:
                 raise TypeError(
                     "The generated message must be of type 'discord.Embed' or 'str'."
                 )
-
-        else:
-            raise error

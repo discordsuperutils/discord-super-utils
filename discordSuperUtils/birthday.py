@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, tzinfo
 from typing import Dict, List, Optional, Any
 
 import discord
@@ -23,7 +23,7 @@ class PartialBirthdayMember:
 
     member: discord.Member
     birthday_date: datetime
-    timezone: str
+    timezone: tzinfo
 
 
 @dataclass
@@ -37,6 +37,9 @@ class BirthdayMember:
 
     def __post_init__(self):
         self.table = self.birthday_manager.tables["birthdays"]
+
+    def __hash__(self):
+        return id(self)
 
     @property
     def __checks(self) -> Dict[str, int]:
@@ -55,7 +58,9 @@ class BirthdayMember:
         birthday_data = await self.birthday_manager.database.select(
             self.table, ["utc_birthday"], self.__checks
         )
-        return datetime.utcfromtimestamp(birthday_data["utc_birthday"])
+        return datetime.fromtimestamp(
+            birthday_data["utc_birthday"], await self.timezone()
+        )
 
     async def next_birthday(self) -> datetime:
         """
@@ -67,7 +72,7 @@ class BirthdayMember:
         :rtype: datetime
         """
 
-        current_datetime = datetime.utcnow()
+        current_datetime = datetime.now(await self.timezone())
 
         new_date = (await self.birthday_date()).replace(year=current_datetime.year)
         if new_date.timestamp() - current_datetime.timestamp() < 0:
@@ -75,7 +80,7 @@ class BirthdayMember:
 
         return new_date
 
-    async def timezone(self) -> str:
+    async def timezone(self) -> tzinfo:
         """
         |coro|
 
@@ -88,7 +93,7 @@ class BirthdayMember:
         timezone_data = await self.birthday_manager.database.select(
             self.table, ["timezone"], self.__checks
         )
-        return timezone_data["timezone"]
+        return pytz.timezone(timezone_data["timezone"])
 
     async def delete(self) -> PartialBirthdayMember:
         """
@@ -146,20 +151,11 @@ class BirthdayMember:
         :rtype: int
         """
 
-        current_birthday = await self.birthday_date()
-        current_datetime = datetime.utcnow()
+        born = await self.birthday_date()
+        today = datetime.now(await self.timezone())
 
         return (
-            current_datetime.year
-            - current_birthday.year
-            - (
-                datetime(
-                    year=current_datetime.year,
-                    month=current_birthday.month,
-                    day=current_birthday.day,
-                )
-                >= current_datetime
-            )
+            today.year - born.year - ((today.month, today.day) < (born.month, born.day))
         )
 
 
