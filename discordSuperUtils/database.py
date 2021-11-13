@@ -190,6 +190,7 @@ class _SqlDatabase(Database):
     def __str__(self):
         return f"<{self.__class__.__name__}>"
 
+    @staticmethod
     def with_commit(func):
         async def inner(self, *args, **kwargs):
             resp = await func(self, *args, **kwargs)
@@ -200,6 +201,7 @@ class _SqlDatabase(Database):
 
         return inner
 
+    @staticmethod
     def with_cursor(func):
         async def inner(self, *args, **kwargs):
             database = await self.database.acquire() if self.pool else self.database
