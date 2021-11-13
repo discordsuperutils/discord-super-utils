@@ -1,8 +1,9 @@
+import discord
 from discord.ext import commands
 
 import discordSuperUtils
 
-bot = commands.Bot(command_prefix="-")
+bot = commands.Bot(command_prefix="-", intents=discord.Intents.all())
 EconomyManager = discordSuperUtils.EconomyManager(bot)
 
 
