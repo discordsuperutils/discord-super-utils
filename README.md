@@ -148,6 +148,8 @@ bot.run("token")
 ### Playing Example ### 
 
 ```py
+from math import floor
+
 from discord.ext import commands
 
 import discordSuperUtils
@@ -157,12 +159,14 @@ import discord
 client_id = ""
 client_secret = ""
 
-bot = commands.Bot(command_prefix="-")
-MusicManager = MusicManager(bot, spotify_support=False)
+bot = commands.Bot(command_prefix="-", intents=discord.Intents.all())
+# MusicManager = MusicManager(bot, spotify_support=False)
 
 
-# MusicManager = MusicManager(bot, client_id=client_id,
-#                                   client_secret=client_secret, spotify_support=True)
+MusicManager = MusicManager(
+    bot, client_id=client_id, client_secret=client_secret, spotify_support=True
+)
+
 
 # if using spotify support use this instead ^^^
 
@@ -190,8 +194,8 @@ async def on_play(ctx, player):
 
 @bot.event
 async def on_ready():
-    database = discordSuperUtils.DatabaseManager.connect(...)
-    await MusicManager.connect_to_database(database, ["playlists"])
+    # database = discordSuperUtils.DatabaseManager.connect(...)
+    # await MusicManager.connect_to_database(database, ["playlists"])
 
     print("Music manager is ready.", bot.user)
 
@@ -401,6 +405,43 @@ async def queueloop(ctx):
 
 
 @bot.command()
+async def complete_queue(ctx):
+    if ctx_queue := await MusicManager.get_queue(ctx):
+        formatted_queue = [
+            f"Title: '{x.title}'\nRequester: {x.requester and x.requester.mention}\n"
+            f"Position: {i - ctx_queue.pos}"
+            for i, x in enumerate(ctx_queue.queue)
+        ]
+
+        num_of_fields = 25
+
+        embeds = discordSuperUtils.generate_embeds(
+            formatted_queue,
+            "Complete Song Queue",
+            "Shows the complete song queue.",
+            num_of_fields,
+            string_format="{}",
+        )
+
+        page_manager = discordSuperUtils.PageManager(
+            ctx, embeds, public=True, index=floor(ctx_queue.pos / 25)
+        )
+        await page_manager.run()
+
+
+@bot.command()
+async def goto(ctx, position: int):
+    if ctx_queue := await MusicManager.get_queue(ctx):
+        new_pos = ctx_queue.pos + position
+        if not 0 <= new_pos < len(ctx_queue.queue):
+            await ctx.send("Position is out of bounds.")
+            return
+
+        await MusicManager.goto(ctx, new_pos)
+        await ctx.send(f"Moved to position {position}")
+
+
+@bot.command()
 async def history(ctx):
     if ctx_queue := await MusicManager.get_queue(ctx):
         formatted_history = [
@@ -469,6 +510,11 @@ async def ls(ctx):
             await ctx.send(loop_status)
 
 
+@bot.command()
+async def move(ctx, player_index: int, index: int):
+    await MusicManager.move(ctx, player_index, index)
+
+
 bot.run("token")
 ```
 
@@ -480,7 +526,7 @@ Known Issues
 --------------
 
 - Removing an animated emoji wont be recognized as a reaction role, as it shows up as not animated for some reason, breaking the reaction matcher. (Discord API Related)
-- Leveling might call the on_level_up event multiple times, resulting in duplicate messages, caused by duplicate records in the leveling table.
+- Leveling might call the on_level_up event multiple times, resulting in duplicate messages, caused by duplicate records in the leveling table. (Fixed)
 
 Support
 --------------
