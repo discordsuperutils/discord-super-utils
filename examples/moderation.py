@@ -4,7 +4,9 @@ import discord
 
 import discordSuperUtils
 
-bot = discordSuperUtils.ManagerClient("token", command_prefix="-", intents=discord.Intents.all())
+bot = discordSuperUtils.ManagerClient(
+    "token", command_prefix="-", intents=discord.Intents.all()
+)
 
 InfractionManager = discordSuperUtils.InfractionManager(bot)
 BanManager = discordSuperUtils.BanManager(bot)

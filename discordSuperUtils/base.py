@@ -456,7 +456,9 @@ class DatabaseChecker(EventManager):
 
         return True
 
-    async def connect_to_database(self, database: Database, tables: List[str] = None) -> None:
+    async def connect_to_database(
+        self, database: Database, tables: List[str] = None
+    ) -> None:
         """
         Connects to the database.
         Calls on_database_connect when connected.
