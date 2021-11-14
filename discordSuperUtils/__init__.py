@@ -30,6 +30,7 @@ from .reactionroles import ReactionManager
 from .spotify import SpotifyClient
 from .template import TemplateManager
 from .youtube import YoutubeClient
+from .client import DatabaseClient, ExtendedClient, ManagerClient
 
 __title__ = "discordSuperUtils"
 __version__ = "0.2.9"

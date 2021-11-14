@@ -1,16 +1,17 @@
 from datetime import datetime
 
 import discord
-from discord.ext import commands
 
 import discordSuperUtils
 
-bot = commands.Bot(command_prefix="-", intents=discord.Intents.all())
+bot = discordSuperUtils.ManagerClient("token", command_prefix="-", intents=discord.Intents.all())
 
 InfractionManager = discordSuperUtils.InfractionManager(bot)
 BanManager = discordSuperUtils.BanManager(bot)
 KickManager = discordSuperUtils.KickManager(bot)
 MuteManager = discordSuperUtils.MuteManager(bot)
+
+bot.managers = [InfractionManager, BanManager, MuteManager]
 
 InfractionManager.add_punishments(
     [
@@ -66,10 +67,7 @@ async def on_punishment(ctx, member, punishment):
 
 @bot.event
 async def on_ready():
-    database = discordSuperUtils.DatabaseManager.connect(...)
-    await InfractionManager.connect_to_database(database, ["infractions"])
-    await BanManager.connect_to_database(database, ["bans"])
-    await MuteManager.connect_to_database(database, ["mutes"])
+    bot.database = discordSuperUtils.DatabaseManager.connect(...)
 
     print("Infraction manager is ready.", bot.user)
 
@@ -248,4 +246,4 @@ async def remove_before(
     ).run()
 
 
-bot.run("token")
+bot.run(cogs_directory=None)

@@ -456,7 +456,7 @@ class DatabaseChecker(EventManager):
 
         return True
 
-    async def connect_to_database(self, database: Database, tables: List[str]) -> None:
+    async def connect_to_database(self, database: Database, tables: List[str] = None) -> None:
         """
         Connects to the database.
         Calls on_database_connect when connected.
@@ -468,6 +468,9 @@ class DatabaseChecker(EventManager):
         :rtype: None
         :return: None
         """
+
+        if not tables or len(tables) != len(self.table_identifiers):
+            tables = self.table_identifiers
 
         for table, table_data, identifier in zip(
             tables, self.tables_column_data, self.table_identifiers

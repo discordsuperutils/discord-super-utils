@@ -388,13 +388,13 @@ class DatabaseManager:
     """
 
     @staticmethod
-    def connect(database: Any) -> Any:
+    def connect(database: Any) -> Optional[Database]:
         """
         Connects to a database.
 
         :param Any database: The database.
-        :return: The database.
-        :rtype: Any
+        :return: The database, if applicable.
+        :rtype: Optional[Database]
         """
 
         if type(database) not in DATABASE_TYPES:
