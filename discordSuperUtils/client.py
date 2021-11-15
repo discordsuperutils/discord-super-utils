@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import time
 from typing import Optional, TYPE_CHECKING, List, Tuple
 
 from discord.ext import commands
@@ -20,11 +21,12 @@ class ExtendedClient(commands.Bot):
     Adds a token attribute, replaces methods, loads cogs, etc.
     """
 
-    __slots__ = ("token",)
+    __slots__ = ("token", "start_time")
 
     def __init__(self, token: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.token = token
+        self.start_time = time.time()
 
     def load_cogs(self, directory: str, ignore_prefix: str = "__") -> None:
         """
