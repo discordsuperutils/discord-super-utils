@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import inspect
+import logging
 from dataclasses import dataclass
 from typing import (
     List,
@@ -18,7 +19,15 @@ from typing import (
 )
 
 import aiomysql
-import aiopg
+
+try:
+    import aiopg
+except ImportError:
+    aiopg = None
+    logging.critical(
+        "Aiopg is not installed correctly, postgres databases are not supported."
+    )
+
 import aiosqlite
 import discord
 from motor import motor_asyncio
@@ -53,12 +62,6 @@ COLUMN_TYPES = {
         "number": "INTEGER",
         "smallnumber": "INTEGER",
     },
-    aiopg.pool.Pool: {
-        "snowflake": "bigint",
-        "string": "character varying",
-        "number": "integer",
-        "smallnumber": "smallint",
-    },
     aiomysql.pool.Pool: {
         "snowflake": "BIGINT",
         "string": "TEXT",
@@ -66,6 +69,14 @@ COLUMN_TYPES = {
         "smallnumber": "SMALLINT",
     },
 }
+
+if aiopg:
+    COLUMN_TYPES[aiopg.pool.Pool] = {
+        "snowflake": "BIGINT",
+        "string": "TEXT",
+        "number": "INT",
+        "smallnumber": "SMALLINT",
+    }
 
 
 class DatabaseNotConnected(Exception):
