@@ -24,7 +24,7 @@ try:
     import aiopg
 except ImportError:
     aiopg = None
-    logging.critical(
+    logging.warning(
         "Aiopg is not installed correctly, postgres databases are not supported."
     )
 
