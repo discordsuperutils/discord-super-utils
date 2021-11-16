@@ -53,14 +53,17 @@ class Player:
         return f"<{self.__class__.__name__} requester={self.requester}, title={self.title}, duration={self.duration}>"
 
     @staticmethod
-    def _get_stream_url(player: dict) -> str:
+    def _get_stream_url(player: dict) -> Optional[str]:
         """
         Returns the stream url of a player.
 
         :param dict player: The player.
         :return: The stream url.
-        :rtype: str
+        :rtype: Optional[str]
         """
+
+        if "adaptiveFormats" not in player["streamingData"]:
+            return None
 
         stream_urls = [
             x
@@ -176,10 +179,12 @@ class Player:
 
         players = []
         for player in data:
-            player["url"] = cls._get_stream_url(player)
-            players.append(
-                {x: y for x, y in player.items() if x in ["url", "videoDetails"]}
-            )
+            player["url"] = url = cls._get_stream_url(player)
+
+            if url:
+                players.append(
+                    {x: y for x, y in player.items() if x in ["url", "videoDetails"]}
+                )
 
         return players
 
