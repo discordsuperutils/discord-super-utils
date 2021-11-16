@@ -4,7 +4,12 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, List, Union
 
 import aiomysql
-import aiopg
+
+try:
+    import aiopg
+except ImportError:
+    aiopg = None
+
 import aiosqlite
 from motor import motor_asyncio
 
@@ -360,14 +365,6 @@ DATABASE_TYPES: Dict[Any, Dict[str, Any]] = {
         "quotes": '"',
         "pool": False,
     },
-    aiopg.pool.Pool: {
-        "class": _SqlDatabase,
-        "placeholder": "%s",
-        "cursorcontext": True,
-        "commit": True,
-        "quotes": '"',
-        "pool": True,
-    },
     aiomysql.pool.Pool: {
         "class": _SqlDatabase,
         "placeholder": "%s",
@@ -378,6 +375,15 @@ DATABASE_TYPES: Dict[Any, Dict[str, Any]] = {
     },
 }
 
+if aiopg:
+    DATABASE_TYPES[aiopg.pool.Pool] = {
+        "class": _SqlDatabase,
+        "placeholder": "%s",
+        "cursorcontext": True,
+        "commit": True,
+        "quotes": '"',
+        "pool": True,
+    }
 
 DATABASES: List = [_SqlDatabase, _MongoDatabase]
 
@@ -388,13 +394,13 @@ class DatabaseManager:
     """
 
     @staticmethod
-    def connect(database: Any) -> Any:
+    def connect(database: Any) -> Optional[Database]:
         """
         Connects to a database.
 
         :param Any database: The database.
-        :return: The database.
-        :rtype: Any
+        :return: The database, if applicable.
+        :rtype: Optional[Database]
         """
 
         if type(database) not in DATABASE_TYPES:
