@@ -134,12 +134,9 @@ class TwitchManager(DatabaseChecker):
             statuses = [
                 status for status in await self.get_channel_status(twitch_channels)
             ]
-            for status in statuses[:]:
-                if start_time > status["started_at"]:
-                    statuses.remove(status)
 
             started_streams = self.remove_channel_ids(
-                statuses,
+                [status for status in statuses if start_time <= status["started_at"]],
                 [x["id"] for x in self._channel_cache],
             )
             ended_streams = self.remove_channel_ids(
