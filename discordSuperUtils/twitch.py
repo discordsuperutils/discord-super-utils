@@ -12,16 +12,27 @@ if TYPE_CHECKING:
     import discord
     from discord.ext import commands
 
-__all__ = ("TwitchManager",)
+__all__ = ("TwitchManager", "TwitchAuthorizationError")
+
+
+class TwitchAuthorizationError(Exception):
+    """
+    Raises an error when the Twitch API returns an authorization error.
+    """
 
 
 class TwitchManager(DatabaseChecker):
+    """
+    Represents a twitch notification manager.
+    """
+
     __slots__ = (
         "bot",
         "update_interval",
         "twitch_client_id",
         "twitch_client_secret",
         "session",
+        "authorization_headers",
     )
 
     TWITCH_API_URL = "https://api.twitch.tv/helix"
@@ -49,6 +60,11 @@ class TwitchManager(DatabaseChecker):
         self.twitch_client_id = twitch_client_id
         self.twitch_client_secret = twitch_client_secret
 
+        self.authorization_headers = {
+            "Client-ID": self.twitch_client_id,
+            "Authorization": f"Bearer {self.twitch_client_secret}",
+        }
+
         self.update_interval = update_interval
 
         self._channel_cache: List[dict] = []
@@ -63,7 +79,17 @@ class TwitchManager(DatabaseChecker):
     async def _on_database_connect(self):
         self.bot.loop.create_task(self.__detect_streams())
 
-    async def get_channel_status(self, channels: Iterable[str]) -> dict:
+    async def get_channel_status(self, channels: Iterable[str]) -> dict | list:
+        """
+        |coro|
+
+        Gets the live status of the given channels.
+
+        :param Iterable[str] channels: The channels.
+        :return: The live statuses of the channels or the error dictionary.
+        :rtype: dict | list
+        """
+
         await self._initialize()
 
         url = (
@@ -72,10 +98,7 @@ class TwitchManager(DatabaseChecker):
 
         r = await self.session.get(
             url,
-            headers={
-                "Client-ID": self.twitch_client_id,
-                "Authorization": f"Bearer {self.twitch_client_secret}",
-            },
+            headers=self.authorization_headers,
         )
 
         r_json = await r.json()
@@ -88,6 +111,17 @@ class TwitchManager(DatabaseChecker):
         return r_json
 
     async def add_channel(self, guild: discord.Guild, channel: str) -> None:
+        """
+        |coro|
+
+        Adds a channel to the guild list.
+
+        :param discord.Guild guild: The guild.
+        :param str channel: The channel.
+        :return: None
+        :rtype: None
+        """
+
         await self.database.insertifnotexists(
             self.tables["channels"],
             {"guild": guild.id, "channel": channel},
@@ -95,11 +129,32 @@ class TwitchManager(DatabaseChecker):
         )
 
     async def remove_channel(self, guild: discord.Guild, channel: str) -> None:
+        """
+        |coro|
+
+        Removes a channel from the guild list.
+
+        :param discord.Guild guild: The guild.
+        :param str channel: The channel.
+        :return: None
+        :rtype: None
+        """
+
         await self.database.delete(
             self.tables["channels"], {"guild": guild.id, "channel": channel}
         )
 
     async def get_guild_channels(self, guild: discord.Guild) -> List[str]:
+        """
+        |coro|
+
+        Returns the channels of the guild.
+
+        :param discord.Guild guild: The guild.
+        :return: The channels.
+        :rtype: List[str]
+        """
+
         channel_records = await self.database.select(
             self.tables["channels"], ["channel"], {"guild": guild.id}, True
         )
@@ -108,6 +163,15 @@ class TwitchManager(DatabaseChecker):
 
     @staticmethod
     def get_matching_channels(streams: List[dict], names: List[str]) -> List[dict]:
+        """
+        Returns the streams that match the given names.
+
+        :param List[dict] streams: The streams.
+        :param List[str] names: The names.
+        :return: The streams that match the given names.
+        :rtype: List[dict]
+        """
+
         return [
             stream
             for stream in streams
@@ -116,6 +180,15 @@ class TwitchManager(DatabaseChecker):
 
     @staticmethod
     def remove_channel_ids(streams: List[dict], channel_ids: List[int]) -> List[dict]:
+        """
+        Removes the channels that are in the given list that match the channel ids.
+
+        :param List[dict] streams: The streams.
+        :param List[int] channel_ids: The channel ids.
+        :return: The result channels.
+        :rtype: List[dict]
+        """
+
         return [stream for stream in streams if stream["id"] not in channel_ids]
 
     async def __detect_streams(self) -> None:
@@ -131,9 +204,9 @@ class TwitchManager(DatabaseChecker):
                 channel for channels in guild_channels.values() for channel in channels
             }
 
-            statuses = [
-                status for status in await self.get_channel_status(twitch_channels)
-            ]
+            statuses = await self.get_channel_status(twitch_channels)
+            if isinstance(statuses, dict):
+                raise TwitchAuthorizationError(statuses["message"])
 
             started_streams = self.remove_channel_ids(
                 [status for status in statuses if start_time <= status["started_at"]],
