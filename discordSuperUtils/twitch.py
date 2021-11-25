@@ -12,7 +12,29 @@ if TYPE_CHECKING:
     import discord
     from discord.ext import commands
 
-__all__ = ("TwitchManager", "TwitchAuthorizationError")
+__all__ = ("TwitchManager", "TwitchAuthorizationError", "get_twitch_oauth_key")
+
+
+async def get_twitch_oauth_key(client_id: str, client_secret: str) -> str:
+    """
+    Gets the Twitch OAuth key from the Twitch API.
+
+    :param client_id: The client ID.
+    :param client_secret: The client secret.
+    :return: The OAuth key.
+    """
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+            "https://id.twitch.tv/oauth2/token",
+            data={
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "grant_type": "client_credentials",
+            },
+        ) as resp:
+            resp_json = await resp.json()
+            return resp_json["access_token"]
 
 
 class TwitchAuthorizationError(Exception):
@@ -30,7 +52,7 @@ class TwitchManager(DatabaseChecker):
         "bot",
         "update_interval",
         "twitch_client_id",
-        "twitch_client_secret",
+        "twitch_access_token",
         "session",
         "authorization_headers",
     )
@@ -41,7 +63,7 @@ class TwitchManager(DatabaseChecker):
         self,
         bot: commands.Bot,
         twitch_client_id: str,
-        twitch_client_secret: str,
+        twitch_access_token: str,
         update_interval: int = 30,
     ) -> None:
         super().__init__(
@@ -58,11 +80,11 @@ class TwitchManager(DatabaseChecker):
         self.bot = bot
 
         self.twitch_client_id = twitch_client_id
-        self.twitch_client_secret = twitch_client_secret
+        self.twitch_access_token = twitch_access_token
 
         self.authorization_headers = {
             "Client-ID": self.twitch_client_id,
-            "Authorization": f"Bearer {self.twitch_client_secret}",
+            "Authorization": f"Bearer {self.twitch_access_token}",
         }
 
         self.update_interval = update_interval
@@ -79,7 +101,7 @@ class TwitchManager(DatabaseChecker):
     async def _on_database_connect(self):
         self.bot.loop.create_task(self.__detect_streams())
 
-    async def get_channel_status(self, channels: Iterable[str]) -> dict | list:
+    async def get_channel_status(self, channels: Iterable[str]) -> list:
         """
         |coro|
 
@@ -87,7 +109,8 @@ class TwitchManager(DatabaseChecker):
 
         :param Iterable[str] channels: The channels.
         :return: The live statuses of the channels or the error dictionary.
-        :rtype: dict | list
+        :rtype: list
+        :raises: TwitchAuthorizationError: If the Twitch API returns an authorization error.
         """
 
         await self._initialize()
@@ -108,7 +131,7 @@ class TwitchManager(DatabaseChecker):
 
             return r_json["data"]
 
-        return r_json
+        raise TwitchAuthorizationError(r_json["message"])
 
     async def add_channel(self, guild: discord.Guild, channel: str) -> None:
         """
@@ -205,8 +228,6 @@ class TwitchManager(DatabaseChecker):
             }
 
             statuses = await self.get_channel_status(twitch_channels)
-            if isinstance(statuses, dict):
-                raise TwitchAuthorizationError(statuses["message"])
 
             started_streams = self.remove_channel_ids(
                 [status for status in statuses if start_time <= status["started_at"]],

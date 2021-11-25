@@ -31,7 +31,7 @@ from .spotify import SpotifyClient
 from .template import TemplateManager
 from .youtube import YoutubeClient
 from .client import DatabaseClient, ExtendedClient, ManagerClient
-from .twitch import TwitchManager
+from .twitch import TwitchManager, get_twitch_oauth_key
 
 __title__ = "discordSuperUtils"
 __version__ = "0.3.0"
