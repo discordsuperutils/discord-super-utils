@@ -450,6 +450,26 @@ class MusicManager(DatabaseChecker):
             requester,
         )
 
+    @staticmethod
+    async def fetch_ytdl_data(url: str) -> Optional[dict]:
+        """
+        |coro|
+
+        Fetches the data from a url.
+
+        :param str url: The url to fetch the data from.
+        :return: The data from the url if applicable.
+        :rtype: Optional[dict]
+        """
+
+        try:
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(
+                None, lambda: YTDL.extract_info(url, download=False)
+            )
+        except youtube_dl.utils.DownloadError:
+            return None
+
     async def create_player(
         self, query: str, requester: discord.Member
     ) -> List[Player]:
@@ -474,6 +494,24 @@ class MusicManager(DatabaseChecker):
                 [song for song in await self.spotify.get_songs(query)],
                 requester,
             )
+
+        if DEEZER_RE.match(query) or SOUNDCLOUD_RE.match(query):
+            data = await self.fetch_ytdl_data(query)
+            if not data:
+                return []
+
+            return [
+                Player(
+                    requester,
+                    query,
+                    data["title"],
+                    data["url"],
+                    data["webpage_url"],
+                    data.get("duration", 30),
+                    data,
+                    True,
+                )
+            ]
 
         return await Player.make_players(self.youtube, query, requester)
 

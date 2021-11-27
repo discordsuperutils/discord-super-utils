@@ -51,6 +51,7 @@ setup(
         "discord_components",
         "pytz",
         "wavelink",
+        "youtube_dl",
     ],
     classifiers=[  # Optional
         # How mature is this project? Common values are

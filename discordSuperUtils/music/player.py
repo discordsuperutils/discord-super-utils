@@ -28,22 +28,33 @@ class Player:
         "source",
         "autoplayed",
         "used_query",
+        "youtube_dl",
     )
 
-    def __init__(self, requester: Optional[discord.Member], used_query: str, data):
+    def __init__(
+        self,
+        requester: Optional[discord.Member],
+        used_query: str,
+        title: str,
+        stream_url: str,
+        url: str,
+        duration: int,
+        data: dict,
+        youtube_dl: bool = False,
+    ):
         self.source = None
         self.data = data
         self.requester = requester
-        self.title = data["videoDetails"]["title"]
-        self.stream_url = data.get("url")
-        self.url = "https://youtube.com/watch/?v=" + data["videoDetails"]["videoId"]
+        self.title = title
+        self.stream_url = stream_url
+        self.url = url
         self.used_query = used_query
 
         self.autoplayed = False
         self.start_timestamp = 0
         self.last_pause_timestamp = 0
 
-        duration = int(data["videoDetails"]["lengthSeconds"])
+        self.youtube_dl = youtube_dl
         self.duration = duration if duration != 0 else "LIVE"
 
     def __str__(self):
@@ -104,7 +115,7 @@ class Player:
 
         songs = await asyncio.gather(*tasks)
 
-        return [cls(requester, used_query, data=x[0]) for x in songs if x]
+        return [cls.create_player(requester, used_query, x) for x in songs if x]
 
     @classmethod
     async def get_similar_videos(
@@ -189,6 +200,20 @@ class Player:
         return players
 
     @classmethod
+    def create_player(
+        cls, requester: discord.Member, query: str, player: dict
+    ) -> Player:
+        return cls(
+            requester,
+            query,
+            player["videoDetails"]["title"],
+            player.get("url"),
+            "https://youtube.com/watch/?v=" + player["videoDetails"]["videoId"],
+            int(player["videoDetails"]["lengthSeconds"]),
+            data=player,
+        )
+
+    @classmethod
     async def make_players(
         cls,
         youtube: YoutubeClient,
@@ -212,6 +237,6 @@ class Player:
         """
 
         return [
-            cls(requester, query, data=player)
+            cls.create_player(requester, query, player)
             for player in await cls.fetch_song(youtube, query, playlist)
         ]
