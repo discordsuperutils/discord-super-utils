@@ -89,3 +89,70 @@ class Equalizer:
         ]
 
         return cls(levels, "Piano")
+    
+    @classmethod
+    def jazz(cls):
+        levels = [
+            -0.13,
+            -0.11,
+            -0.1,
+            -0.1,
+            0.14,
+            0.2,
+            -0.18,
+            0.0,
+            0.24,
+            0.22,
+            0.2,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+        ]
+
+        return cls(levels, "Jazz")
+
+
+    @classmethod
+    def pop(cls):
+        levels = [
+            -0.02,
+            -0.01,
+            0.08,
+            0.1,
+            0.15,
+            0.1,
+            0.03,
+            -0.02,
+            -0.035,
+            -0.05,
+            -0.05,
+            -0.05,
+            -0.05,
+            -0.05,
+            -0.05,
+        ]
+
+        return cls(levels, "Pop")
+
+    @classmethod
+    def treble(cls):
+        levels = [
+            -0.1, 
+            -0.12, 
+            -0.12, 
+            -0.12, 
+            -0.08, 
+            -0.04, 
+            0.0, 
+            0.3, 
+            0.34, 
+            0.4, 
+            0.35, 
+            0.3, 
+            0.3, 
+            0.3, 
+            0.3,
+        ]
+
+        return cls(levels, "Treble")
