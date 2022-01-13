@@ -58,8 +58,8 @@ class BirthdayMember:
         birthday_data = await self.birthday_manager.database.select(
             self.table, ["utc_birthday"], self.__checks
         )
-        return datetime.fromtimestamp(
-            birthday_data["utc_birthday"], await self.timezone()
+        return datetime.utcfromtimestamp(
+            birthday_data["utc_birthday"]
         )
 
     async def next_birthday(self) -> datetime:
