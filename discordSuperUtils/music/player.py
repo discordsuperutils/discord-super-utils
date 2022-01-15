@@ -201,17 +201,29 @@ class Player:
 
     @classmethod
     def create_player(
-        cls, requester: discord.Member, query: str, player: dict
+        cls, requester: disnake.Member, query: str, player: dict
     ) -> Player:
-        return cls(
-            requester,
-            query,
-            player["videoDetails"]["title"],
-            player.get("url"),
-            "https://youtube.com/watch/?v=" + player["videoDetails"]["videoId"],
-            int(player["videoDetails"]["lengthSeconds"]),
-            data=player,
-        )
+        try:
+            return cls(
+                requester,
+                query,
+                player["videoDetails"]["title"],
+                player.get("url"),
+                "https://youtube.com/watch/?v=" + player["videoDetails"]["videoId"],
+                int(player["videoDetails"]["lengthSeconds"]),
+                data=player,
+            )
+        except TypeError:
+            return cls(
+                requester,
+                query,
+                player[0]["videoDetails"]["title"],
+                player[0].get("url"),
+                "https://youtube.com/watch/?v=" + player[0]["videoDetails"]["videoId"],
+                int(player[0]["videoDetails"]["lengthSeconds"]),
+                data=player,
+            )
+
 
     @classmethod
     async def make_players(
