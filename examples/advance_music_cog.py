@@ -141,7 +141,7 @@ class Music(commands.Cog, discordSuperUtils.CogManager.Cog, name="Music"):
             discordSuperUtils.NotPaused: "Player is not paused!",
             discordSuperUtils.QueueEmpty: "The queue is empty!",
             discordSuperUtils.AlreadyConnected: "Already connected to voice channel!",
-            discordSuperUtils.QueueError: "There has been a queue error!",
+            discordSuperUtils.RemoveIndexInvalid: "Remove index is invalid!",
             discordSuperUtils.SkipError: "There is no song to skip to!",
             discordSuperUtils.UserNotConnected: "User is not connected to a voice channel!",
             discordSuperUtils.InvalidSkipIndex: "That skip index is invalid!",
