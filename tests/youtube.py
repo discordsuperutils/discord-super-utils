@@ -3,6 +3,7 @@ import asyncio
 import youtube_dl as youtube_dl
 
 import discordSuperUtils
+from discordSuperUtils.music import YTDL_OPTS
 from tester import Tester
 
 
@@ -38,17 +39,7 @@ async def fetch_youtube_client():
 
 async def fetch_ytdl():
     ytdl = youtube_dl.YoutubeDL(
-        {
-            "format": "bestaudio/best",
-            "restrictfilenames": True,
-            "noplaylist": False,
-            "nocheckcertificate": True,
-            "ignoreerrors": False,
-            "logtostderr": False,
-            "quiet": True,
-            "no_warnings": True,
-            "default_search": "auto",
-        }
+        YTDL_OPTS
     )
 
     return (
