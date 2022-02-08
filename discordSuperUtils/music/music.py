@@ -233,6 +233,14 @@ class MusicManager(DatabaseChecker):
         voice_client = member.guild.voice_client
         channel_change = before.channel != after.channel
 
+        if (before.channel is not None) and (after.channel is None):
+            if member == self.bot.user:
+                if member.guild.id in self.queue:
+                    self.queue[member.guild.id].cleanup()
+                    del self.queue[member.guild.id]
+
+                await maybe_coroutine(voice_client.stop)
+
         if member == self.bot.user and channel_change and before.channel:
             await self.cleanup(voice_client, member.guild)
 
@@ -245,6 +253,7 @@ class MusicManager(DatabaseChecker):
                 await asyncio.sleep(self.inactivity_timeout)
 
                 await self.cleanup(voice_client, member.guild)
+
 
     async def ensure_activity(self, ctx: commands.Context) -> None:
         """
