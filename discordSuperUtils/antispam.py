@@ -36,8 +36,6 @@ class SpamDetectionGenerator(ABC):
         :rtype: Union[bool, Any]
         """
 
-        pass
-
 
 class DefaultSpamDetectionGenerator(SpamDetectionGenerator):
     def generate(self, last_messages: List[discord.Message]) -> Union[bool, Any]:
