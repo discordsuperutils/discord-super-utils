@@ -203,6 +203,9 @@ class Player:
     def create_player(
         cls, requester: discord.Member, query: str, player: dict
     ) -> Player:
+        if isinstance(player, list):
+            player = player[0]
+
         return cls(
             requester,
             query,
