@@ -335,6 +335,28 @@ class MusicManager(DatabaseChecker):
 
         return decorator
 
+    async def get_next_player(self, ctx: commands.Context, queue: QueueManager) -> Optional[Player]:
+        """
+        |coro|
+
+        Gets the next player in the queue.
+
+        :param ctx: The context.
+        :type ctx: commands.Context
+        :param queue: The queue manager.
+        :type queue: QueueManager
+        :return: The next player.
+        :rtype: Optional[Player]
+        """
+
+        player = await queue.get_next_player(self.youtube)
+        if not player:
+            await self.cleanup(None, ctx.guild)
+            await self.call_event("on_queue_end", ctx)
+            return None
+
+        return player
+
     async def _check_queue(self, ctx: commands.Context) -> None:
         """
         |coro|
@@ -352,11 +374,9 @@ class MusicManager(DatabaseChecker):
                 return
 
             queue = self.queue[ctx.guild.id]
-            player = await queue.get_next_player(self.youtube)
-
-            if player is None:
-                await self.cleanup(None, ctx.guild)
-                await self.call_event("on_queue_end", ctx)
+            player = await self.get_next_player(ctx, queue)
+            if not player:
+                return
 
             player.source = (
                 discord.PCMVolumeTransformer(

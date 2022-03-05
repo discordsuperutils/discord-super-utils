@@ -62,11 +62,9 @@ class LavalinkMusicManager(MusicManager):
                 return
 
             queue = self.queue[ctx.guild.id]
-            player = await queue.get_next_player(self.youtube)
-
-            if player is None:
-                await self.cleanup(None, ctx.guild)
-                await self.call_event("on_queue_end", ctx)
+            player = await self.get_next_player(ctx, queue)
+            if not player:
+                return
 
             await ctx.voice_client.set_volume(queue.volume)
             await ctx.voice_client.play(
