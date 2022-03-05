@@ -126,19 +126,33 @@ async def infractions(ctx, member: discord.Member):
     ).run()
 
 
+async def add_embed_infraction_info(embed: discord.Embed, infraction: discordSuperUtils.infractions.Infraction) -> None:
+    embed.add_field(
+        name="Reason",
+        value=await infraction.reason(),
+        inline=False,
+    )
+
+    embed.add_field(
+        name="Infraction ID",
+        value=infraction.id,
+        inline=False,
+    )
+
+    # Incase you don't like the Date of Infraction format you can change it using datetime.strftime
+    embed.add_field(
+        name="Date of Infraction",
+        value=str(await infraction.datetime()),
+        inline=False,
+    )
+
+
 @infractions.command()
 async def add(ctx, member: discord.Member, reason: str = "No reason specified."):
     infraction = await InfractionManager.warn(ctx, member, reason)
 
     embed = discord.Embed(title=f"{member} has been warned.", color=0x00FF00)
-
-    embed.add_field(name="Reason", value=await infraction.reason(), inline=False)
-    embed.add_field(name="Infraction ID", value=infraction.id, inline=False)
-    embed.add_field(
-        name="Date of Infraction", value=str(await infraction.datetime()), inline=False
-    )
-    # Incase you don't like the Date of Infraction format you can change it using datetime.strftime
-
+    await add_embed_infraction_info(embed, infraction)
     await ctx.send(embed=embed)
 
 
@@ -160,13 +174,7 @@ async def get(ctx, member: discord.Member, infraction_id: str):
         title=f"Infraction found on {member}'s account!", color=0x00FF00
     )
 
-    embed.add_field(name="Reason", value=await infraction.reason(), inline=False)
-    embed.add_field(name="Infraction ID", value=infraction.id, inline=False)
-    embed.add_field(
-        name="Date of Infraction", value=str(await infraction.datetime()), inline=False
-    )
-    # Incase you don't like the Date of Infraction format you can change it using datetime.strftime
-
+    await add_embed_infraction_info(embed, infraction)
     await ctx.send(embed=embed)
 
 
