@@ -9,7 +9,7 @@ __all__ = ("Equalizer",)
 @dataclass
 class Equalizer:
     """
-    Represents a Equalizer that supports different voice effects.
+    Represents an Equalizer that supports different voice effects.
     """
 
     raw: List[float]
