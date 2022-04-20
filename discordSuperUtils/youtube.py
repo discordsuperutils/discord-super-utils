@@ -197,12 +197,18 @@ class YoutubeClient:
             for x in playlist_info["contents"]
         ]
 
-        playlist_information["channel"] = {
-            "name": author_information["text"],
-            "id": author_information["navigationEndpoint"]["browseEndpoint"][
-                "browseId"
-            ],
-        }
+        if "navigationEndpoint" in author_information:
+            playlist_information["channel"] = {
+                "name": author_information["text"],
+                "id": author_information["navigationEndpoint"]["browseEndpoint"][
+                    "browseId"
+                ],
+            }
+        else:
+            playlist_information["channel"] = {
+                "name": author_information["text"],
+                "id": None,
+            }
 
         return playlist_information
 
