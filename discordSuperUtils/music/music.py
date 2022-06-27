@@ -34,6 +34,7 @@ from ..spotify import SpotifyClient
 from ..youtube import YoutubeClient
 
 if TYPE_CHECKING:
+    from .. import SlashClient
     from discord.ext import commands
 
 __all__ = ("MusicManager",)
@@ -56,7 +57,7 @@ class MusicManager(DatabaseChecker):
 
     def __init__(
         self,
-        bot: commands.Bot,
+        bot: SlashClient,
         spotify_support: bool = True,
         inactivity_timeout: int = 60,
         minimum_users: int = 1,
@@ -74,7 +75,7 @@ class MusicManager(DatabaseChecker):
             ["playlists"],
         )
         self.bot = bot
-        self.bot.add_listener(self._on_voice_state_update, "on_voice_state_update")
+        setattr(bot, self._on_voice_state_update.__name__, self._on_voice_state_update)
 
         self.client_id = kwargs.get("client_id")
         self.client_secret = kwargs.get("client_secret")
@@ -475,7 +476,7 @@ class MusicManager(DatabaseChecker):
         """
         |coro|
 
-        Fetches the data from a url.
+        Fetches the data from an url.
 
         :param str url: The url to fetch the data from.
         :return: The data from the url if applicable.

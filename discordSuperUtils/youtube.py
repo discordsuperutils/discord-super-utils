@@ -35,9 +35,13 @@ class YoutubeClient:
     ):
         self.timeout = timeout
         self.loop = loop or asyncio.get_event_loop()
-        self.session = session or aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(total=self.timeout, connect=3), loop=self.loop
-        )
+        self.session = session
+
+    async def initialize_session(self):
+        if self.session is None:
+            self.session = aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=self.timeout, connect=3), loop=self.loop
+            )
 
     async def request(
         self,
@@ -60,6 +64,8 @@ class YoutubeClient:
         """
 
         headers = headers or self.HEADERS
+
+        await self.initialize_session()
 
         try:
             return await self.session.post(
@@ -100,6 +106,8 @@ class YoutubeClient:
         """
 
         # Not using the youtube API as it is inconsistent.
+
+        await self.initialize_session()
 
         try:
             r = await self.session.get(
